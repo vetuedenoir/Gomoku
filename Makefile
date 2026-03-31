@@ -4,16 +4,13 @@
 # =============================================================================
 
 UNAME_S   := $(shell uname -s)
-NPROC     := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
 ifeq ($(UNAME_S),Linux)
 	CXX        := c++
 	CXXFLAGS_OS := -D_GNU_SOURCE
-	RPATH_FLAG  = -Wl,-rpath,$(CURDIR)/$(SFML_LIB)
 else ifeq ($(UNAME_S),Darwin)
 	CXX        := c++
 	CXXFLAGS_OS :=
-	RPATH_FLAG  :=
 endif
 
 # =============================================================================
@@ -28,30 +25,15 @@ OBJ_DIR   := .build
 SRCS      := main.cpp
 
 # =============================================================================
-# SFML (built from source)
-# =============================================================================
-
-SFML_URL      := https://github.com/SFML/SFML.git
-SFML_TAG      := 3.0.0
-SFML_DIR      := libs/SFML
-SFML_BUILD    := $(SFML_DIR)/build
-SFML_INC      := $(SFML_DIR)/include
-SFML_LIB      := $(SFML_BUILD)/lib
-SFML_SENTINEL := $(SFML_BUILD)/.built
-
-# =============================================================================
 # COMPILER FLAGS
 # =============================================================================
 
-# SFML 3.0 requires C++17
 CXXFLAGS  := -std=c++17 -Wall -Wextra -Werror \
-             -I$(INC_DIR) -I$(SFML_INC) \
+             -I$(INC_DIR) \
              $(CXXFLAGS_OS) \
              -MMD -MP
 
-LDFLAGS   := -L$(SFML_LIB) \
-             -lsfml-graphics -lsfml-window -lsfml-system \
-             $(RPATH_FLAG)
+LDFLAGS   := -lsfml-graphics -lsfml-window -lsfml-system
 
 # =============================================================================
 # OBJECT & DEPENDENCY FILES
@@ -77,10 +59,10 @@ RED    = \033[1;31m
 DOCKER_IMAGE := gomoku
 DOCKER_TMP   := gomoku-tmp
 
-.PHONY: all clean fclean re sfml \
+.PHONY: all clean fclean re \
         docker-build docker-run docker-extract docker-clean
 
-all: $(SFML_SENTINEL) $(NAME)
+all: $(NAME)
 
 $(NAME): $(OBJS)
 	@echo "$(CYAN)Linking $(NAME)...$(NOC)"
@@ -91,28 +73,6 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
 	@echo "$(CYAN)Compiling $<...$(NOC)"
 	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-# --------------------------------------------------------------------------
-# SFML: clone + build with CMake
-# --------------------------------------------------------------------------
-
-sfml: $(SFML_SENTINEL)
-
-$(SFML_SENTINEL):
-	@if [ ! -d "$(SFML_DIR)/.git" ]; then \
-		echo "$(CYAN)Cloning SFML $(SFML_TAG)...$(NOC)"; \
-		git clone --depth 1 --branch $(SFML_TAG) $(SFML_URL) $(SFML_DIR); \
-	fi
-	@echo "$(CYAN)Configuring SFML with CMake...$(NOC)"
-	cmake -S $(SFML_DIR) -B $(SFML_BUILD) \
-		-DCMAKE_BUILD_TYPE=Release \
-		-DBUILD_SHARED_LIBS=ON \
-		-DSFML_BUILD_EXAMPLES=OFF \
-		-DSFML_BUILD_TEST_SUITE=OFF
-	@echo "$(CYAN)Building SFML (using $(NPROC) jobs)...$(NOC)"
-	cmake --build $(SFML_BUILD) -- -j$(NPROC)
-	@touch $(SFML_SENTINEL)
-	@echo "$(GREEN)SFML built successfully$(NOC)"
 
 # =============================================================================
 # CLEANING RULES
