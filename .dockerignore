@@ -1,0 +1,11 @@
+# Ignore locally-built SFML and project artifacts – Docker builds them fresh.
+libs/
+.build/
+gomoku
+
+# C++ intermediate files
+*.o
+*.d
+
+# macOS noise
+.DS_Store
