@@ -74,7 +74,11 @@ RED    = \033[1;31m
 # RULES
 # =============================================================================
 
-.PHONY: all clean fclean re sfml
+DOCKER_IMAGE := gomoku
+DOCKER_TMP   := gomoku-tmp
+
+.PHONY: all clean fclean re sfml \
+        docker-build docker-run docker-extract docker-clean
 
 all: $(SFML_SENTINEL) $(NAME)
 
@@ -125,5 +129,35 @@ fclean: clean
 	@echo "$(GREEN)Done$(NOC)"
 
 re: fclean all
+
+# =============================================================================
+# DOCKER RULES
+# =============================================================================
+
+docker-build:
+	@echo "$(CYAN)Building Docker image '$(DOCKER_IMAGE)'...$(NOC)"
+	docker build -t $(DOCKER_IMAGE) .
+	@echo "$(GREEN)Image '$(DOCKER_IMAGE)' ready$(NOC)"
+
+docker-run: docker-build
+	@echo "$(CYAN)Allowing local Docker connections to X11...$(NOC)"
+	xhost +local:docker
+	@echo "$(CYAN)Running $(DOCKER_IMAGE) with X11 forwarding...$(NOC)"
+	docker run --rm \
+		-e DISPLAY=$(DISPLAY) \
+		-v /tmp/.X11-unix:/tmp/.X11-unix \
+		$(DOCKER_IMAGE)
+
+docker-extract: docker-build
+	@echo "$(CYAN)Extracting binary from image...$(NOC)"
+	docker create --name $(DOCKER_TMP) $(DOCKER_IMAGE)
+	docker cp $(DOCKER_TMP):/app/$(NAME) ./$(NAME)
+	docker rm $(DOCKER_TMP)
+	@echo "$(GREEN)Binary extracted: ./$(NAME)$(NOC)"
+
+docker-clean:
+	@echo "$(CYAN)Removing Docker image '$(DOCKER_IMAGE)'...$(NOC)"
+	docker rmi -f $(DOCKER_IMAGE)
+	@echo "$(GREEN)Done$(NOC)"
 
 -include $(DEPS)
