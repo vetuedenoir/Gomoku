@@ -3,3 +3,4 @@ gomoku
 *.o
 *.d
 .DS_Store
+.env

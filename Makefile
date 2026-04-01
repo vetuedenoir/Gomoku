@@ -1,4 +1,6 @@
 
+-include .env
+
 # =============================================================================
 # PLATFORM DETECTION
 # =============================================================================
@@ -6,11 +8,18 @@
 UNAME_S   := $(shell uname -s)
 
 ifeq ($(UNAME_S),Linux)
-	CXX        := c++
+	CXX         := c++
 	CXXFLAGS_OS := -D_GNU_SOURCE
+	LDFLAGS_OS  :=
 else ifeq ($(UNAME_S),Darwin)
-	CXX        := c++
-	CXXFLAGS_OS :=
+	CXX         := clang++
+	CXXFLAGS_OS := -arch arm64 -I$(SFML_ROOT)/include
+	LDFLAGS_OS  := -L$(SFML_ROOT)/build/lib \
+	               -Wl,-rpath,$(SFML_ROOT)/build/lib \
+	               -framework Cocoa \
+	               -framework OpenGL \
+	               -framework IOKit \
+	               -framework CoreVideo
 endif
 
 # =============================================================================
@@ -22,7 +31,19 @@ SRC_DIR   := src
 INC_DIR   := include
 OBJ_DIR   := .build
 
-SRCS      := main.cpp
+SRCS      := $(notdir $(wildcard $(SRC_DIR)/*.cpp))
+
+# =============================================================================
+# BUILD MODE  —  usage: make MODE=debug / make MODE=release (default)
+# =============================================================================
+
+MODE      ?= release
+
+ifeq ($(MODE),debug)
+	CXXFLAGS_MODE := -g -O0 -DDEBUG
+else
+	CXXFLAGS_MODE := -O2 -DNDEBUG
+endif
 
 # =============================================================================
 # COMPILER FLAGS
@@ -31,9 +52,11 @@ SRCS      := main.cpp
 CXXFLAGS  := -std=c++17 -Wall -Wextra -Werror \
              -I$(INC_DIR) \
              $(CXXFLAGS_OS) \
+             $(CXXFLAGS_MODE) \
              -MMD -MP
 
-LDFLAGS   := -lsfml-graphics -lsfml-window -lsfml-system
+LDFLAGS   := $(LDFLAGS_OS) \
+             -lsfml-graphics -lsfml-window -lsfml-system
 
 # =============================================================================
 # OBJECT & DEPENDENCY FILES

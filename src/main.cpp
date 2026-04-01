@@ -4,7 +4,11 @@
 
 static const unsigned int WIN_W  = 800;
 static const unsigned int WIN_H  = 600;
+#ifdef __APPLE__
+static const char        *FONT   = "/System/Library/Fonts/Helvetica.ttc";
+#else
 static const char        *FONT   = "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf";
+#endif
 
 // Colors
 static const sf::Color BG        (18,  18,  32);

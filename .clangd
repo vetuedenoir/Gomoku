@@ -1,0 +1,7 @@
+CompileFlags:
+  Compiler: clang++
+  Add:
+    - -std=c++17
+    - -arch arm64
+    - --sysroot=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+    - -I/Users/danielnieto/Desktop/perso/sfml/2.6.1/SFML/include
