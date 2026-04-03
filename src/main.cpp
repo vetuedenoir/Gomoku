@@ -18,6 +18,7 @@ int main()
 	if (!font.loadFromFile(FONT))
 		return 1;
 
+	MenuePage first;
 	// Title
 	sf::Text title = makeText("GOMOKU", font, 80, GOLD);
 	title.setStyle(sf::Text::Bold);

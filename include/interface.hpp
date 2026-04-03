@@ -4,7 +4,9 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <string>
+#include <functional> // pour std::function
 
+#include "MenuePage.hpp"
 
 
 constexpr unsigned int WIN_W = 800;
@@ -63,6 +65,14 @@ struct Item
 	}
 };
 
+struct	FonctionItem
+{
+	struct Item	item;
+	std::function<void()>	onclick;
+
+	FonctionItem(const Item& i, std::function<void()> f)
+        : item(i), onclick(f) {}
+};
 
 
 
