@@ -6,7 +6,7 @@
 #include <string>
 #include <functional> // pour std::function
 
-#include "MenuePage.hpp"
+#include "MenuPage.hpp"
 
 
 constexpr unsigned int WIN_W = 800;

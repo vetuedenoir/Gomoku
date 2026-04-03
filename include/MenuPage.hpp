@@ -1,20 +1,20 @@
-#ifndef MENUEPAGE_HPP
-# define MENUEPAGE_HPP
+#ifndef MENUPAGE_HPP
+# define MENUPAGE_HPP
 
 #include "interface.hpp"
 #include <unordered_map>
 
-class MenuePage {
+class MenuPage {
 	private:
 		std::unordered_map<std::string, sf::Text> text_map;
 		std::unordered_map<std::string, sf::RectangleShape> rectangle_map;
 		std::unordered_map<std::string, struct FonctionItem> item_map;
 
-		std::function<void(MenuePage&, sf::RenderWindow&)> drawFunc;
+		std::function<void(MenuPage&, sf::RenderWindow&)> drawFunc;
 	
 	public:
-		MenuePage() = default;
-		~MenuePage() = default;
+		MenuPage() = default;
+		~MenuPage() = default;
 
 		// ===== AJOUT =====
 		void addText(const std::string& key, const sf::Text& text);
@@ -47,7 +47,7 @@ class MenuePage {
 		// ===== CLEAR =====
 		void clear();
 
-		void setDrawFunction(std::function<void(MenuePage&, sf::RenderWindow&)> func);
+		void setDrawFunction(std::function<void(MenuPage&, sf::RenderWindow&)> func);
 		void draw(sf::RenderWindow& window);
 };
 
