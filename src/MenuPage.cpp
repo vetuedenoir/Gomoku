@@ -1,4 +1,4 @@
-#include "../include/MenuPage.hpp"
+#include "MenuPage.hpp"
 
         void MenuPage::addText(const std::string& key, const sf::Text& text) {
 			text_map[key] = text;
