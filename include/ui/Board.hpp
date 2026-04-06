@@ -5,7 +5,7 @@
 #include <vector>
 #include "game/GameBoard.hpp"
 
-static const int GRID_N = 19;
+static const int GRID_MAX = 19;
 
 class Board
 {
@@ -13,6 +13,7 @@ private:
     sf::FloatRect                   _bounds;
     float                           _cellSize;
     float                           _stoneR;
+    int                             _gridN;
     std::vector<sf::RectangleShape> _hLines;
     std::vector<sf::RectangleShape> _vLines;
 
@@ -24,7 +25,7 @@ private:
     int _hoveredRow;
 
 public:
-    Board(float x, float y, float size);
+    Board(float x, float y, float size, int gridN);
 
     bool contains(sf::Vector2f pt) const;
     void updateHover(sf::Vector2f pt);

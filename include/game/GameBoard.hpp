@@ -10,10 +10,11 @@ class GameBoard
 {
 private:
     char _board[19][19][2];
-    int  _currentPlayer;   // 0 = black, 1 = white
+    int  _currentPlayer;
+    int  _size;
 
 public:
-    GameBoard();
+    GameBoard(int size, int firstPlayer);
 
     bool isFree(int col, int row) const;
     bool placeStone(int col, int row);

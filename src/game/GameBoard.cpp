@@ -2,7 +2,7 @@
 #include <cstring>
 
 
-GameBoard::GameBoard() : _currentPlayer(0)
+GameBoard::GameBoard(int size, int firstPlayer) : _currentPlayer(firstPlayer), _size(size)
 {
     std::memset(_board, 0, sizeof(_board));
 }
@@ -14,7 +14,7 @@ bool GameBoard::isFree(int col, int row) const
 
 bool GameBoard::placeStone(int col, int row)
 {
-    if (col < 0 || col >= 19 || row < 0 || row >= 19)
+    if (col < 0 || col >= _size || row < 0 || row >= _size)
         return false;
     if (!isFree(col, row))
         return false;

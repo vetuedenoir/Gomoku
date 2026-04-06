@@ -39,6 +39,7 @@ class App
         void buildStoneColor();
         void buildOpening();
 
+        void printConfig() const;
         void handleEvent(const sf::Event &event, sf::Vector2f mouse);
         void update(sf::Vector2f mouse);
         void render();

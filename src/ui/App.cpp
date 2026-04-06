@@ -2,6 +2,7 @@
 #include "interface.hpp"
 #include <algorithm>
 #include <random>
+#include <iostream>
 
 #ifdef __APPLE__
     static const char *FONT = "/System/Library/Fonts/Helvetica.ttc";
@@ -69,11 +70,25 @@ void App::goBack()
         _states.pop();
 }
 
+void App::printConfig() const
+{
+    const char *stoneStr[]   = { "Black (plays first)", "White" };
+    const char *openingStr[] = { "Normal", "Pro", "Long Pro", "Swap", "Swap 2" };
+
+    std::cout << "\n=== Game config ===\n";
+    std::cout << "  Board size   : " << _config.boardSize << " x " << _config.boardSize << "\n";
+    std::cout << "  Player stone : " << stoneStr[_config.playerStone] << "\n";
+    std::cout << "  Opening rule : " << openingStr[static_cast<int>(_config.openingRule)] << "\n";
+    std::cout << "===================\n\n";
+}
+
 void App::startGame()
 {
+    printConfig();
+
     float boardSize = std::min(WIN_W, WIN_H) * 0.90f;
-    _board     = std::make_unique<Board>(WIN_W / 2.f, WIN_H / 2.f, boardSize);
-    _gameBoard = std::make_unique<GameBoard>();
+    _board     = std::make_unique<Board>(WIN_W / 2.f, WIN_H / 2.f, boardSize, _config.boardSize);
+    _gameBoard = std::make_unique<GameBoard>(_config.boardSize, _config.playerStone);
 }
 
 void App::handleEvent(const sf::Event &event, sf::Vector2f mouse)
