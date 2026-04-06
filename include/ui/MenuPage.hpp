@@ -7,6 +7,12 @@
 
 class MenuPage
 {
+private:
+    std::unordered_map<std::string, sf::Text>           _textMap;
+    std::unordered_map<std::string, sf::RectangleShape> _rectMap;
+    std::unordered_map<std::string, FonctionItem>       _itemMap;
+    std::function<void(MenuPage &, sf::RenderWindow &)> _drawFunc;
+
 public:
     MenuPage() = default;
     ~MenuPage() = default;
@@ -28,21 +34,10 @@ public:
     bool hasItem     (const std::string &key) const;
 
     void clear();
-
-    // Updates hover state on all buttons based on current mouse position.
     void updateHover(sf::Vector2f mouse);
-
-    // Fires the onclick of whichever button the mouse is over.
     void handleClick(sf::Vector2f mouse);
-
     void setDrawFunction(std::function<void(MenuPage &, sf::RenderWindow &)> func);
     void draw(sf::RenderWindow &window);
-
-private:
-    std::unordered_map<std::string, sf::Text>          text_map;
-    std::unordered_map<std::string, sf::RectangleShape> rectangle_map;
-    std::unordered_map<std::string, FonctionItem>       item_map;
-    std::function<void(MenuPage &, sf::RenderWindow &)> drawFunc;
 };
 
 #endif

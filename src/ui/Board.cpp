@@ -1,10 +1,9 @@
 #include "ui/Board.hpp"
 #include <cmath>
 
-static const sf::Color LINE_COLOR   (230, 230, 230);
+static const sf::Color LINE_COLOR   ( 60,  35,  10);
 static const sf::Color STONE_BLACK  ( 30,  30,  30);
 static const sf::Color STONE_WHITE  (230, 230, 230);
-// Ghost: current player's color at half opacity
 static const sf::Color GHOST_BLACK  ( 30,  30,  30, 140);
 static const sf::Color GHOST_WHITE  (230, 230, 230, 140);
 
@@ -14,6 +13,18 @@ Board::Board(float x, float y, float size)
     _bounds   = sf::FloatRect(x - size / 2.f, y - size / 2.f, size, size);
     _cellSize = size / (GRID_N - 1);
     _stoneR   = _cellSize * 0.42f;
+
+    _hasBg = _bgTexture.loadFromFile("assets/gomoku_board_background.png");
+    if (_hasBg)
+    {
+        sf::Vector2u ts = _bgTexture.getSize();
+        _bgSprite.setTexture(_bgTexture);
+        _bgSprite.setPosition(_bounds.left, _bounds.top);
+        _bgSprite.setScale(
+            _bounds.width  / static_cast<float>(ts.x),
+            _bounds.height / static_cast<float>(ts.y)
+        );
+    }
 
     for (int i = 0; i < GRID_N; ++i)
     {
@@ -57,6 +68,9 @@ void Board::updateHover(sf::Vector2f pt)
 
 void Board::draw(sf::RenderWindow &window, const GameBoard &gameBoard) const
 {
+    if (_hasBg)
+        window.draw(_bgSprite);
+
     for (const sf::RectangleShape &h : _hLines) window.draw(h);
     for (const sf::RectangleShape &v : _vLines) window.draw(v);
 

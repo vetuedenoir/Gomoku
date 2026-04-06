@@ -9,14 +9,16 @@
     static const char *FONT = "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf";
 #endif
 
-// ── App constructor ───────────────────────────────────────────────────────────
-
 App::App()
     : _window(sf::VideoMode(WIN_W, WIN_H), "Gomoku", sf::Style::Titlebar | sf::Style::Close)
 {
     _window.setFramerateLimit(60);
+
     _font.loadFromFile(FONT);
 
+    /*
+    TODO: to refacto
+    */
     buildMainMenu();
     buildBoardSize();
     buildStoneColor();
@@ -25,8 +27,6 @@ App::App()
     _states.push(AppState::MainMenu);
 }
 
-// ── App::run ──────────────────────────────────────────────────────────────────
-
 void App::run()
 {
     while (_window.isOpen())
@@ -34,15 +34,16 @@ void App::run()
         sf::Vector2f mouse = _window.mapPixelToCoords(sf::Mouse::getPosition(_window));
 
         sf::Event event;
+
         while (_window.pollEvent(event))
             handleEvent(event, mouse);
 
         update(mouse);
+
         render();
     }
 }
 
-// ── App::currentPage ──────────────────────────────────────────────────────────
 
 MenuPage &App::currentPage()
 {
@@ -55,8 +56,6 @@ MenuPage &App::currentPage()
     }
 }
 
-// ── App::navigateTo ───────────────────────────────────────────────────────────
-
 void App::navigateTo(AppState s)
 {
     _states.push(s);
@@ -64,15 +63,11 @@ void App::navigateTo(AppState s)
         startGame();
 }
 
-// ── App::goBack ───────────────────────────────────────────────────────────────
-
 void App::goBack()
 {
     if (_states.size() > 1)
         _states.pop();
 }
-
-// ── App::startGame ────────────────────────────────────────────────────────────
 
 void App::startGame()
 {
@@ -80,8 +75,6 @@ void App::startGame()
     _board     = std::make_unique<Board>(WIN_W / 2.f, WIN_H / 2.f, boardSize);
     _gameBoard = std::make_unique<GameBoard>();
 }
-
-// ── App::handleEvent ──────────────────────────────────────────────────────────
 
 void App::handleEvent(const sf::Event &event, sf::Vector2f mouse)
 {
@@ -105,8 +98,6 @@ void App::handleEvent(const sf::Event &event, sf::Vector2f mouse)
     }
 }
 
-// ── App::update ───────────────────────────────────────────────────────────────
-
 void App::update(sf::Vector2f mouse)
 {
     if (_states.top() == AppState::Game)
@@ -114,8 +105,6 @@ void App::update(sf::Vector2f mouse)
     else
         currentPage().updateHover(mouse);
 }
-
-// ── App::render ───────────────────────────────────────────────────────────────
 
 void App::render()
 {
@@ -126,10 +115,6 @@ void App::render()
         currentPage().draw(_window);
     _window.display();
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Menu builders
-// ─────────────────────────────────────────────────────────────────────────────
 
 void App::buildMainMenu()
 {

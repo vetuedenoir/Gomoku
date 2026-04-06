@@ -9,6 +9,20 @@ static const int GRID_N = 19;
 
 class Board
 {
+private:
+    sf::FloatRect                   _bounds;
+    float                           _cellSize;
+    float                           _stoneR;
+    std::vector<sf::RectangleShape> _hLines;
+    std::vector<sf::RectangleShape> _vLines;
+
+    sf::Texture _bgTexture;
+    sf::Sprite  _bgSprite;
+    bool        _hasBg = false;
+
+    int _hoveredCol;
+    int _hoveredRow;
+
 public:
     Board(float x, float y, float size);
 
@@ -19,16 +33,6 @@ public:
     int getHoveredRow() const { return _hoveredRow; }
 
     void draw(sf::RenderWindow &window, const GameBoard &gameBoard) const;
-
-private:
-    sf::FloatRect                   _bounds;
-    float                           _cellSize;
-    float                           _stoneR;
-    std::vector<sf::RectangleShape> _hLines;
-    std::vector<sf::RectangleShape> _vLines;
-
-    int _hoveredCol;
-    int _hoveredRow;
 };
 
 #endif

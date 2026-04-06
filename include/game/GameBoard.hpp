@@ -8,6 +8,10 @@
 
 class GameBoard
 {
+private:
+    char _board[19][19][2];
+    int  _currentPlayer;   // 0 = black, 1 = white
+
 public:
     GameBoard();
 
@@ -15,10 +19,6 @@ public:
     bool placeStone(int col, int row);
     int  getCell(int col, int row) const;
     int  getCurrentPlayer() const;
-
-private:
-    char _board[19][19][2];
-    int  _currentPlayer;   // 0 = black, 1 = white
 };
 
 #endif
