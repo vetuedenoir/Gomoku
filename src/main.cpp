@@ -1,8 +1,8 @@
-#include "ui/App.hpp"
+#include "Gomoku.hpp"
 
 int main()
 {
-    App app;
-    app.run();
+    Gomoku game;
+    game.run();
     return 0;
 }

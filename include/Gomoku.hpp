@@ -1,5 +1,5 @@
-#ifndef APP_HPP
-# define APP_HPP
+#ifndef GOMOKU_HPP
+# define GOMOKU_HPP
 
 #include <SFML/Graphics.hpp>
 #include <stack>
@@ -12,7 +12,7 @@
 
 enum class AppState { MainMenu, BoardSize, StoneColor, Opening, Game };
 
-class App
+class Gomoku
 {
     private:
         sf::RenderWindow     _window;
@@ -45,7 +45,7 @@ class App
         void render();
 
     public:
-        App();
+        Gomoku();
         void run();
 };
 

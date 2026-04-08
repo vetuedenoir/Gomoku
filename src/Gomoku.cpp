@@ -1,4 +1,4 @@
-#include "ui/App.hpp"
+#include "Gomoku.hpp"
 #include "interface.hpp"
 #include <algorithm>
 #include <random>
@@ -10,7 +10,7 @@
     static const char *FONT = "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf";
 #endif
 
-App::App()
+Gomoku::Gomoku()
     : _window(sf::VideoMode(WIN_W, WIN_H), "Gomoku", sf::Style::Titlebar | sf::Style::Close)
 {
     _window.setFramerateLimit(60);
@@ -28,7 +28,7 @@ App::App()
     _states.push(AppState::MainMenu);
 }
 
-void App::run()
+void Gomoku::run()
 {
     while (_window.isOpen())
     {
@@ -46,7 +46,7 @@ void App::run()
 }
 
 
-MenuPage &App::currentPage()
+MenuPage &Gomoku::currentPage()
 {
     switch (_states.top())
     {
@@ -57,20 +57,20 @@ MenuPage &App::currentPage()
     }
 }
 
-void App::navigateTo(AppState s)
+void Gomoku::navigateTo(AppState s)
 {
     _states.push(s);
     if (s == AppState::Game)
         startGame();
 }
 
-void App::goBack()
+void Gomoku::goBack()
 {
     if (_states.size() > 1)
         _states.pop();
 }
 
-void App::printConfig() const
+void Gomoku::printConfig() const
 {
     const char *stoneStr[]   = { "Black (plays first)", "White" };
     const char *openingStr[] = { "Normal", "Pro", "Long Pro", "Swap", "Swap 2" };
@@ -82,7 +82,7 @@ void App::printConfig() const
     std::cout << "===================\n\n";
 }
 
-void App::startGame()
+void Gomoku::startGame()
 {
     printConfig();
 
@@ -91,7 +91,7 @@ void App::startGame()
     _gameBoard = std::make_unique<GameBoard>(_config.boardSize, _config.playerStone);
 }
 
-void App::handleEvent(const sf::Event &event, sf::Vector2f mouse)
+void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
 {
     if (event.type == sf::Event::Closed)
         _window.close();
@@ -113,7 +113,7 @@ void App::handleEvent(const sf::Event &event, sf::Vector2f mouse)
     }
 }
 
-void App::update(sf::Vector2f mouse)
+void Gomoku::update(sf::Vector2f mouse)
 {
     if (_states.top() == AppState::Game)
         _board->updateHover(mouse);
@@ -121,7 +121,7 @@ void App::update(sf::Vector2f mouse)
         currentPage().updateHover(mouse);
 }
 
-void App::render()
+void Gomoku::render()
 {
     _window.clear(BG);
     if (_states.top() == AppState::Game)
@@ -131,7 +131,7 @@ void App::render()
     _window.display();
 }
 
-void App::buildMainMenu()
+void Gomoku::buildMainMenu()
 {
     sf::Text title = makeText("GOMOKU", _font, 80, GOLD);
     title.setStyle(sf::Text::Bold);
@@ -166,7 +166,7 @@ void App::buildMainMenu()
     });
 }
 
-void App::buildBoardSize()
+void Gomoku::buildBoardSize()
 {
     sf::Text title = makeText("GOMOKU", _font, 60, GOLD);
     title.setStyle(sf::Text::Bold);
@@ -199,7 +199,7 @@ void App::buildBoardSize()
     });
 }
 
-void App::buildStoneColor()
+void Gomoku::buildStoneColor()
 {
     sf::Text title = makeText("GOMOKU", _font, 60, GOLD);
     title.setStyle(sf::Text::Bold);
@@ -251,7 +251,7 @@ void App::buildStoneColor()
     });
 }
 
-void App::buildOpening()
+void Gomoku::buildOpening()
 {
     sf::Text title = makeText("GOMOKU", _font, 60, GOLD);
     title.setStyle(sf::Text::Bold);
