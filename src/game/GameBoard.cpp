@@ -9,7 +9,7 @@ GameBoard::GameBoard(int size, int firstPlayer) : _currentPlayer(firstPlayer), _
 
 bool GameBoard::isFree(int col, int row) const
 {
-    return _board[row][col][0] == 0 && _board[row][col][1] == 0;
+    return _board[row][col] == CellStatus::Empty;
 }
 
 bool GameBoard::placeStone(int col, int row)
@@ -19,16 +19,14 @@ bool GameBoard::placeStone(int col, int row)
     if (!isFree(col, row))
         return false;
 
-    _board[row][col][_currentPlayer] = 1;
+    _board[row][col] = (_currentPlayer == 0) ? CellStatus::Black : CellStatus::White;
     _currentPlayer = 1 - _currentPlayer;  // flip between 0 and 1
     return true;
 }
 
-int GameBoard::getCell(int col, int row) const
+CellStatus GameBoard::getCell(int col, int row) const
 {
-    if (_board[row][col][0]) return 1;
-    if (_board[row][col][1]) return 2;
-    return 0;
+    return _board[row][col];
 }
 
 int GameBoard::getCurrentPlayer() const

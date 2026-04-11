@@ -94,14 +94,14 @@ void Board::draw(sf::RenderWindow &window, const GameBoard &gameBoard) const
     {
         for (int col = 0; col < _gridN; ++col)
         {
-            int cell = gameBoard.getCell(col, row);
-            if (cell == 0) continue;
+            CellStatus cell = gameBoard.getCell(col, row);
+            if (cell == CellStatus::Empty) continue;
 
             sf::CircleShape stone(_stoneR);
             stone.setOrigin(_stoneR, _stoneR);
             stone.setPosition(_bounds.left + col * _cellSize,
                               _bounds.top  + row * _cellSize);
-            stone.setFillColor(cell == 1 ? STONE_BLACK : STONE_WHITE);
+            stone.setFillColor(cell == CellStatus::Black ? STONE_BLACK : STONE_WHITE);
             window.draw(stone);
         }
     }
