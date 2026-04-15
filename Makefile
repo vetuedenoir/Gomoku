@@ -31,7 +31,8 @@ SRC_DIR   := src
 INC_DIR   := include
 OBJ_DIR   := .build
 
-SRCS      := $(notdir $(wildcard $(SRC_DIR)/*.cpp))
+ALL_SRCS := $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/ui/*.cpp) $(wildcard $(SRC_DIR)/game/*.cpp)
+SRCS      := $(patsubst $(SRC_DIR)/%,%,$(ALL_SRCS))
 
 # =============================================================================
 # BUILD MODE  —  usage: make MODE=debug / make MODE=release (default)

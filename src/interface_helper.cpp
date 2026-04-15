@@ -1,4 +1,4 @@
-#include "../include/interface.hpp"
+#include "interface.hpp"
 
 
 void centerOrigin(sf::Text &t)
