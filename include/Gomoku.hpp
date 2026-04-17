@@ -4,11 +4,16 @@
 #include <SFML/Graphics.hpp>
 #include <stack>
 #include <memory>
+#include <iostream>
 
 #include "ui/MenuPage.hpp"
 #include "ui/Board.hpp"
 #include "game/GameBoard.hpp"
 #include "game/GameConfig.hpp"
+
+#include "bitboard.hpp"
+
+
 
 enum class AppState { MainMenu, BoardSize, StoneColor, Opening, Game };
 
@@ -20,6 +25,7 @@ class Gomoku
 
         std::stack<AppState> _states;
         GameConfig           _config;
+
 
         MenuPage _mainMenu;
         MenuPage _boardSize;

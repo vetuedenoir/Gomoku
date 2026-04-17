@@ -104,7 +104,11 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
             int col = _board->getHoveredCol();
             int row = _board->getHoveredRow();
             if (col >= 0 && row >= 0)
+            {
                 _gameBoard->placeStone(col, row);
+                test_bitboard(*_gameBoard);
+
+            }   
         }
         else
         {

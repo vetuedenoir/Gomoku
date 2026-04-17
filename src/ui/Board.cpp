@@ -69,8 +69,9 @@ void Board::updateHover(sf::Vector2f pt)
 void Board::draw(sf::RenderWindow &window, const GameBoard &gameBoard) const
 {
     if (_hasBg)
-        window.draw(_bgSprite);
-
+    {    window.draw(_bgSprite);
+    }
+    
     for (const sf::RectangleShape &h : _hLines) window.draw(h);
     for (const sf::RectangleShape &v : _vLines) window.draw(v);
 

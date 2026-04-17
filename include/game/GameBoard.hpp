@@ -22,6 +22,7 @@ public:
     bool       placeStone(int col, int row);
     CellStatus getCell(int col, int row) const;
     int        getCurrentPlayer() const;
+    int         getSize() const;
 };
 
 #endif
