@@ -4,9 +4,7 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <string>
-#include <functional> // pour std::function
-
-#include "MenuPage.hpp"
+#include <functional>
 
 
 constexpr unsigned int WIN_W = 800;
