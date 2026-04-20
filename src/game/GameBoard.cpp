@@ -58,9 +58,3 @@ bool GameBoard::placeStoneOfColor(int col, int row, CellStatus color)
     _board[row][col] = color;
     return true;
 }
-
-int GameBoard::getSize() const
-{
-    return _size;
-}
-

@@ -215,15 +215,12 @@ void Gomoku::buildColorChoicePage()
 
     const OpeningRule rule  = _gameState->openingRule;
     const Seat        actor = _gameState->currentActor;
-    const float       horizontalCenterWindow = WIN_W / 2.f;
+    const float       horizontalCenterWindow    = WIN_W / 2.f;
 
-    // Swap2 after step-0: three options stacked vertically.
-    // Everything else: two options side by side.
     const bool threeOptions = (rule == OpeningRule::Swap2
                                && actor == Seat::Second
                                && _gameState->stepIdx == 1);
 
-    // ── Title ─────────────────────────────────────────────────────────────────
     const char* titleStr = threeOptions
         ? "Seat 2: Choose your option"
         : (actor == Seat::Second ? "Seat 2: Choose your colour"
@@ -231,49 +228,30 @@ void Gomoku::buildColorChoicePage()
 
     sf::Text title = makeText(titleStr, _font, 22, GOLD);
     title.setStyle(sf::Text::Bold);
+    title.setPosition(horizontalCenterWindow, 378.f);
 
-    // ── Gold divider (matches main-menu style) ─────────────────────────────────
     sf::RectangleShape divider(sf::Vector2f(300.f, 1.f));
     divider.setFillColor(GOLD);
     divider.setOrigin(150.f, 0.5f);
+    divider.setPosition(horizontalCenterWindow, 400.f);
 
+
+    const char* label1 = (actor == Seat::Second) ? "Play White" : "Play Black";
+    const char* label2 = (actor == Seat::Second) ? "Play Black" : "Play White";
+
+    _colorChoice.addItem("opt1", FonctionItem(
+        Item(label1,         _font, horizontalCenterWindow, 436.f),
+        [this]() { _gameState->resolveColorChoice(false); }
+    ));
+    _colorChoice.addItem("opt2", FonctionItem(
+        Item(label2,         _font, horizontalCenterWindow, 491.f),
+        [this]() { _gameState->resolveColorChoice(true); }
+    ));
     if (threeOptions)
     {
-        // Vertical stack — buttons centered at horizontal_center_window, 55 px apart.
-        // Content occupies y ≈ [358, 565]; panel covers [342, 581].
-        title.setPosition(horizontalCenterWindow, 370.f);
-        divider.setPosition(horizontalCenterWindow, 392.f);
-
-        _colorChoice.addItem("white", FonctionItem(
-            Item("Play White",   _font, horizontalCenterWindow, 428.f),
-            [this]() { _gameState->resolveColorChoice(false); }
-        ));
-        _colorChoice.addItem("black", FonctionItem(
-            Item("Play Black",   _font, horizontalCenterWindow, 483.f),
-            [this]() { _gameState->resolveColorChoice(true); }
-        ));
         _colorChoice.addItem("place2", FonctionItem(
-            Item("Place 2 More", _font, horizontalCenterWindow, 538.f),
+            Item("Place 2 More", _font, horizontalCenterWindow, 546.f),
             [this]() { _gameState->continueOpeningPlacement(); }
-        ));
-    }
-    else
-    {
-        // Side-by-side pair — 290 px apart center-to-center (30 px gap between boxes).
-        // Content occupies y ≈ [394, 504]; panel covers [378, 520].
-        title.setPosition(horizontalCenterWindow, 408.f);
-        divider.setPosition(horizontalCenterWindow, 430.f);
-
-        const char* labelLeft  = (actor == Seat::Second) ? "Play White" : "Play Black";
-        const char* labelRight = (actor == Seat::Second) ? "Play Black" : "Play White";
-
-        _colorChoice.addItem("left", FonctionItem(
-            Item(labelLeft,  _font, horizontalCenterWindow - 145.f, 472.f),
-            [this]() { _gameState->resolveColorChoice(false); }
-        ));
-        _colorChoice.addItem("right", FonctionItem(
-            Item(labelRight, _font, horizontalCenterWindow + 145.f, 472.f),
-            [this]() { _gameState->resolveColorChoice(true); }
         ));
     }
 
@@ -283,25 +261,19 @@ void Gomoku::buildColorChoicePage()
     _colorChoice.setDrawFunction([](MenuPage& page, sf::RenderWindow& win) {
         if (auto *t  = page.getText("title"))        win.draw(*t);
         if (auto *r  = page.getRectangle("divider")) win.draw(*r);
-        if (auto *fi = page.getItem("white"))        fi->item.draw(win);
-        if (auto *fi = page.getItem("black"))        fi->item.draw(win);
+        if (auto *fi = page.getItem("opt1"))         fi->item.draw(win);
+        if (auto *fi = page.getItem("opt2"))         fi->item.draw(win);
         if (auto *fi = page.getItem("place2"))       fi->item.draw(win);
-        if (auto *fi = page.getItem("left"))         fi->item.draw(win);
-        if (auto *fi = page.getItem("right"))        fi->item.draw(win);
     });
 }
 
-// The color choice page will be drawn on top of the board
 void Gomoku::renderColorChoicePage()
 {
-    // Panel dimensions adapt to the number of options.
     const bool threeOptions = _colorChoice.hasItem("place2");
 
-    // 3-option: tall vertical stack (title + 3 buttons).
-    // 2-option: short horizontal pair  (title + 2 buttons side-by-side).
-    const float panelW  = threeOptions ? 320.f : 430.f;
-    const float panelH  = threeOptions ? 240.f : 148.f;
-    const float panelCY = threeOptions ? 462.f : 449.f;
+    const float panelW  = 320.f;
+    const float panelH  = threeOptions ? 243.f : 188.f;
+    const float panelCY = threeOptions ? 465.f : 437.f;
 
     sf::RectangleShape panel(sf::Vector2f(panelW, panelH));
     panel.setOrigin(panelW / 2.f, panelH / 2.f);
