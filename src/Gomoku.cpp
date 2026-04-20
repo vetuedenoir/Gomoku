@@ -1,5 +1,7 @@
 #include "Gomoku.hpp"
 #include "interface.hpp"
+#include "logger/Logger.hpp"
+#include "game/OpeningProtocol.hpp"
 #include <algorithm>
 #include <random>
 #include <iostream>
@@ -17,13 +19,10 @@ Gomoku::Gomoku()
 
     _font.loadFromFile(FONT);
 
-    /*
-    TODO: to refacto
-    */
-    buildMainMenu();
-    buildBoardSize();
-    buildStoneColor();
-    buildOpening();
+    buildMainMenuPage();
+    buildBoardSizePage();
+    buildStoneColorPage();
+    buildOpeningPage();
 
     _states.push(AppState::MainMenu);
 }
@@ -70,36 +69,70 @@ void Gomoku::goBack()
         _states.pop();
 }
 
-void Gomoku::printConfig() const
+void Gomoku::logConfig() const
 {
     const char *stoneStr[]   = { "Black (plays first)", "White" };
     const char *openingStr[] = { "Normal", "Pro", "Long Pro", "Swap", "Swap 2" };
 
-    std::cout << "\n=== Game config ===\n";
-    std::cout << "  Board size   : " << _config.boardSize << " x " << _config.boardSize << "\n";
-    std::cout << "  Player stone : " << stoneStr[_config.playerStone] << "\n";
-    std::cout << "  Opening rule : " << openingStr[static_cast<int>(_config.openingRule)] << "\n";
-    std::cout << "===================\n\n";
+    Logger::info("CONFIG",
+        std::string("board=")   + std::to_string(_config.boardSize) + "x" + std::to_string(_config.boardSize)
+        + "  stone="   + stoneStr  [static_cast<int>(_config.playerStoneColor)]
+        + "  opening=" + openingStr[static_cast<int>(_config.openingRule)]);
 }
 
 void Gomoku::startGame()
 {
-    printConfig();
+    logConfig();
 
     float boardSize = std::min(WIN_W, WIN_H) * 0.90f;
     _board     = std::make_unique<Board>(WIN_W / 2.f, WIN_H / 2.f, boardSize, _config.boardSize);
-    _gameBoard = std::make_unique<GameBoard>(_config.boardSize, _config.playerStone);
+    _gameState = std::make_unique<GameState>(_config.boardSize,
+                                              _config.openingRule,
+                                              _config.playerStoneColor);
 }
+
+// ── Ghost-colour computation ──────────────────────────────────────────────────
+
+CellStatus Gomoku::computeGhostColor() const
+{
+    if (!_gameState)
+        return CellStatus::Empty;
+
+    switch (_gameState->phase)
+    {
+        case GamePhase::OpeningPlacement:
+            return _gameState->nextOpeningColor();
+
+        case GamePhase::NormalPlay:
+            return (_gameState->board.getCurrentPlayer() == 0)
+                    ? CellStatus::Black
+                    : CellStatus::White;
+
+        case GamePhase::ColorChoice:
+            return CellStatus::Empty;
+    }
+    return CellStatus::Empty;
+}
+
 
 void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
 {
     if (event.type == sf::Event::Closed)
         _window.close();
 
-    if (event.type == sf::Event::MouseButtonReleased &&
-        event.mouseButton.button == sf::Mouse::Left)
+    if (event.type != sf::Event::MouseButtonReleased
+        || event.mouseButton.button != sf::Mouse::Left)
+        return;
+
+    if (_states.top() != AppState::Game)
     {
-        if (_states.top() == AppState::Game)
+        currentPage().handleClick(mouse);
+        return;
+    }
+
+    switch (_gameState->phase)
+    {
+        case GamePhase::OpeningPlacement:
         {
             int col = _board->getHoveredCol();
             int row = _board->getHoveredRow();

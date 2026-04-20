@@ -10,6 +10,7 @@
 #include "ui/Board.hpp"
 #include "game/GameBoard.hpp"
 #include "game/GameConfig.hpp"
+#include "game/GameState.hpp"
 
 #include "bitboard.hpp"
 
@@ -31,23 +32,31 @@ class Gomoku
         MenuPage _boardSize;
         MenuPage _stoneColor;
         MenuPage _opening;
+        MenuPage _colorChoice;
 
-        std::unique_ptr<Board>     _board;
-        std::unique_ptr<GameBoard> _gameBoard;
+        std::unique_ptr<Board>      _board;
+        std::unique_ptr<GameState>  _gameState;
 
         MenuPage &currentPage();
         void      navigateTo(AppState s);
+        void      update(sf::Vector2f mouse);
         void      goBack();
         void      startGame();
 
-        void buildMainMenu();
-        void buildBoardSize();
-        void buildStoneColor();
-        void buildOpening();
+        void buildMainMenuPage();
+        void buildBoardSizePage();
+        void buildStoneColorPage();
+        void buildOpeningPage();
+        void buildColorChoicePage();
 
-        void printConfig() const;
+        void logConfig() const;
+
+        CellStatus computeGhostColor() const;
+
         void handleEvent(const sf::Event &event, sf::Vector2f mouse);
-        void update(sf::Vector2f mouse);
+    
+        void renderGame();
+        void renderColorChoicePage();
         void render();
 
     public:
