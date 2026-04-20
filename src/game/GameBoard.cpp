@@ -33,3 +33,9 @@ int GameBoard::getCurrentPlayer() const
 {
     return _currentPlayer;
 }
+
+int GameBoard::getSize() const
+{
+    return _size;
+}
+
