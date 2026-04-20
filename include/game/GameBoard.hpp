@@ -1,6 +1,8 @@
 #ifndef GAMEBOARD_HPP
 # define GAMEBOARD_HPP
 
+#include "game/Seat.hpp"
+
 enum class CellStatus
 {
     Empty = 0,
@@ -12,21 +14,21 @@ class GameBoard
 {
     private:
         CellStatus _board[19][19];
-        int        _currentPlayer;
+        Seat       _currentPlayer;
         int        _size;
 
     public:
-        GameBoard(int size, int firstPlayer);
+        GameBoard(int size, Seat firstPlayer);
 
         bool       isFree(int col, int row) const;
         bool       placeStone(int col, int row);
         bool       placeStoneOfColor(int col, int row, CellStatus color);
 
         CellStatus getCell(int col, int row) const;
-        int        getCurrentPlayer() const;
+        Seat       currentSeat() const;
         int        getSize() const;
 
-        void       setCurrentPlayer(int player);
+        void       setCurrentPlayer(Seat player);
         void       switchPlayer();
 };
 
