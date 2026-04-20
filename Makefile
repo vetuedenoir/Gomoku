@@ -84,7 +84,8 @@ DOCKER_IMAGE := gomoku
 DOCKER_TMP   := gomoku-tmp
 
 .PHONY: all clean fclean re \
-        docker-build docker-run docker-extract docker-clean
+        docker-build docker-run docker-extract docker-clean \
+	podman-build podman-run podman-extract podman-clean
 
 all: $(NAME)
 
@@ -113,6 +114,39 @@ fclean: clean
 	@echo "$(GREEN)Done$(NOC)"
 
 re: fclean all
+
+
+# =============================================================================
+# PODMAN RULES
+# =============================================================================
+
+
+podman-build:
+	@echo "$(CYAN)Building Podman image '$(DOCKER_IMAGE)'...$(NOC)"
+	podman build -t $(DOCKER_IMAGE) .
+	@echo "$(GREEN)Image '$(DOCKER_IMAGE)' ready$(NOC)"
+
+podman-run: podman-build
+	@echo "$(CYAN)Allowing local Podman connections to X11...$(NOC)"
+	xhost +local:
+	@echo "$(CYAN)Running $(DOCKER_IMAGE) with X11 forwarding...$(NOC)"
+	podman run --rm \
+		-e DISPLAY=$(DISPLAY) \
+		-v /tmp/.X11-unix:/tmp/.X11-unix \
+		$(DOCKER_IMAGE)
+
+podman-extract: podman-build
+	@echo "$(CYAN)Extracting binary from image...$(NOC)"
+	podman create --name $(DOCKER_TMP) $(DOCKER_IMAGE)
+	podman cp $(DOCKER_TMP):/app/$(NAME) ./$(NAME)
+	podman rm $(DOCKER_TMP)
+	@echo "$(GREEN)Binary extracted: ./$(NAME)$(NOC)"
+
+podman-clean:
+	@echo "$(CYAN)Removing Podman image '$(DOCKER_IMAGE)'...$(NOC)"
+	podman rmi -f $(DOCKER_IMAGE)
+	@echo "$(GREEN)Done$(NOC)"
+
 
 # =============================================================================
 # DOCKER RULES
