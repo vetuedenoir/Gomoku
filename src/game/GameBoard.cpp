@@ -12,6 +12,31 @@ bool GameBoard::isFree(int col, int row) const
     return _board[row][col] == CellStatus::Empty;
 }
 
+CellStatus GameBoard::getCell(int col, int row) const
+{
+    return _board[row][col];
+}
+
+int GameBoard::getSize() const
+{
+    return _size;
+}
+
+int GameBoard::getCurrentPlayer() const
+{
+    return _currentPlayer;
+}
+
+void GameBoard::setCurrentPlayer(int player)
+{
+    _currentPlayer = player;
+}
+
+void GameBoard::switchPlayer()
+{
+    _currentPlayer ^= 1;
+}
+
 bool GameBoard::placeStone(int col, int row)
 {
     if (col < 0 || col >= _size || row < 0 || row >= _size)
@@ -20,18 +45,20 @@ bool GameBoard::placeStone(int col, int row)
         return false;
 
     _board[row][col] = (_currentPlayer == 0) ? CellStatus::Black : CellStatus::White;
-    _currentPlayer = 1 - _currentPlayer;  // flip between 0 and 1
+    switchPlayer();
     return true;
 }
 
-CellStatus GameBoard::getCell(int col, int row) const
+bool GameBoard::placeStoneOfColor(int col, int row, CellStatus color)
 {
-    return _board[row][col];
-}
+    if (col < 0 || col >= _size || row < 0 || row >= _size)
+        return false;
+    if (!isFree(col, row))
+        return false;
 
-int GameBoard::getCurrentPlayer() const
-{
-    return _currentPlayer;
+    _board[row][col] = color;
+
+    return true;
 }
 
 int GameBoard::getSize() const
