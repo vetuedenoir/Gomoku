@@ -9,7 +9,7 @@
 #include "ui/MenuPage.hpp"
 #include "ui/Board.hpp"
 #include "game/GameBoard.hpp"
-#include "game/GameConfig.hpp"
+#include "game/contracts/GameConfig.hpp"
 #include "game/GameState.hpp"
 
 #include "bitboard.hpp"

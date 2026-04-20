@@ -10,31 +10,31 @@ static const int GRID_MAX = 19;
 
 class Board
 {
-private:
-    sf::FloatRect                   _bounds;
-    float                           _cellSize;
-    float                           _stoneR;
-    int                             _gridN;
-    std::vector<sf::RectangleShape> _hLines;
-    std::vector<sf::RectangleShape> _vLines;
+    private:
+        sf::FloatRect                   _bounds;
+        float                           _cellSize;
+        float                           _stoneR;
+        int                             _gridN;
+        std::vector<sf::RectangleShape> _hLines;
+        std::vector<sf::RectangleShape> _vLines;
 
-    sf::Texture _bgTexture;
-    sf::Sprite  _bgSprite;
-    bool        _hasBg = false;
+        sf::Texture _bgTexture;
+        sf::Sprite  _bgSprite;
+        bool        _hasBg = false;
 
-    int _hoveredCol;
-    int _hoveredRow;
+        int _hoveredCol;
+        int _hoveredRow;
 
-public:
-    Board(float x, float y, float size, int gridN);
+    public:
+        Board(float x, float y, float size, int gridN);
 
-    bool contains(sf::Vector2f pt) const;
-    void updateHover(sf::Vector2f pt);
+        bool contains(sf::Vector2f pt) const;
+        void updateHover(sf::Vector2f pt);
 
-    int getHoveredCol() const { return _hoveredCol; }
-    int getHoveredRow() const { return _hoveredRow; }
+        int getHoveredCol() const { return _hoveredCol; }
+        int getHoveredRow() const { return _hoveredRow; }
 
-    void draw(sf::RenderWindow &window, const GameBoard &gameBoard) const;
+        void draw(sf::RenderWindow &window, const GameBoard &gameBoard, CellStatus ghostHint) const;
 };
 
 #endif
