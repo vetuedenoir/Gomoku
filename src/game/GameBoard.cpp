@@ -48,6 +48,13 @@ bool GameBoard::placeStone(int col, int row)
     return true;
 }
 
+void GameBoard::clearCell(int col, int row)
+{
+    if (col < 0 || col >= _size || row < 0 || row >= _size)
+        return;
+    _board[row][col] = CellStatus::Empty;
+}
+
 bool GameBoard::placeStoneOfColor(int col, int row, CellStatus color)
 {
     if (col < 0 || col >= _size || row < 0 || row >= _size)

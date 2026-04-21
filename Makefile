@@ -110,8 +110,11 @@ TEST_DIR      := tests
 EXT_INC_DIR   := external/doctest
 FILTER        ?=
 
-# Sources compiled for tests: pure game/logger logic only (no main, no UI, no SFML)
-TEST_GAME_SRCS := $(wildcard $(SRC_DIR)/game/*.cpp) $(wildcard $(SRC_DIR)/logger/*.cpp)
+# Sources compiled for tests: pure logic only — no main, no UI, no SFML
+TEST_GAME_SRCS := $(wildcard $(SRC_DIR)/game/*.cpp) \
+                  $(wildcard $(SRC_DIR)/logger/*.cpp) \
+                  $(wildcard $(SRC_DIR)/optimization/*.cpp) \
+                  $(SRC_DIR)/bitboard.cpp
 TEST_SRCS      := $(wildcard $(TEST_DIR)/*.cpp)
 
 TEST_GAME_OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(TEST_OBJ_DIR)/%.o,$(TEST_GAME_SRCS))

@@ -30,6 +30,7 @@ class GameBoard
 
         void       setCurrentPlayer(Seat player);
         void       switchPlayer();
+        void       clearCell(int col, int row);  // used by SearchPosition::undoMove
 };
 
 #endif

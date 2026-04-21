@@ -49,8 +49,6 @@ uint64_t ZobristHasher::compute(const t_BWBoard19& board) const
 
             if ((board.white[i >> 6] >> (i & 63)) & 1ULL)
                 hash ^= _table[i][static_cast<int>(Color::White)];
-
-            std::cout << hash << "\n";
         }
     }
 
