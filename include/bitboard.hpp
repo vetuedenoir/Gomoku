@@ -10,7 +10,7 @@
 
 // ── bitboard ─────────────────────────────────────────────────────────────────
 
-enum class Color { Black, White };
+#include "game/contracts/Color.hpp"
 
 
 
