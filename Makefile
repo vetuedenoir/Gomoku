@@ -31,7 +31,7 @@ SRC_DIR   := src
 INC_DIR   := include
 OBJ_DIR   := .build
 
-ALL_SRCS := $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/ui/*.cpp) $(wildcard $(SRC_DIR)/game/*.cpp) $(wildcard $(SRC_DIR)/logger/*.cpp)
+ALL_SRCS := $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/ui/*.cpp) $(wildcard $(SRC_DIR)/game/*.cpp) $(wildcard $(SRC_DIR)/logger/*.cpp) $(wildcard $(SRC_DIR)/optimization/*.cpp)
 SRCS      := $(patsubst $(SRC_DIR)/%,%,$(ALL_SRCS))
 
 # =============================================================================

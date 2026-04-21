@@ -17,11 +17,17 @@
 
 typedef uint64_t bitboard19[6];
 
+typedef uint64_t bitboard15[4];
 
 typedef struct s_BWBoard19 {
 	bitboard19 black;
 	bitboard19 white;
 }   t_BWBoard19;
+
+typedef struct s_BWBoard15 {
+	bitboard15 black;
+	bitboard15 white;
+}   t_BWBoard15;
 
 
 
