@@ -255,14 +255,14 @@ bool	isWin(const bitboard19 bboard, const bitboard19 winning_mask[MAX_WINNING_MA
 		bool win = true;
 		for (int x = 0; x < 6; x++)
 		{
-			if ((winning_mask[i][x] & bboard[x]) == 0)
+			if ((winning_mask[i][x] & bboard[x]) != winning_mask[i][x])
 			{
 				win = false;
 				break;
 			}
 		}
 		if (win)
-			return win;
+			return (win);
 	}
 	return (false);
 }
