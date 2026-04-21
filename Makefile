@@ -84,6 +84,7 @@ DOCKER_IMAGE := gomoku
 DOCKER_TMP   := gomoku-tmp
 
 .PHONY: all clean fclean re \
+        test run_tests \
         docker-build docker-run docker-extract docker-clean \
 	podman-build podman-run podman-extract podman-clean
 
@@ -100,6 +101,54 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # =============================================================================
+# TEST RULES  —  no SFML required; only pure-logic sources are compiled
+# =============================================================================
+
+TEST_BIN      := tests_runner
+TEST_OBJ_DIR  := .build/tests
+TEST_DIR      := tests
+EXT_INC_DIR   := external/doctest
+FILTER        ?=
+
+# Sources compiled for tests: pure game/logger logic only (no main, no UI, no SFML)
+TEST_GAME_SRCS := $(wildcard $(SRC_DIR)/game/*.cpp) $(wildcard $(SRC_DIR)/logger/*.cpp)
+TEST_SRCS      := $(wildcard $(TEST_DIR)/*.cpp)
+
+TEST_GAME_OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(TEST_OBJ_DIR)/%.o,$(TEST_GAME_SRCS))
+TEST_OBJS      := $(patsubst $(TEST_DIR)/%.cpp,$(TEST_OBJ_DIR)/%.o,$(TEST_SRCS))
+
+CXXFLAGS_TEST  := -std=c++17 -Wall -Wextra \
+                  -I$(INC_DIR) -I$(EXT_INC_DIR) \
+                  $(CXXFLAGS_MODE) \
+                  -MMD -MP
+
+$(TEST_OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS_TEST) -c $< -o $@
+
+$(TEST_OBJ_DIR)/%.o: $(TEST_DIR)/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS_TEST) -c $< -o $@
+
+$(TEST_BIN): $(TEST_GAME_OBJS) $(TEST_OBJS)
+	@echo "$(CYAN)Linking $(TEST_BIN)...$(NOC)"
+	$(CXX) $(CXXFLAGS_TEST) -o $@ $^
+	@echo "$(GREEN)$(TEST_BIN) built successfully$(NOC)"
+
+test: $(TEST_BIN)
+
+run_tests: $(TEST_BIN)
+	@echo "$(CYAN)Running tests...$(NOC)"
+	@if [ -n "$(FILTER)" ]; then \
+		./$(TEST_BIN) -tc="$(FILTER)"; \
+	else \
+		./$(TEST_BIN); \
+	fi
+
+-include $(TEST_GAME_OBJS:.o=.d)
+-include $(TEST_OBJS:.o=.d)
+
+# =============================================================================
 # CLEANING RULES
 # =============================================================================
 
@@ -110,7 +159,7 @@ clean:
 
 fclean: clean
 	@echo "$(CYAN)Removing binary...$(NOC)"
-	rm -f $(NAME)
+	rm -f $(NAME) $(TEST_BIN)
 	@echo "$(GREEN)Done$(NOC)"
 
 re: fclean all

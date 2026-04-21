@@ -1,5 +1,7 @@
 .build/
 gomoku
+tests_runner
+external
 *.o
 *.d
 .DS_Store
