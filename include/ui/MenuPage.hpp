@@ -1,7 +1,7 @@
 #ifndef MENUPAGE_HPP
 # define MENUPAGE_HPP
 
-#include "interface.hpp"
+#include "../interface.hpp"
 #include <unordered_map>
 #include <functional>
 

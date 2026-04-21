@@ -66,7 +66,8 @@ void Board::updateHover(sf::Vector2f pt)
 }
 
 
-void Board::draw(sf::RenderWindow &window, const GameBoard &gameBoard) const
+void Board::draw(sf::RenderWindow &window, const GameBoard &gameBoard,
+                 CellStatus ghostHint) const
 {
     if (_hasBg)
     {    window.draw(_bgSprite);
@@ -75,10 +76,12 @@ void Board::draw(sf::RenderWindow &window, const GameBoard &gameBoard) const
     for (const sf::RectangleShape &h : _hLines) window.draw(h);
     for (const sf::RectangleShape &v : _vLines) window.draw(v);
 
-    // Ghost stone — only when hovering a free cell
-    if (_hoveredCol >= 0 && _hoveredRow >= 0 && gameBoard.isFree(_hoveredCol, _hoveredRow))
+    // Ghost stone — shown only when hovering a free cell and we know the next colour.
+    if (_hoveredCol >= 0 && _hoveredRow >= 0
+        && gameBoard.isFree(_hoveredCol, _hoveredRow)
+        && ghostHint != CellStatus::Empty)
     {
-        sf::Color ghostColor = (gameBoard.getCurrentPlayer() == 0) ? GHOST_BLACK : GHOST_WHITE;
+        sf::Color ghostColor = (ghostHint == CellStatus::Black) ? GHOST_BLACK : GHOST_WHITE;
 
         float ghostX = _bounds.left + _hoveredCol * _cellSize;
         float ghostY = _bounds.top  + _hoveredRow * _cellSize;

@@ -1,6 +1,12 @@
 #ifndef GAMECONFIG_HPP
 # define GAMECONFIG_HPP
 
+enum class StoneColor
+{
+    Black = 0,
+    White = 1
+};
+
 enum class OpeningRule
 {
     Normal  = 0,
@@ -12,8 +18,8 @@ enum class OpeningRule
 
 struct GameConfig
 {
-    int         boardSize   = 19;             // 15 or 19
-    int         playerStone = 0;              // 0 = black, 1 = white  (random resolves immediately on click)
+    int         boardSize   = 19;
+    StoneColor  playerStoneColor = StoneColor::Black;
     OpeningRule openingRule = OpeningRule::Normal;
 };
 
