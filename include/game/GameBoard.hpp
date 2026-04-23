@@ -7,7 +7,8 @@ enum class CellStatus
 {
     Empty = 0,
     Black = 1,
-    White = 2
+    White = 2,
+    Neighbor = 3
 };
 
 class GameBoard
@@ -21,6 +22,7 @@ class GameBoard
         GameBoard(int size, Seat firstPlayer);
 
         bool       isFree(int col, int row) const;
+        bool       isInside(int col, int row) const;
         bool       placeStone(int col, int row);
         bool       placeStoneOfColor(int col, int row, CellStatus color);
 

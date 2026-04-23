@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "game/patterns.hpp"
 #include "game/GameBoard.hpp"
+#include "game/DebugBoard.hpp"
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -13,6 +14,41 @@ static void place(GameBoard& b, int col, int row, CellStatus color)
 {
     b.placeStoneOfColor(col, row, color);
 }
+
+TEST_CASE("scan_line: placed stones appear at correct window offsets")
+{
+    GameBoard b = empty_board();
+
+    //   col: 7  8  9 10 11
+    //        .  B  .  W  .    (row 9, scanning East)
+    place(b, 8,  9, CellStatus::Black);
+    place(b, 10, 9, CellStatus::White);
+
+    b.printGameBoard();
+
+    LineWindow w = scan_line(b, 9, 9, CellStatus::Empty, Direction::E);
+    LineWindow l1 = scan_line(b, 9, 9, CellStatus::Empty, Direction::SE);
+    LineWindow l2 = scan_line(b, 9, 9, CellStatus::Empty, Direction::S);
+    LineWindow l3 = scan_line(b, 9, 9, CellStatus::Empty, Direction::NE);
+
+
+    CHECK(w.at(-1) == Cell::Black);
+    CHECK(w.at( 0) == Cell::Empty);
+    CHECK(w.at(+1) == Cell::White);
+
+
+    std::vector<ScanCell> v = w.toVector();
+    std::vector<ScanCell> v1 = l1.toVector();
+    std::vector<ScanCell> v2 = l2.toVector();
+    std::vector<ScanCell> v3 = l3.toVector();
+
+    appendUnique(v, v1);
+    appendUnique(v, v2);
+    appendUnique(v, v3);
+
+    printBoardWithOverlay(b, v);
+}
+
 
 // ── Direction enum ────────────────────────────────────────────────────────────
 

@@ -1,4 +1,5 @@
 #include "game/patterns.hpp"
+#include <vector>
 
 static LineWindow scan_line_impl(const GameBoard& board,
                                  int col, int row,
@@ -14,12 +15,19 @@ static LineWindow scan_line_impl(const GameBoard& board,
         const int x      = col + offset * ddx;
         const int y      = row + offset * ddy;
 
-        if (x < 0 || x >= size || y < 0 || y >= size)
+        if (x < 0 || x >= size || y < 0 || y >= size) {
             w.cells[i] = Cell::OOB;
-        else if (offset == 0 && vcolor != CellStatus::Empty)
+            w.scanCell[i] = {Cell::OOB, y, x};
+        }
+        else if (offset == 0 && vcolor != CellStatus::Empty) {
             w.cells[i] = toCell(vcolor);
-        else
-            w.cells[i] = toCell(board.getCell(x, y));
+            w.scanCell[i] = {toCell(vcolor), y, x};
+        }
+        else {
+            Cell c = toCell(board.getCell(x, y));
+            w.cells[i] = c;
+            w.scanCell[i] = { Cell::Scan, y, x };
+        }
     }
     return w;
 }
@@ -30,4 +38,9 @@ LineWindow scan_line(const GameBoard& board,
                      Direction dir)
 {
     return scan_line_impl(board, col, row, vcolor, dx(dir), dy(dir));
+}
+
+std::vector<ScanCell> LineWindow::toVector() const
+{
+    return std::vector<ScanCell>(scanCell, scanCell + SIZE);
 }

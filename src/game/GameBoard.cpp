@@ -11,6 +11,14 @@ bool GameBoard::isFree(int col, int row) const
     return _board[row][col] == CellStatus::Empty;
 }
 
+bool GameBoard::isInside(int col, int row) const
+{
+    if ((col >= 0 && row >= 0) && (col <= _size && row <= _size)) {
+        return true;
+    }
+    return false;
+}
+
 CellStatus GameBoard::getCell(int col, int row) const
 {
     return _board[row][col];
