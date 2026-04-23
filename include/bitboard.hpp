@@ -42,6 +42,6 @@ t_BWBoard19 GameBoard_to_bitboard(const GameBoard &board);
 
 
 // testing
-void	test_bitboard(const GameBoard &board);
+void	test_bitboard(const GameBoard &board, int x, int y);
 
 #endif // BITBOARD_HPP

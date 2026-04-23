@@ -87,60 +87,6 @@ void	print_binaire_board19(const bitboard19 bb)
 		print_binaire64(bb[i]);
 }
 
-bool	five_detection(void)
-{
-	// les 5 premiers bit de poids fort initialiser a 1
-	// __uint64_t filtre = (31ULL << 59);
-	__uint64_t filtre5 = 0XF800000000000000;
-	__uint64_t filtre6 = 0XFC00000000000000;
-	__uint64_t	mask_line = 0XFFFFEFFFFEFFFFEF;
-
-	u_int64_t tab_int[64 - 5];
-
-	for (size_t i = 0; i < 64 -5; i++)
-	{
-		if ((i + 5) % 20 == 0)
-		{
-			size_t x = 0;
-			for (x = 0; x < 5; x++)
-			{
-				tab_int[i + x] = (filtre6 >> (i + x)) & mask_line;
-				print_binaire64(tab_int[i + x]);
-			}
-			i += x;
-		}
-		else
-		{
-			tab_int[i] = filtre5 >> i;
-			print_binaire64(tab_int[i]);
-		}
-	}	
-
-	std::cout << "mask line " << std::endl;
-	print_binaire64(mask_line);
-	return true;
-}
-
-
-// creer un pattern horizontal a la position voulu, on creer un mask global 
-void	pattern_creation(bitboard19 bb, uint64_t pattern, int size, int pos)
-{
-	// ne gere pas les depassement de lignes. le patterne depasse sur l'autre ligne.
-	// la fonction appelante doit s'ocuper de verifier si la position est correcte.
-	int line = pos / 20;
-	pos += line;
-
-	int idx = pos / 64;
-	int	offset = pos % 64;
-
-	bb[idx] |= pattern << offset;
-	
-	if (offset > (64 - size))
-	{
-		bb[idx + 1] |= pattern >> (64 - offset); 
-	}
-}
-
 
 void	pattern_universel(bitboard19 bb, int size, int pos, int strides)
 {
@@ -159,8 +105,6 @@ void	pattern_universel(bitboard19 bb, int size, int pos, int strides)
 		bb[idx] |= (1ULL << offset);
 	}
 }
-
-
 
 
 // creer des filtre pour tester la condition de victoire.
@@ -267,317 +211,198 @@ bool	isWin(const bitboard19 bboard, const bitboard19 winning_mask[MAX_WINNING_MA
 	return (false);
 }
 
-void	test_bitboard(const GameBoard& board)
-{
-	t_BWBoard19 bitboard = GameBoard_to_bitboard(board);
 
-	print_bb_19(bitboard);
-	// std::cout << "bitboard black" << std::endl;
-	// print_binaire_board19(bitboard.black);
-	// std::cout << "\nbitboard white" << std::endl;
-	// print_binaire_board19(bitboard.white);
-	// std::cout << std::endl;
-
-	// five_detection();
-	bitboard19	winning_mask[MAX_WINNING_MASK] = {};
-
-	test_pattern(winning_mask);
-	if (isWin(bitboard.black, winning_mask))
-		std::cout << "les noires ont gagne !!!" << std::endl;
-	if (isWin(bitboard.white, winning_mask))
-		std::cout << "les blanches ont gagne !!!" << std::endl;
-
-}
-
-
-
-// les amelioration possible >> 
-// Vérifie uniquement les masks qui passent par la position jouée
-bool isWin_fast(const bitboard19 bboard, const bitboard19 winning_mask[MAX_WINNING_MASK], 
-                int last_pos, int last_x, int last_y) {
-    
-    // Pour chaque direction, vérifie seulement les masks qui incluent last_pos
-    // Au lieu de 700 masks, tu vérifies seulement ~20-30 masks !
-    
-    int start_positions[4][5]; // Positions de départ possibles pour chaque direction
-    
-    // Horizontal : last_x - 4 à last_x (mais gardé dans 0-14)
-    for (int start_x = std::max(0, last_x - 4); start_x <= std::min(14, last_x); start_x++) {
-        int mask_start = last_y * 20 + start_x;
-        // Vérifie si ce mask existe (start_x + 4 < 19)
-        if (start_x + 4 < 19) {
-            if (check_mask_at(bboard, winning_mask, mask_start, 1)) return true;
-        }
-    }
-    
-    // Vertical : last_y - 4 à last_y
-    for (int start_y = std::max(0, last_y - 4); start_y <= std::min(14, last_y); start_y++) {
-        int mask_start = start_y * 20 + last_x;
-        if (check_mask_at(bboard, winning_mask, mask_start, 20)) return true;
-    }
-    
-    // Diagonale \ : last_y - 4 à last_y, last_x - 4 à last_x
-    for (int offset = -4; offset <= 0; offset++) {
-        int start_x = last_x + offset;
-        int start_y = last_y + offset;
-        if (start_x >= 0 && start_x < 19 && start_y >= 0 && start_y < 19 && start_x + 4 < 19 && start_y + 4 < 19) {
-            int mask_start = start_y * 20 + start_x;
-            if (check_mask_at(bboard, winning_mask, mask_start, 21)) return true;
-        }
-    }
-    
-    // Diagonale / : last_y - 4 à last_y, last_x + 4 à last_x
-    for (int offset = -4; offset <= 0; offset++) {
-        int start_x = last_x - offset;
-        int start_y = last_y + offset;
-        if (start_x >= 0 && start_x < 19 && start_y >= 0 && start_y < 19 && start_x - 4 >= 0 && start_y + 4 < 19) {
-            int mask_start = start_y * 20 + (start_x - 4);
-            if (check_mask_at(bboard, winning_mask, mask_start, 19)) return true;
-        }
-    }
-    
-    return false;
-}
-
-bool check_mask_at(const bitboard19 bboard, const bitboard19 winning_mask[MAX_WINNING_MASK],
-                   int mask_start, int stride) {
-    // Calcule un hash ou cherche directement dans un dictionnaire
-    // Version simple : cherche le mask correspondant
-    for (int i = 0; i < MAX_WINNING_MASK; i++) {
-        // Vérifie si le mask commence à cette position avec ce stride
-        // (tu devrais plutôt avoir une table de correspondance directe)
-    }
-}
-
-
-// solution avec hash
-
-// Structure pour trouver un mask en O(1)
-
+// Version ultra rapide avec table de lookup, la plus efficace a ce jour
 
 #include <stdint.h>
 #include <string.h>
 
-typedef uint64_t bitboard19[6];
-
-// Table de lookup : pour chaque case et direction, l'index du mask
-int lookup_table[19][19][4];  // [y][x][direction]
-// Stockage des masks
-bitboard19 win_masks[800];  // Assez grand pour tous les masks
-int total_masks = 0;
 
 // Directions
 #define DIR_HORIZ 0
 #define DIR_VERT  1
-#define DIR_DIAG1 2  // '\'
-#define DIR_DIAG2 3  // '/'
+#define DIR_DIAG_G 2  //
+#define DIR_DIAG_D 3  //
 
 typedef struct {
-    int start_pos;
-    int stride;
-    bitboard19 mask;
-} WinMask;
+    uint64_t masks[5][6];  // 5 masks × 6 uint64_t = 240 bytes
+    uint8_t count;          // 1 byte (au lieu de int)
+    uint8_t padding[7];     // Alignement à 8 bytes
+} MaskList;  // 248 bytes total
 
-WinMask win_masks_by_key[19][19][4]; // [y][x][direction] = mask qui passe par (x,y)
-// directions: 0=horizontal, 1=vertical, 2=diag\, 3=diag/
-// Ajoute un mask à la table et enregistre quelles cases il couvre
-void register_mask(bitboard19 mask, int start_pos, int stride) {
-    // Stocke le mask
-    for (int w = 0; w < 6; w++) {
-        win_masks[total_masks][w] = mask[w];
-    }
+// Stockage global de tous les masks (pour référence)
+bitboard19 all_masks[MAX_WINNING_MASK];
+int total_masks = 0;
+
+
+#define IDX(x, y) ((y) * 19 + (x))
+
+// Table 1D uniquement
+MaskList lookup_table[361][4];  // 19*19 = 361
+
+// Construction modifiée
+void add_mask_to_lookup(int mask_index, int start_pos, int stride) {
+    int dir;
+    if (stride == 1) dir = DIR_HORIZ;
+    else if (stride == 20) dir = DIR_VERT;
+    else if (stride == 21) dir = DIR_DIAG_G;
+    else if (stride == 19) dir = DIR_DIAG_D;
+    else return;
     
-    // Trouve toutes les positions couvertes par ce mask
     for (int i = 0; i < 5; i++) {
         int pos = start_pos + i * stride;
-        int y = pos / 20;      // Attention: utilisation du stride avec padding
+        int y = pos / 20;
         int x = pos % 20;
+        int idx = IDX(x, y);  // Calcul une fois
         
-        // Détermine la direction
-        int dir;
-        if (stride == 1) dir = DIR_HORIZ;
-        else if (stride == 20) dir = DIR_VERT;
-        else if (stride == 21) dir = DIR_DIAG1;
-        else if (stride == 19) dir = DIR_DIAG2;
-        else continue;
+        MaskList *list = &lookup_table[idx][dir];
         
-        // Enregistre l'index (si pas déjà fait)
-        if (lookup_table[y][x][dir] == -1) {
-            lookup_table[y][x][dir] = total_masks;
+        for (int w = 0; w < 6; w++) {
+            list->masks[list->count][w] = all_masks[mask_index][w];
         }
+        list->count++;
     }
-    
-    total_masks++;
 }
 
-// Construit toute la table
 void build_lookup_table(void) {
-    // Initialise la table à -1
-    for (int y = 0; y < 19; y++) {
-        for (int x = 0; x < 19; x++) {
-            for (int d = 0; d < 4; d++) {
-                lookup_table[y][x][d] = -1;
-            }
-        }
-    }
-    
+    // Initialise la table
+    memset(lookup_table, 0, sizeof(lookup_table));
     total_masks = 0;
     
-    // Horizontal (stride = 1)
+    // 1. Horizontal (stride = 1)
     for (int y = 0; y < 19; y++) {
         for (int x = 0; x <= 14; x++) {
             bitboard19 mask = {0};
             int start_pos = y * 20 + x;
             for (int i = 0; i < 5; i++) {
                 int bit = start_pos + i;
-                int idx = bit / 64;
-                int offset = bit % 64;
+                int idx = bit >> 6;
+                int offset = bit & 63;
                 mask[idx] |= (1ULL << offset);
             }
-            register_mask(mask, start_pos, 1);
+            // Stocke le mask
+            for (int w = 0; w < 6; w++) {
+                all_masks[total_masks][w] = mask[w];
+            }
+            add_mask_to_lookup(total_masks, start_pos, 1);
+            total_masks++;
         }
     }
     
-    // Vertical (stride = 20)
+    // 2. Vertical (stride = 20)
     for (int x = 0; x < 19; x++) {
         for (int y = 0; y <= 14; y++) {
             bitboard19 mask = {0};
             int start_pos = y * 20 + x;
             for (int i = 0; i < 5; i++) {
                 int bit = start_pos + i * 20;
-                int idx = bit / 64;
-                int offset = bit % 64;
+                int idx = bit >> 6;
+                int offset = bit & 63;
                 mask[idx] |= (1ULL << offset);
             }
-            register_mask(mask, start_pos, 20);
+            for (int w = 0; w < 6; w++) {
+                all_masks[total_masks][w] = mask[w];
+            }
+            add_mask_to_lookup(total_masks, start_pos, 20);
+            total_masks++;
         }
     }
     
-    // Diagonale \ (stride = 21)
+    // 3. Diagonale \ (stride = 21)
     for (int y = 0; y <= 14; y++) {
         for (int x = 0; x <= 14; x++) {
             bitboard19 mask = {0};
             int start_pos = y * 20 + x;
             for (int i = 0; i < 5; i++) {
                 int bit = start_pos + i * 21;
-                int idx = bit / 64;
-                int offset = bit % 64;
+                int idx = bit >> 6;
+                int offset = bit & 63;
                 mask[idx] |= (1ULL << offset);
             }
-            register_mask(mask, start_pos, 21);
+            for (int w = 0; w < 6; w++) {
+                all_masks[total_masks][w] = mask[w];
+            }
+            add_mask_to_lookup(total_masks, start_pos, 21);
+            total_masks++;
         }
     }
     
-    // Diagonale / (stride = 19)
+    // 4. Diagonale / (stride = 19)
     for (int y = 0; y <= 14; y++) {
         for (int x = 4; x < 19; x++) {
             bitboard19 mask = {0};
             int start_pos = y * 20 + x;
             for (int i = 0; i < 5; i++) {
                 int bit = start_pos + i * 19;
-                int idx = bit / 64;
-                int offset = bit % 64;
+                int idx = bit >> 6;
+                int offset = bit & 63;
                 mask[idx] |= (1ULL << offset);
             }
-            register_mask(mask, start_pos, 19);
+            for (int w = 0; w < 6; w++) {
+                all_masks[total_masks][w] = mask[w];
+            }
+            add_mask_to_lookup(total_masks, start_pos, 19);
+            total_masks++;
         }
     }
+
 }
 
-// Vérifie si un mask spécifique est entièrement dans le bitboard
-int mask_is_present(const bitboard19 bboard, int mask_index) {
-    for (int w = 0; w < 6; w++) {
-        if ((win_masks[mask_index][w] & bboard[w]) != win_masks[mask_index][w]) {
-            return 0;
-        }
-    }
-    return 1;
-}
 
-// Vérification après un coup (à appeler avec la position du dernier coup)
-int isWin_fast(const bitboard19 bboard, int last_x, int last_y) {
-    // Vérifie les 4 directions
+// Vérification ultra rapide
+static inline int isWin_ultra(const bitboard19 bboard, int x, int y) {
+    int idx = IDX(x, y);  // Précalculé
+    
+    t_BWBoard19 board = {};
+
     for (int dir = 0; dir < 4; dir++) {
-        int mask_idx = lookup_table[last_y][last_x][dir];
-        if (mask_idx != -1) {
-            if (mask_is_present(bboard, mask_idx)) {
-                return 1;
+        MaskList *list = &lookup_table[idx][dir];
+        int count = list->count;
+        
+        for (int i = 0; i < count; i++) {
+            uint64_t (*mask)[6] = &list->masks[i];
+            board.black[0] = (*mask)[0];
+            board.black[1] = (*mask)[1];
+            board.black[2] = (*mask)[2];
+            board.black[3] = (*mask)[3];
+            board.black[4] = (*mask)[4];
+            board.black[5] = (*mask)[5];
+            
+            print_bb_19(board);
+            
+            if ((((*mask)[0] & bboard[0]) != (*mask)[0]) ||
+                (((*mask)[1] & bboard[1]) != (*mask)[1]) ||
+                (((*mask)[2] & bboard[2]) != (*mask)[2]) ||
+                (((*mask)[3] & bboard[3]) != (*mask)[3]) ||
+                (((*mask)[4] & bboard[4]) != (*mask)[4]) ||
+                (((*mask)[5] & bboard[5]) != (*mask)[5])) {
+                continue;
             }
+            return 1;
         }
     }
     return 0;
 }
 
-// Version alternative avec accès direct sans fonction
-int isWin_instant(const bitboard19 bboard, int last_x, int last_y) {
-    // Horizontal
-    int idx = lookup_table[last_y][last_x][DIR_HORIZ];
-    if (idx != -1) {
-        int win = 1;
-        for (int w = 0; w < 6; w++) {
-            if ((win_masks[idx][w] & bboard[w]) != win_masks[idx][w]) {
-                win = 0;
-                break;
-            }
-        }
-        if (win) return 1;
-    }
-    
-    // Vertical
-    idx = lookup_table[last_y][last_x][DIR_VERT];
-    if (idx != -1) {
-        int win = 1;
-        for (int w = 0; w < 6; w++) {
-            if ((win_masks[idx][w] & bboard[w]) != win_masks[idx][w]) {
-                win = 0;
-                break;
-            }
-        }
-        if (win) return 1;
-    }
-    
-    // Diagonale \
-    idx = lookup_table[last_y][last_x][DIR_DIAG1];
-    if (idx != -1) {
-        int win = 1;
-        for (int w = 0; w < 6; w++) {
-            if ((win_masks[idx][w] & bboard[w]) != win_masks[idx][w]) {
-                win = 0;
-                break;
-            }
-        }
-        if (win) return 1;
-    }
-    
-    // Diagonale /
-    idx = lookup_table[last_y][last_x][DIR_DIAG2];
-    if (idx != -1) {
-        int win = 1;
-        for (int w = 0; w < 6; w++) {
-            if ((win_masks[idx][w] & bboard[w]) != win_masks[idx][w]) {
-                win = 0;
-                break;
-            }
-        }
-        if (win) return 1;
-    }
-    
-    return 0;
-}
 
-void test_hash_table(void)
+void	test_bitboard(const GameBoard& board, int x, int y)
 {
-	// Une fois au démarrage du jeu
+	t_BWBoard19 bitboard = GameBoard_to_bitboard(board);
+
+	print_bb_19(bitboard);
+
+	// bitboard19	winning_mask[MAX_WINNING_MASK] = {};
+
+	// test_pattern(winning_mask);
+	// if (isWin(bitboard.black, winning_mask))
+	// 	std::cout << "les noires ont gagne !!!" << std::endl;
+	// if (isWin(bitboard.white, winning_mask))
+	// 	std::cout << "les blanches ont gagne !!!" << std::endl;
+
     build_lookup_table();
-    
-    // Pendant le jeu, après chaque coup
-    bitboard19 noir = {0};
-    // ... placer des pierres ...
-    
-    int last_x = 7, last_y = 10;  // Dernier coup joué
-    
-    if (isWin_fast(noir, last_x, last_y)) {
-        printf("Victoire !\n");
-    }
+    if (isWin_ultra(bitboard.black, x, y))
+        std::cout << "les noires ont gagne !!!" << std::endl;
+    if (isWin_ultra(bitboard.white, x, y))
+        std::cout << "les blanches ont gagne !!!" << std::endl;
 
 }

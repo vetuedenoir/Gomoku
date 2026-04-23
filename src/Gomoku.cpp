@@ -106,7 +106,7 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
             if (col >= 0 && row >= 0)
             {
                 _gameBoard->placeStone(col, row);
-                test_bitboard(*_gameBoard);
+                test_bitboard(*_gameBoard, col, row);
 
             }   
         }
