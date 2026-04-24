@@ -25,6 +25,7 @@ static const char* phaseStr(GamePhase p)
         case GamePhase::OpeningPlacement: return "Opening placement";
         case GamePhase::ColorChoice:      return "Color choice";
         case GamePhase::NormalPlay:       return "Normal play";
+        default:                         return "Unknown phase";
     }
 }
 

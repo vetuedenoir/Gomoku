@@ -2,9 +2,6 @@
 
 // testing
 
-inline int index(int x, int y) {
-	return y * 20 + x;
-}
 
 
 // set le bit a 1 a la position x, y
@@ -110,7 +107,6 @@ void	pattern_universel(bitboard19 bb, int size, int pos, int strides)
 // creer des filtre pour tester la condition de victoire.
 // prototype, on peut utiliser ce systeme pour des 4 ou des 3 a la suite.
 // toujour en horizontal pour le moment
-const int	MAX_WINNING_MASK = 1020;
 
 void	test_pattern(bitboard19	winning_mask[MAX_WINNING_MASK])
 {
@@ -214,176 +210,334 @@ bool	isWin(const bitboard19 bboard, const bitboard19 winning_mask[MAX_WINNING_MA
 
 // Version ultra rapide avec table de lookup, la plus efficace a ce jour
 
-#include <stdint.h>
-#include <string.h>
 
-
-// Directions
-#define DIR_HORIZ 0
-#define DIR_VERT  1
-#define DIR_DIAG_G 2  //
-#define DIR_DIAG_D 3  //
-
-typedef struct {
-    uint64_t masks[5][6];  // 5 masks × 6 uint64_t = 240 bytes
-    uint8_t count;          // 1 byte (au lieu de int)
-    uint8_t padding[7];     // Alignement à 8 bytes
-} MaskList;  // 248 bytes total
 
 // Stockage global de tous les masks (pour référence)
-bitboard19 all_masks[MAX_WINNING_MASK];
-int total_masks = 0;
+bitboard19 all_masks5[MAX_WINNING_MASK];
+int total_masks5 = 0;
 
 
-#define IDX(x, y) ((y) * 19 + (x))
 
 // Table 1D uniquement
-MaskList lookup_table[361][4];  // 19*19 = 361
+MaskList lookup_table5[361][4];  // 19*19 = 361
 
 // Construction modifiée
-void add_mask_to_lookup(int mask_index, int start_pos, int stride) {
-    int dir;
-    if (stride == 1) dir = DIR_HORIZ;
-    else if (stride == 20) dir = DIR_VERT;
-    else if (stride == 21) dir = DIR_DIAG_G;
-    else if (stride == 19) dir = DIR_DIAG_D;
-    else return;
-    
-    for (int i = 0; i < 5; i++) {
-        int pos = start_pos + i * stride;
-        int y = pos / 20;
-        int x = pos % 20;
-        int idx = IDX(x, y);  // Calcul une fois
-        
-        MaskList *list = &lookup_table[idx][dir];
-        
-        for (int w = 0; w < 6; w++) {
-            list->masks[list->count][w] = all_masks[mask_index][w];
-        }
-        list->count++;
-    }
+void add_mask_to_lookup(int mask_index, int start_pos, int stride)
+{
+	int dir;
+	
+	if (stride == 1)
+		dir = DIR_HORIZ;
+	else if (stride == 20)
+		dir = DIR_VERT;
+	else if (stride == 21)
+		dir = DIR_DIAG_G;
+	else if (stride == 19)
+		dir = DIR_DIAG_D;
+	else
+		return;
+	
+	for (int i = 0; i < 5; i++) {
+		int pos = start_pos + i * stride;
+		int y = pos / 20;
+		int x = pos % 20;
+		int idx = IDX(x, y);  // Calcul une fois
+		
+		MaskList *list = &lookup_table5[idx][dir];
+		
+		for (int w = 0; w < 6; w++) {
+			list->masks[list->count][w] = all_masks5[mask_index][w];
+		}
+		list->count++;
+		if (start_pos == 0 || start_pos == 10)
+		{	std::cout << "verif in add mask lookup count = " << list->count << std::endl; 
+			std::cout <<  "mask index  " << mask_index << std::endl;
+			std::cout << "idx = " << idx << "x = " << x << " y = " << y << std::endl;
+		}
+	}
 }
 
-void build_lookup_table(void) {
-    // Initialise la table
-    memset(lookup_table, 0, sizeof(lookup_table));
-    total_masks = 0;
-    
-    // 1. Horizontal (stride = 1)
-    for (int y = 0; y < 19; y++) {
-        for (int x = 0; x <= 14; x++) {
-            bitboard19 mask = {0};
-            int start_pos = y * 20 + x;
-            for (int i = 0; i < 5; i++) {
-                int bit = start_pos + i;
-                int idx = bit >> 6;
-                int offset = bit & 63;
-                mask[idx] |= (1ULL << offset);
-            }
-            // Stocke le mask
-            for (int w = 0; w < 6; w++) {
-                all_masks[total_masks][w] = mask[w];
-            }
-            add_mask_to_lookup(total_masks, start_pos, 1);
-            total_masks++;
-        }
-    }
-    
-    // 2. Vertical (stride = 20)
-    for (int x = 0; x < 19; x++) {
-        for (int y = 0; y <= 14; y++) {
-            bitboard19 mask = {0};
-            int start_pos = y * 20 + x;
-            for (int i = 0; i < 5; i++) {
-                int bit = start_pos + i * 20;
-                int idx = bit >> 6;
-                int offset = bit & 63;
-                mask[idx] |= (1ULL << offset);
-            }
-            for (int w = 0; w < 6; w++) {
-                all_masks[total_masks][w] = mask[w];
-            }
-            add_mask_to_lookup(total_masks, start_pos, 20);
-            total_masks++;
-        }
-    }
-    
-    // 3. Diagonale \ (stride = 21)
-    for (int y = 0; y <= 14; y++) {
-        for (int x = 0; x <= 14; x++) {
-            bitboard19 mask = {0};
-            int start_pos = y * 20 + x;
-            for (int i = 0; i < 5; i++) {
-                int bit = start_pos + i * 21;
-                int idx = bit >> 6;
-                int offset = bit & 63;
-                mask[idx] |= (1ULL << offset);
-            }
-            for (int w = 0; w < 6; w++) {
-                all_masks[total_masks][w] = mask[w];
-            }
-            add_mask_to_lookup(total_masks, start_pos, 21);
-            total_masks++;
-        }
-    }
-    
-    // 4. Diagonale / (stride = 19)
-    for (int y = 0; y <= 14; y++) {
-        for (int x = 4; x < 19; x++) {
-            bitboard19 mask = {0};
-            int start_pos = y * 20 + x;
-            for (int i = 0; i < 5; i++) {
-                int bit = start_pos + i * 19;
-                int idx = bit >> 6;
-                int offset = bit & 63;
-                mask[idx] |= (1ULL << offset);
-            }
-            for (int w = 0; w < 6; w++) {
-                all_masks[total_masks][w] = mask[w];
-            }
-            add_mask_to_lookup(total_masks, start_pos, 19);
-            total_masks++;
-        }
-    }
-
+void build_lookup_table5(void) {
+	// Initialise la table
+	memset(lookup_table5, 0, sizeof(lookup_table5));
+	total_masks5 = 0;
+	
+	// 1. Horizontal (stride = 1)
+	for (int y = 0; y < 19; y++) {
+		for (int x = 0; x <= 14; x++) {
+			bitboard19 mask = {0};
+			int start_pos = y * 20 + x;
+			for (int i = 0; i < 5; i++) {
+				int bit = start_pos + i;
+				int idx = bit >> 6;
+				int offset = bit & 63;
+				mask[idx] |= (1ULL << offset);
+			}
+			// Stocke le mask
+			for (int w = 0; w < 6; w++) {
+				all_masks5[total_masks5][w] = mask[w];
+			}
+			add_mask_to_lookup(total_masks5, start_pos, 1);
+			total_masks5++;
+		}
+	}
+	
+	// 2. Vertical (stride = 20)
+	for (int x = 0; x < 19; x++) {
+		for (int y = 0; y <= 14; y++) {
+			bitboard19 mask = {0};
+			int start_pos = y * 20 + x;
+			for (int i = 0; i < 5; i++) {
+				int bit = start_pos + i * 20;
+				int idx = bit >> 6;
+				int offset = bit & 63;
+				mask[idx] |= (1ULL << offset);
+			}
+			for (int w = 0; w < 6; w++) {
+				all_masks5[total_masks5][w] = mask[w];
+			}
+			add_mask_to_lookup(total_masks5, start_pos, 20);
+			total_masks5++;
+		}
+	}
+	
+	// 3. Diagonale \ (stride = 21)
+	for (int y = 0; y <= 14; y++) {
+		for (int x = 0; x <= 14; x++) {
+			bitboard19 mask = {0};
+			int start_pos = y * 20 + x;
+			for (int i = 0; i < 5; i++) {
+				int bit = start_pos + i * 21;
+				int idx = bit >> 6;
+				int offset = bit & 63;
+				mask[idx] |= (1ULL << offset);
+			}
+			for (int w = 0; w < 6; w++) {
+				all_masks5[total_masks5][w] = mask[w];
+			}
+			add_mask_to_lookup(total_masks5, start_pos, 21);
+			total_masks5++;
+		}
+	}
+	
+	// 4. Diagonale / (stride = 19)
+	for (int y = 0; y <= 14; y++) {
+		for (int x = 4; x < 19; x++) {
+			bitboard19 mask = {0};
+			int start_pos = y * 20 + x;
+			for (int i = 0; i < 5; i++) {
+				int bit = start_pos + i * 19;
+				int idx = bit >> 6;
+				int offset = bit & 63;
+				mask[idx] |= (1ULL << offset);
+			}
+			for (int w = 0; w < 6; w++) {
+				all_masks5[total_masks5][w] = mask[w];
+			}
+			add_mask_to_lookup(total_masks5, start_pos, 19);
+			total_masks5++;
+		}
+	}
+	// std::cout << "total mask " << total_masks5 << std::endl;
 }
 
 
 // Vérification ultra rapide
-static inline int isWin_ultra(const bitboard19 bboard, int x, int y) {
-    int idx = IDX(x, y);  // Précalculé
-    
-    t_BWBoard19 board = {};
+static inline int isWin_ultra(const bitboard19 bboard, const int x, const int y)
+{
+	const int idx = IDX(x, y);  // Précalculé
 
-    for (int dir = 0; dir < 4; dir++) {
-        MaskList *list = &lookup_table[idx][dir];
-        int count = list->count;
-        
-        for (int i = 0; i < count; i++) {
-            uint64_t (*mask)[6] = &list->masks[i];
-            board.black[0] = (*mask)[0];
-            board.black[1] = (*mask)[1];
-            board.black[2] = (*mask)[2];
-            board.black[3] = (*mask)[3];
-            board.black[4] = (*mask)[4];
-            board.black[5] = (*mask)[5];
-            
-            print_bb_19(board);
-            
-            if ((((*mask)[0] & bboard[0]) != (*mask)[0]) ||
-                (((*mask)[1] & bboard[1]) != (*mask)[1]) ||
-                (((*mask)[2] & bboard[2]) != (*mask)[2]) ||
-                (((*mask)[3] & bboard[3]) != (*mask)[3]) ||
-                (((*mask)[4] & bboard[4]) != (*mask)[4]) ||
-                (((*mask)[5] & bboard[5]) != (*mask)[5])) {
-                continue;
-            }
-            return 1;
-        }
-    }
-    return 0;
+	t_BWBoard19 board = {};
+	
+	for (int dir = 0; dir < 4; dir++) {
+		MaskList *list = &lookup_table5[idx][dir];
+		int count = list->count;
+		std::cout << "test ultra: idx = " << idx << " count " << count << " dir = " << dir << std::endl;
+		
+
+		for (int i = 0; i < count; i++) {
+			uint64_t (*mask)[6] = &list->masks[i];
+			memcpy(board.black, list->masks[i], 6 * sizeof(uint64_t));
+			if ((((*mask)[0] & bboard[0]) != (*mask)[0]) ||
+			(((*mask)[1] & bboard[1]) != (*mask)[1]) ||
+			(((*mask)[2] & bboard[2]) != (*mask)[2]) ||
+			(((*mask)[3] & bboard[3]) != (*mask)[3]) ||
+			(((*mask)[4] & bboard[4]) != (*mask)[4]) ||
+			(((*mask)[5] & bboard[5]) != (*mask)[5]))
+			{
+				print_bb_19(board);
+				continue;
+			}
+			return 1;
+		}
+	}
+	return 0;
 }
 
+
+bitboard19 all_masks4[MAX_WINNING_MASK];
+int total_masks4 = 0;
+
+MaskList4 lookup_table4[361][4]; 
+
+
+void add_mask_to_lookup4(const int mask_index, const int start_pos, const int stride, const  int left_pos, const int right_pos)
+{
+	int dir;
+
+	if (stride == 1)
+		dir = DIR_HORIZ;
+	else if (stride == 20)
+		dir = DIR_VERT;
+	else if (stride == 21)
+		dir = DIR_DIAG_G;
+	else if (stride == 19)
+		dir = DIR_DIAG_D;
+	else return;
+	
+	for (int i = 0; i < 4; i++) {
+		int pos = start_pos + i * stride;
+		int y = pos / 20;
+		int x = pos % 20;
+		int idx = IDX(x, y);  // Calcul une fois
+		
+		MaskList4 *list = &lookup_table4[idx][dir];
+		
+		for (int w = 0; w < 6; w++) {
+			list->masks[list->count][w] = all_masks4[mask_index][w];
+		}
+		list->left_pos[list->count] = left_pos;
+		list->right_pos[list->count] = right_pos;
+		list->count++;
+	}
+}
+
+
+void	build_lookup_table4(void) {
+	// Initialise la table
+	memset(lookup_table4, 0, sizeof(lookup_table4));
+	total_masks4 = 0;
+	
+	// 1. Horizontal (stride = 1)
+	for (int y = 0; y < 19; y++) {
+		for (int x = 0; x <= 15; x++) {
+			bitboard19 mask = {0};
+			int start_pos = y * 20 + x;
+			for (int i = 0; i < 4; i++) {
+				int bit = start_pos + i;
+				int idx = bit >> 6;
+				int offset = bit & 63;
+				mask[idx] |= (1ULL << offset);
+			}
+			int left_pos = (x > 0) ? (start_pos - 1) : -1;
+			int right_pos = (x + 4 < 19) ? (start_pos + 4) : -1;
+			// Stocke le mask
+			for (int w = 0; w < 6; w++) {
+				all_masks4[total_masks4][w] = mask[w];
+			}
+			add_mask_to_lookup4(total_masks4, start_pos, 1, left_pos, right_pos);
+			total_masks4++;
+		}
+	}
+	
+	// 2. Vertical (stride = 20)
+	for (int x = 0; x < 19; x++) {
+		for (int y = 0; y <= 15; y++) {
+			bitboard19 mask = {0};
+			int start_pos = y * 20 + x;
+			for (int i = 0; i < 4; i++) {
+				int bit = start_pos + i * 20;
+				int idx = bit >> 6;
+				int offset = bit & 63;
+				mask[idx] |= (1ULL << offset);
+			}
+			int left_pos = (y > 0) ? (start_pos - 20) : -1;
+			int right_pos = (y + 4 < 19) ? (start_pos + 80) : -1;
+			for (int w = 0; w < 6; w++) {
+				all_masks4[total_masks4][w] = mask[w];
+			}
+			add_mask_to_lookup4(total_masks4, start_pos, 20, left_pos, right_pos);
+			total_masks4++;
+		}
+	}
+	
+	// 3. Diagonale \ (stride = 21)
+	for (int y = 0; y <= 15; y++) {
+		for (int x = 0; x <= 15; x++) {
+			bitboard19 mask = {0};
+			int start_pos = y * 20 + x;
+			for (int i = 0; i < 4; i++) {
+				int bit = start_pos + i * 21;
+				int idx = bit >> 6;
+				int offset = bit & 63;
+				mask[idx] |= (1ULL << offset);
+			}
+			int left_pos = (y > 0 && x > 0) ? (start_pos - 21) : -1;
+			int right_pos = (y + 4 < 19 && x + 4 < 19) ? (start_pos + 84) : -1;
+			for (int w = 0; w < 6; w++) {
+				all_masks4[total_masks4][w] = mask[w];
+			}
+			add_mask_to_lookup4(total_masks4, start_pos, 21, left_pos, right_pos);
+			total_masks4++;
+		}
+	}
+	
+	// 4. Diagonale / (stride = 19)
+	for (int y = 0; y <= 15; y++) {
+		for (int x = 3; x < 19; x++) {
+			bitboard19 mask = {0};
+			int start_pos = y * 20 + x;
+			for (int i = 0; i < 4; i++) {
+				int bit = start_pos + i * 19;
+				int idx = bit >> 6;
+				int offset = bit & 63;
+				mask[idx] |= (1ULL << offset);
+			}
+			int left_pos = (y > 0 && x + 4 < 19) ? (start_pos - 19) : -1;
+			int right_pos = (y + 4 < 19 && x > 0) ? (start_pos + 76) : -1;
+			for (int w = 0; w < 6; w++) {
+				all_masks4[total_masks4][w] = mask[w];
+			}
+			add_mask_to_lookup4(total_masks4, start_pos, 19, left_pos, right_pos);
+			total_masks4++;
+		}
+	}
+}
+
+static inline int is_Open_4(const bitboard19 &boardA, const bitboard19 &boardB, const int x, const int y) {
+	const int idx = IDX(x, y);  // Précalculé
+	int	opening_score = 2;
+
+	// si l'opening score est a zero, il n'y a pas d'alignement de 4 pierre
+	// ou il y a un alignement mais il est completement ferme.
+	// si l'opening score est a 1, c'est que l'alignement de 4 pierre est partiellement ouvert.
+	// si le score est  a 2, c'est que c'est un open 4.
+
+	for (int dir = 0; dir < 4; dir++) {
+		MaskList4 *list = &lookup_table4[idx][dir];
+		int count = list->count;
+		
+		for (int i = 0; i < count; i++) {
+			uint64_t (*mask)[6] = &list->masks[i];
+			
+			if ((((*mask)[0] & boardA[0]) != (*mask)[0]) ||
+				(((*mask)[1] & boardA[1]) != (*mask)[1]) ||
+				(((*mask)[2] & boardA[2]) != (*mask)[2]) ||
+				(((*mask)[3] & boardA[3]) != (*mask)[3]) ||
+				(((*mask)[4] & boardA[4]) != (*mask)[4]) ||
+				(((*mask)[5] & boardA[5]) != (*mask)[5]))
+			{
+				continue;
+			}
+			if (list->left_pos[i] == -1 || get(boardB, list->left_pos[i]))
+				opening_score -= 1; 
+			if (list->right_pos[i] == -1 || get(boardB, list->right_pos[i]))
+				opening_score -= 1;
+			return opening_score;
+		}
+	}
+	return 0;
+}
 
 void	test_bitboard(const GameBoard& board, int x, int y)
 {
@@ -398,11 +552,24 @@ void	test_bitboard(const GameBoard& board, int x, int y)
 	// 	std::cout << "les noires ont gagne !!!" << std::endl;
 	// if (isWin(bitboard.white, winning_mask))
 	// 	std::cout << "les blanches ont gagne !!!" << std::endl;
+	std::cout << "test bitboard : x = " << x << " y = " << y << std::endl;
+	build_lookup_table5();
+	build_lookup_table4();
+	if (isWin_ultra(bitboard.black, x, y))
+		std::cout << "les noires ont gagne !!!" << std::endl;
+	if (isWin_ultra(bitboard.white, x, y))
+		std::cout << "les blanches ont gagne !!!" << std::endl;
 
-    build_lookup_table();
-    if (isWin_ultra(bitboard.black, x, y))
-        std::cout << "les noires ont gagne !!!" << std::endl;
-    if (isWin_ultra(bitboard.white, x, y))
-        std::cout << "les blanches ont gagne !!!" << std::endl;
-
+	int	black_four = is_Open_4(bitboard.black, bitboard.white, x, y);
+	int white_four = is_Open_4(bitboard.white, bitboard.black, x, y);
+	if (black_four == 1)
+		std::cout << "alignement de 4 pierre noir partiellement ouvert" << std::endl;
+	else if (black_four == 2)
+		std::cout << "Open four black !!!" << std::endl;
+	if (white_four == 1)
+		std::cout << "alignement de 4 pierre blanche partiellement ouvert" << std::endl;
+	else if (white_four == 2)
+		std::cout << "Open four white !!!" << std::endl;
+	
+	
 }
