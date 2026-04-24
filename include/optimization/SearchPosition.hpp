@@ -5,43 +5,37 @@
 #include "game/GameBoard.hpp"
 #include "game/contracts/Color.hpp"
 #include "optimization/ZobristHasher.hpp"
+#include "bitboard.hpp"
 
-// SearchPosition is the AI's private, mutable copy of the board.
+// AI's mutable board state for use during search.
 //
-// It is the sole owner of the board during a search — the UI's GameBoard is
-// never touched. make/undoMove maintain the Zobrist hash incrementally using
-// a single XOR (self-inverse, so undo == make for the hash update).
+// Owns a t_BWBoard19 bitboard and a Zobrist hash updated incrementally via
+// makeMove / undoMove (XOR is self-inverse, so undo == the same XOR).
 //
-// TEMPORARY: the board is represented as a GameBoard (CellStatus[19][19]).
-// Future migration: replace with t_BWBoard19 bitboards. The public interface
-// (makeMove / undoMove / board() / zobristHash()) stays unchanged.
+// fromBoard() is the sole entry point from the UI layer — it converts once
+// at the root of each AI turn and the engine stays in bitboard space.
 //
-// Lifetime rule: the ZobristHasher passed to fromBoard() must outlive this
-// object. In practice it is initialised at startup and lives forever.
+// Lifetime rule: the ZobristHasher passed to fromBoard() must outlive this object.
 
 class SearchPosition
 {
     public:
-        // Copies src and computes the starting hash from scratch.
-        // Call once at the root of each AI turn.
         static SearchPosition fromBoard(const GameBoard& src, const ZobristHasher& hasher);
 
-        // Place a stone of the given color; update hash; switch current player.
         void makeMove(int col, int row, CellStatus color);
-
-        // Erase the stone placed by makeMove; XOR hash back; switch player.
-        // Precondition: (col, row, color) must match the last makeMove call.
         void undoMove(int col, int row, CellStatus color);
 
-        const GameBoard& board()       const;
-        uint64_t         zobristHash() const;
+        const t_BWBoard19& board()       const;
+        uint64_t           zobristHash() const;
+        Color              sideToMove()  const;
 
     private:
-        SearchPosition(GameBoard board, uint64_t hash, const ZobristHasher* hasher);
+        SearchPosition(t_BWBoard19 board, uint64_t hash, Color side, const ZobristHasher* hasher);
 
-        GameBoard            _board;
+        t_BWBoard19          _board;
         uint64_t             _hash;
-        const ZobristHasher* _hasher;  // non-owning borrow
+        Color                _sideToMove;
+        const ZobristHasher* _hasher;
 };
 
 #endif

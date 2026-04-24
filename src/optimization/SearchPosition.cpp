@@ -1,43 +1,42 @@
 #include "optimization/SearchPosition.hpp"
-#include "bitboard.hpp"
 
-// Converts CellStatus to the Color enum used by ZobristHasher.
-// Only called with Black or White — Empty is never hashed.
 static Color toColor(CellStatus s)
 {
     return (s == CellStatus::Black) ? Color::Black : Color::White;
 }
 
-// ── private constructor ──────────────────────────────────────────────────────
+static bitboard19& plane(t_BWBoard19& board, CellStatus color)
+{
+    return (color == CellStatus::Black) ? board.black : board.white;
+}
 
-SearchPosition::SearchPosition(GameBoard board, uint64_t hash, const ZobristHasher* hasher)
-    : _board(board), _hash(hash), _hasher(hasher)
+SearchPosition::SearchPosition(t_BWBoard19 board, uint64_t hash, Color side, const ZobristHasher* hasher)
+    : _board(board), _hash(hash), _sideToMove(side), _hasher(hasher)
 {}
-
-// ── public interface ─────────────────────────────────────────────────────────
 
 SearchPosition SearchPosition::fromBoard(const GameBoard& src, const ZobristHasher& hasher)
 {
     t_BWBoard19 bb   = GameBoard_to_bitboard(src);
     uint64_t    hash = hasher.compute(bb);
-    return SearchPosition(src, hash, &hasher);
+    Color       side = (src.currentSeat() == Seat::First) ? Color::Black : Color::White;
+    return SearchPosition(bb, hash, side, &hasher);
 }
 
 void SearchPosition::makeMove(int col, int row, CellStatus color)
 {
-    _board.placeStoneOfColor(col, row, color);
+    set(plane(_board, color), col, row);
     _hash ^= _hasher->key(col, row, toColor(color));
-    _board.switchPlayer();
+    _sideToMove = (_sideToMove == Color::Black) ? Color::White : Color::Black;
 }
 
 void SearchPosition::undoMove(int col, int row, CellStatus color)
 {
-    _board.switchPlayer();
+    _sideToMove = (_sideToMove == Color::Black) ? Color::White : Color::Black;
     _hash ^= _hasher->key(col, row, toColor(color));
-    _board.clearCell(col, row);
+    clear_bit(plane(_board, color), col, row);
 }
 
-const GameBoard& SearchPosition::board() const
+const t_BWBoard19& SearchPosition::board() const
 {
     return _board;
 }
@@ -45,4 +44,9 @@ const GameBoard& SearchPosition::board() const
 uint64_t SearchPosition::zobristHash() const
 {
     return _hash;
+}
+
+Color SearchPosition::sideToMove() const
+{
+    return _sideToMove;
 }

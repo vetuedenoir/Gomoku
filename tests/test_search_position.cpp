@@ -5,7 +5,6 @@
 #include "optimization/ZobristHasher.hpp"
 #include "bitboard.hpp"
 
-// The hasher's static table is filled once and shared across all tests.
 static ZobristHasher& hasher()
 {
     static ZobristHasher h(19);
@@ -19,11 +18,6 @@ static SearchPosition emptyPos()
     GameBoard board(19, Seat::First);
     return SearchPosition::fromBoard(board, hasher());
 }
-
-// ── Test 1: make then undo restores hash ─────────────────────────────────────
-//
-// The most fundamental invariant: undoMove must be the perfect inverse of
-// makeMove. If this fails the hash is broken, period.
 
 TEST_CASE("make/undo single move restores hash")
 {
@@ -70,9 +64,8 @@ TEST_CASE("incremental hash matches full recompute")
     pos.makeMove(3,  3,  CellStatus::Black);
     pos.makeMove(10, 10, CellStatus::White);
 
-    uint64_t    incremental = pos.zobristHash();
-    t_BWBoard19 bb          = GameBoard_to_bitboard(pos.board());
-    uint64_t    recomputed  = hasher().compute(bb);
+    uint64_t incremental = pos.zobristHash();
+    uint64_t recomputed  = hasher().compute(pos.board());
 
     CHECK(incremental == recomputed);
 }
@@ -98,4 +91,32 @@ TEST_CASE("different stone placements produce different hashes")
     posB.makeMove(5, 5, CellStatus::White);
 
     CHECK(posA.zobristHash() != posB.zobristHash());
+}
+
+TEST_CASE("makeMove sets stone in correct bitboard plane")
+{
+    SearchPosition pos = emptyPos();
+
+    pos.makeMove(5, 7, CellStatus::Black);
+    pos.makeMove(9, 3, CellStatus::White);
+
+    CHECK(get(pos.board().black, index(5, 7)) == true);
+    CHECK(get(pos.board().white, index(5, 7)) == false);
+
+    CHECK(get(pos.board().white, index(9, 3)) == true);
+    CHECK(get(pos.board().black, index(9, 3)) == false);
+}
+
+TEST_CASE("undoMove clears stone from bitboard")
+{
+    SearchPosition pos = emptyPos();
+
+    pos.makeMove(5, 7, CellStatus::Black);
+    pos.makeMove(9, 3, CellStatus::White);
+
+    pos.undoMove(9, 3, CellStatus::White);
+    pos.undoMove(5, 7, CellStatus::Black);
+
+    CHECK(get(pos.board().black, index(5, 7)) == false);
+    CHECK(get(pos.board().white, index(9, 3)) == false);
 }
