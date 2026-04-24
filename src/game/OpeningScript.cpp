@@ -26,6 +26,7 @@ static const char* phaseStr(GamePhase p)
         case GamePhase::ColorChoice:      return "Color choice";
         case GamePhase::NormalPlay:       return "Normal play";
     }
+    return "undefined";
 }
 
 static Seat toSeat(OpeningActor a)

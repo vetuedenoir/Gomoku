@@ -31,7 +31,7 @@ SRC_DIR   := src
 INC_DIR   := include
 OBJ_DIR   := .build
 
-ALL_SRCS := $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/ui/*.cpp) $(wildcard $(SRC_DIR)/game/*.cpp) $(wildcard $(SRC_DIR)/logger/*.cpp)
+ALL_SRCS := $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/ui/*.cpp) $(wildcard $(SRC_DIR)/game/*.cpp) $(wildcard $(SRC_DIR)/ai/*.cpp) $(wildcard $(SRC_DIR)/logger/*.cpp)
 SRCS      := $(patsubst $(SRC_DIR)/%,%,$(ALL_SRCS))
 
 # =============================================================================
@@ -111,7 +111,7 @@ EXT_INC_DIR   := external/doctest
 FILTER        ?=
 
 # Sources compiled for tests: pure game/logger logic only (no main, no UI, no SFML)
-TEST_GAME_SRCS := $(wildcard $(SRC_DIR)/game/*.cpp) $(wildcard $(SRC_DIR)/logger/*.cpp)
+TEST_GAME_SRCS := $(wildcard $(SRC_DIR)/game/*.cpp) $(wildcard $(SRC_DIR)/ai/*.cpp) $(wildcard $(SRC_DIR)/logger/*.cpp)
 TEST_SRCS      := $(wildcard $(TEST_DIR)/*.cpp)
 
 TEST_GAME_OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(TEST_OBJ_DIR)/%.o,$(TEST_GAME_SRCS))
