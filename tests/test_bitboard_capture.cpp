@@ -4,10 +4,6 @@
 
 static t_BWBoard19 make_board() { t_BWBoard19 b = {}; return b; }
 
-static void logCapture(bool capture) {
-    Logger::info("CAPTURE", capture ? "capture" : "not capture");
-}
-
 TEST_CASE("detect_captures: no capture when pattern is incomplete")
 {
     t_BWBoard19 board = make_board();
