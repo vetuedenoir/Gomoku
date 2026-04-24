@@ -450,8 +450,8 @@ bool detect_captures(const t_BWBoard19& board, int col, int row, Color attackerC
 
             if (get(victime, innerVictim) && get(victime, outerVictim) && get(attacker, flank))
             {
-                result[innerVictim >> 6] |= (1ULL << (innerVictim & 63));
-                result[outerVictim >> 6] |= (1ULL << (outerVictim & 63));
+                capturedMask[innerVictim >> 6] |= (1ULL << (innerVictim & 63));
+                capturedMask[outerVictim >> 6] |= (1ULL << (outerVictim & 63));
                 captured = true;
             }
         }

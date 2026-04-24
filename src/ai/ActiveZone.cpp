@@ -1,72 +1,69 @@
 #include "ai/ActiveZone.hpp"
+#include <cstring>
 
-ActiveZone::ActiveZone(int radius) : _radius(radius) {}
-
-// generate candidates from all stones (one-time cost)
-void ActiveZone::initialize(const GameBoard& board)
+ActiveZone::ActiveZone(int radius) : _radius(radius)
 {
-    _candidates.clear();
+    memset(_candidateMask, 0, sizeof(_candidateMask));
+}
 
-    const int size = board.getSize();
+void ActiveZone::initialize(const t_BWBoard19& board)
+{
+    memset(_candidateMask, 0, sizeof(_candidateMask));
 
-    for (int x = 0; x < size; ++x)
+    for (int y = 0; y < 19; y++)
     {
-        for (int y = 0; y < size; ++y)
+        for (int x = 0; x < 19; x++)
         {
-            if (board.getCell(x, y) != CellStatus::Empty)
-            {
-                addNeighbors({x, y, CellStatus::Neighbor}, board);
-            }
+            int pos = index(x, y);
+            if (get(board.black, pos) || get(board.white, pos))
+                addNeighborBits(x, y);
+        }
+    }
+
+    for (int i = 0; i < 6; i++)
+        _candidateMask[i] &= ~(board.black[i] | board.white[i]);
+}
+
+void ActiveZone::addNeighborBits(int cx, int cy)
+{
+    for (int dy = -_radius; dy <= _radius; dy++)
+    {
+        for (int dx = -_radius; dx <= _radius; dx++)
+        {
+            int nx = cx + dx;
+            int ny = cy + dy;
+            if (in_board(nx, ny))
+                set(_candidateMask, nx, ny);
         }
     }
 }
 
-void ActiveZone::addNeighbors(const Move& move, const GameBoard& board)
+const bitboard19& ActiveZone::getCandidateMask() const noexcept
 {
-    for (int dx = -_radius; dx <= _radius; ++dx)
-    {
-        for (int dy = -_radius; dy <= _radius; ++dy)
-        {
-            int nx = move.col + dx;
-            int ny = move.row + dy;
-
-            if (!board.isInside(nx, ny))
-                continue;
-
-            if (!board.isFree(nx, ny))
-                continue;
-
-            _candidates.insert({nx, ny, CellStatus::Neighbor});
-        }
-    }
+    return _candidateMask;
 }
 
-const ActiveZone::CandidateSet& ActiveZone::getCandidates() const noexcept
+bool ActiveZone::contains(int col, int row) const noexcept
 {
-    return _candidates;
+    return get(_candidateMask, index(col, row));
 }
 
-bool ActiveZone::contains(const Move& m) const noexcept
+int ActiveZone::size() const noexcept
 {
-    return _candidates.find(m) != _candidates.end();
-}
-
-std::size_t ActiveZone::size() const noexcept
-{
-    return _candidates.size();
+    return popcount_bb(_candidateMask);
 }
 
 void ActiveZone::clear()
 {
-    _candidates.clear();
+    memset(_candidateMask, 0, sizeof(_candidateMask));
 }
 
-void    ActiveZone::setRadius(int radius) noexcept
+void ActiveZone::setRadius(int radius) noexcept
 {
     _radius = radius;
 }
-        
-int     ActiveZone::getRadius() const noexcept
+
+int ActiveZone::getRadius() const noexcept
 {
     return _radius;
 }
