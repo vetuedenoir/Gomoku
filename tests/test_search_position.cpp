@@ -2,21 +2,12 @@
 #include "game/GameBoard.hpp"
 #include "game/Seat.hpp"
 #include "optimization/SearchPosition.hpp"
-#include "optimization/ZobristHasher.hpp"
 #include "bitboard.hpp"
-
-static ZobristHasher& hasher()
-{
-    static ZobristHasher h(19);
-    static bool          ready = false;
-    if (!ready) { h.init(); ready = true; }
-    return h;
-}
 
 static SearchPosition emptyPos()
 {
     GameBoard board(19, Seat::First);
-    return SearchPosition::fromBoard(board, hasher());
+    return SearchPosition::fromBoard(board);
 }
 
 TEST_CASE("make/undo single move restores hash")
@@ -65,7 +56,7 @@ TEST_CASE("incremental hash matches full recompute")
     pos.makeMove(10, 10, CellStatus::White);
 
     uint64_t incremental = pos.zobristHash();
-    uint64_t recomputed  = hasher().compute(pos.board());
+    uint64_t recomputed  = SearchPosition::hasher().compute(pos.board());
 
     CHECK(incremental == recomputed);
 }
@@ -81,12 +72,12 @@ TEST_CASE("incremental hash matches full recompute")
 TEST_CASE("different stone placements produce different hashes")
 {
     GameBoard boardA(19, Seat::First);
-    SearchPosition posA = SearchPosition::fromBoard(boardA, hasher());
+    SearchPosition posA = SearchPosition::fromBoard(boardA);
     posA.makeMove(5, 5, CellStatus::Black);
     posA.makeMove(6, 6, CellStatus::White);
 
     GameBoard boardB(19, Seat::First);
-    SearchPosition posB = SearchPosition::fromBoard(boardB, hasher());
+    SearchPosition posB = SearchPosition::fromBoard(boardB);
     posB.makeMove(6, 6, CellStatus::Black);
     posB.makeMove(5, 5, CellStatus::White);
 

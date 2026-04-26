@@ -10,16 +10,35 @@ static bitboard19& plane(t_BWBoard19& board, CellStatus color)
     return (color == CellStatus::Black) ? board.black : board.white;
 }
 
+static ZobristHasher& sharedHasher()
+{
+    static ZobristHasher h(19);
+    static bool          ready = false;
+
+    if (!ready)
+    {
+        h.init();
+        ready = true;
+    }
+    return h;
+}
+
 SearchPosition::SearchPosition(t_BWBoard19 board, uint64_t hash, Color side, const ZobristHasher* hasher)
     : _board(board), _hash(hash), _sideToMove(side), _hasher(hasher)
 {}
 
-SearchPosition SearchPosition::fromBoard(const GameBoard& src, const ZobristHasher& hasher)
+SearchPosition SearchPosition::fromBoard(const GameBoard& src)
 {
+    const ZobristHasher& hasher = SearchPosition::hasher();
     t_BWBoard19 bb   = GameBoard_to_bitboard(src);
     uint64_t    hash = hasher.compute(bb);
     Color       side = (src.currentSeat() == Seat::First) ? Color::Black : Color::White;
     return SearchPosition(bb, hash, side, &hasher);
+}
+
+const ZobristHasher& SearchPosition::hasher()
+{
+    return sharedHasher();
 }
 
 void SearchPosition::makeMove(int col, int row, CellStatus color)

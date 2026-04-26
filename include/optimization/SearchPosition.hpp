@@ -14,13 +14,12 @@
 //
 // fromBoard() is the sole entry point from the UI layer — it converts once
 // at the root of each AI turn and the engine stays in bitboard space.
-//
-// Lifetime rule: the ZobristHasher passed to fromBoard() must outlive this object.
 
 class SearchPosition
 {
     public:
-        static SearchPosition fromBoard(const GameBoard& src, const ZobristHasher& hasher);
+        static SearchPosition fromBoard(const GameBoard& src);
+        static const ZobristHasher& hasher();
 
         void makeMove(int col, int row, CellStatus color);
         void undoMove(int col, int row, CellStatus color);

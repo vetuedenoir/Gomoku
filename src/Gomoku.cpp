@@ -2,7 +2,6 @@
 #include "interface.hpp"
 #include "logger/Logger.hpp"
 #include "game/OpeningScript.hpp"
-#include "optimization/ZobristHasher.hpp"
 #include <algorithm>
 #include <random>
 #include <iostream>
@@ -164,12 +163,6 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
                 if (_gameState->board.placeStone(col, row)) {
                     Logger::debug("NORMAL",
                         std::string(color) + " → (" + std::to_string(col) + "," + std::to_string(row) + ") ✓");
-
-                    // TODO: temporary — move into SearchPosition::fromBoard() when AI layer exists
-                    t_BWBoard19    bb   = GameBoard_to_bitboard(_gameState->board);
-                    ZobristHasher  hasher(_config.boardSize);
-                    uint64_t       hash = hasher.compute(bb);
-                    Logger::debug("HASH", "position hash = " + std::to_string(hash));
                 }
                 else {
                     Logger::warn("NORMAL",
