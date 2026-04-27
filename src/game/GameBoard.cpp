@@ -11,6 +11,14 @@ bool GameBoard::isFree(int col, int row) const
     return _board[row][col] == CellStatus::Empty;
 }
 
+bool GameBoard::isInside(int col, int row) const
+{
+    if ((col >= 0 && row >= 0) && (col <= _size && row <= _size)) {
+        return true;
+    }
+    return false;
+}
+
 CellStatus GameBoard::getCell(int col, int row) const
 {
     return _board[row][col];
@@ -46,6 +54,13 @@ bool GameBoard::placeStone(int col, int row)
     _board[row][col] = (_currentPlayer == Seat::First) ? CellStatus::Black : CellStatus::White;
     switchPlayer();
     return true;
+}
+
+void GameBoard::clearCell(int col, int row)
+{
+    if (col < 0 || col >= _size || row < 0 || row >= _size)
+        return;
+    _board[row][col] = CellStatus::Empty;
 }
 
 bool GameBoard::placeStoneOfColor(int col, int row, CellStatus color)

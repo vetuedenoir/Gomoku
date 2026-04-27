@@ -11,6 +11,11 @@ struct Move
     int        col;
     int        row;
     CellStatus forcedColor;
+
+    bool operator==(const Move& other) const noexcept
+    {
+        return col == other.col && row == other.row;
+    }
 };
 
 #endif
