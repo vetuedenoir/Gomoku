@@ -27,6 +27,7 @@ static const char* phaseStr(GamePhase p)
         case GamePhase::NormalPlay:       return "Normal play";
         default:                         return "Unknown phase";
     }
+    return "undefined";
 }
 
 static Seat toSeat(OpeningActor a)

@@ -31,7 +31,7 @@ SRC_DIR   := src
 INC_DIR   := include
 OBJ_DIR   := .build
 
-ALL_SRCS := $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/ui/*.cpp) $(wildcard $(SRC_DIR)/game/*.cpp) $(wildcard $(SRC_DIR)/logger/*.cpp)
+ALL_SRCS := $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/ui/*.cpp) $(wildcard $(SRC_DIR)/game/*.cpp) $(wildcard $(SRC_DIR)/ai/*.cpp) $(wildcard $(SRC_DIR)/logger/*.cpp) $(wildcard $(SRC_DIR)/optimization/*.cpp)
 SRCS      := $(patsubst $(SRC_DIR)/%,%,$(ALL_SRCS))
 
 # =============================================================================
@@ -86,7 +86,8 @@ DOCKER_TMP   := gomoku-tmp
 .PHONY: all clean fclean re \
         test run_tests \
         docker-build docker-run docker-extract docker-clean \
-	podman-build podman-run podman-extract podman-clean
+	podman-build podman-run podman-extract podman-clean \
+	help
 
 all: $(NAME)
 
@@ -110,8 +111,11 @@ TEST_DIR      := tests
 EXT_INC_DIR   := external/doctest
 FILTER        ?=
 
-# Sources compiled for tests: pure game/logger logic only (no main, no UI, no SFML)
-TEST_GAME_SRCS := $(wildcard $(SRC_DIR)/game/*.cpp) $(wildcard $(SRC_DIR)/logger/*.cpp)
+# Sources compiled for tests: pure logic only — no main, no UI, no SFML
+TEST_GAME_SRCS := $(wildcard $(SRC_DIR)/game/*.cpp) $(wildcard $(SRC_DIR)/ai/*.cpp) \
+                  $(wildcard $(SRC_DIR)/logger/*.cpp) \
+                  $(wildcard $(SRC_DIR)/optimization/*.cpp) \
+                  $(SRC_DIR)/bitboard.cpp
 TEST_SRCS      := $(wildcard $(TEST_DIR)/*.cpp)
 
 TEST_GAME_OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(TEST_OBJ_DIR)/%.o,$(TEST_GAME_SRCS))
@@ -228,3 +232,39 @@ docker-clean:
 	@echo "$(GREEN)Done$(NOC)"
 
 -include $(DEPS)
+
+# =============================================================================
+# HELP
+# =============================================================================
+
+help:
+	@echo ""
+	@echo "$(CYAN)Usage:$(NOC)  make $(YELLOW)[target]$(NOC) $(GREEN)[MODE=debug|release]$(NOC) $(GREEN)[FILTER=<test_case>]$(NOC)"
+	@echo ""
+	@echo "$(CYAN)Build targets:$(NOC)"
+	@echo "  $(YELLOW)all$(NOC)              	Build the $(NAME) binary (default)"
+	@echo "  $(YELLOW)re$(NOC)               	Full rebuild (fclean + all)"
+	@echo "  $(YELLOW)clean$(NOC)            	Remove build artifacts (.build/)"
+	@echo "  $(YELLOW)fclean$(NOC)           	Remove build artifacts and binaries"
+	@echo ""
+	@echo "$(CYAN)Test targets:$(NOC)"
+	@echo "  $(YELLOW)test$(NOC)             	Build the test runner ($(TEST_BIN))"
+	@echo "  $(YELLOW)run_tests$(NOC)        	Build and run all tests"
+	@echo "  $(YELLOW)run_tests FILTER=X$(NOC)	Run only test cases matching X"
+	@echo ""
+	@echo "$(CYAN)Docker targets:$(NOC)"
+	@echo "  $(YELLOW)docker-build$(NOC)     	Build the Docker image"
+	@echo "  $(YELLOW)docker-run$(NOC)       	Build and run with X11 forwarding"
+	@echo "  $(YELLOW)docker-extract$(NOC)   	Extract the binary from the image"
+	@echo "  $(YELLOW)docker-clean$(NOC)     	Remove the Docker image"
+	@echo ""
+	@echo "$(CYAN)Podman targets:$(NOC)"
+	@echo "  $(YELLOW)podman-build$(NOC)     	Build the Podman image"
+	@echo "  $(YELLOW)podman-run$(NOC)       	Build and run with X11 forwarding"
+	@echo "  $(YELLOW)podman-extract$(NOC)   	Extract the binary from the image"
+	@echo "  $(YELLOW)podman-clean$(NOC)     	Remove the Podman image"
+	@echo ""
+	@echo "$(CYAN)Options:$(NOC)"
+	@echo "  $(GREEN)MODE=release$(NOC)     	Optimised build (default)"
+	@echo "  $(GREEN)MODE=debug$(NOC)       	Debug build (-g -O0 -DDEBUG)"
+	@echo ""
