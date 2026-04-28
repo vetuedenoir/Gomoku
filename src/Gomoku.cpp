@@ -168,6 +168,7 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
                     Logger::warn("NORMAL",
                         std::string("(") + std::to_string(col) + "," + std::to_string(row)
                         + ") rejected — cell occupied");
+                test_bitboard(_gameState->board, col, row); // col et row sont inverse
                 }
             }
             break;

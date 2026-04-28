@@ -8,9 +8,6 @@
 #include <cstdint>
 #include <iostream>
 
-
-
-
 typedef uint64_t bitboard19[6];
 
 typedef uint64_t bitboard15[4];
@@ -26,22 +23,36 @@ typedef struct s_BWBoard15 {
 }   t_BWBoard15;
 
 
-
-// il y a un padding de 1 bit entre les lignes, donc on peut faire 20x20 = 400 cases 
-// avec 6 uint64_t (384 bits) + 16 bits de padding
-inline int index(int x, int y) { return y * 20 + x; }
-
-inline void set(bitboard19 &bb, int x, int y)
+inline int	index_bb19(int x, int y)
 {
-    int idx = index(x, y);
-    bb[idx >> 6] |= (1ULL << (idx & 63));
+	return y * 20 + x;
 }
+
+inline void	set_bb19(bitboard19 &bb, int x, int y)
+{
+	int idx = index_bb19(x, y);
+	bb[idx / 64] |= (1ULL << (idx % 64));
+}
+
+inline bool	get_bb19(const bitboard19& bb, int i)
+{
+	int idx = index_bb19(i % 20, i / 20);
+	return (bb[idx / 64] & (1ULL << (idx % 64))) != 0;
+}
+
+t_BWBoard19	GameBoard_to_bitboard(const GameBoard &board);
+
+
+
+void	print_bb_19(t_BWBoard19 &bb);
+void	print_binaire64(const uint64_t ut);
+void	print_binaire_board19(const bitboard19 bb);
 
 inline bool get(const bitboard19& bb, int i) { return (bb[i >> 6] >> (i & 63)) & 1ULL; }
 
 inline void clear_bit(bitboard19 &bb, int x, int y)
 {
-    int idx = index(x, y);
+    int idx = index_bb19(x, y);
     bb[idx >> 6] &= ~(1ULL << (idx & 63));
 }
 

@@ -12,8 +12,8 @@
 #include "game/contracts/GameConfig.hpp"
 #include "game/GameState.hpp"
 
-#include "bitboard.hpp"
-
+#include "bitboard/bitboard.hpp"
+#include "bitboard/pattern.hpp"
 
 
 enum class AppState { MainMenu, BoardSize, StoneColor, Opening, Game };
