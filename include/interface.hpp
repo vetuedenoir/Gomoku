@@ -7,8 +7,8 @@
 #include <functional>
 
 
-constexpr unsigned int WIN_W = 1400;
-constexpr unsigned int WIN_H = 1200;
+constexpr unsigned int WIN_W = 1000;
+constexpr unsigned int WIN_H = 800;
 
 // Colors
 inline const sf::Color BG        (18,  18,  32);
