@@ -66,7 +66,7 @@ std::vector<ScanCell> buildOverlayFromActiveZone(const ActiveZone& az)
     {
         for (int x = 0; x < 19; x++)
         {
-            if (get(mask, index(x, y)))
+            if (get_bb19(mask, index_bb19(x, y)))
             {
                 ScanCell cell;
                 cell.x = x;

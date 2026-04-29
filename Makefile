@@ -8,10 +8,12 @@
 UNAME_S   := $(shell uname -s)
 
 ifeq ($(UNAME_S),Linux)
+	NPROC := $(shell nproc)
 	CXX         := c++
 	CXXFLAGS_OS := -D_GNU_SOURCE
 	LDFLAGS_OS  :=
 else ifeq ($(UNAME_S),Darwin)
+	NPROC := $(shell sysctl -n hw.ncpu)
 	CXX         := clang++
 	CXXFLAGS_OS := -arch arm64 -I$(SFML_ROOT)/include
 	LDFLAGS_OS  := -L$(SFML_ROOT)/build/lib \
@@ -31,7 +33,14 @@ SRC_DIR   := src
 INC_DIR   := include
 OBJ_DIR   := .build
 
-ALL_SRCS := $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/ui/*.cpp) $(wildcard $(SRC_DIR)/game/*.cpp) $(wildcard $(SRC_DIR)/ai/*.cpp) $(wildcard $(SRC_DIR)/logger/*.cpp) $(wildcard $(SRC_DIR)/optimization/*.cpp)
+ALL_SRCS := $(wildcard $(SRC_DIR)/*.cpp) \
+	$(wildcard $(SRC_DIR)/game/*.cpp) \
+	$(wildcard $(SRC_DIR)/ai/*.cpp) \
+	$(wildcard $(SRC_DIR)/logger/*.cpp) \
+	$(wildcard $(SRC_DIR)/optimization/*.cpp) \
+	$(wildcard $(SRC_DIR)/bitboard/*.cpp) \
+	$(wildcard $(SRC_DIR)/ui/*.cpp)
+
 SRCS      := $(patsubst $(SRC_DIR)/%,%,$(ALL_SRCS))
 
 # =============================================================================
@@ -49,6 +58,8 @@ endif
 # =============================================================================
 # COMPILER FLAGS
 # =============================================================================
+
+MAKEFLAGS += -j$(NPROC)
 
 CXXFLAGS  := -std=c++17 -Wall -Wextra -Werror \
              -I$(INC_DIR) \
@@ -115,7 +126,7 @@ FILTER        ?=
 TEST_GAME_SRCS := $(wildcard $(SRC_DIR)/game/*.cpp) $(wildcard $(SRC_DIR)/ai/*.cpp) \
                   $(wildcard $(SRC_DIR)/logger/*.cpp) \
                   $(wildcard $(SRC_DIR)/optimization/*.cpp) \
-                  $(SRC_DIR)/bitboard.cpp
+                  $(wildcard $(SRC_DIR)/bitboard/*.cpp)
 TEST_SRCS      := $(wildcard $(TEST_DIR)/*.cpp)
 
 TEST_GAME_OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(TEST_OBJ_DIR)/%.o,$(TEST_GAME_SRCS))

@@ -5,7 +5,7 @@
 #include "game/GameBoard.hpp"
 #include "game/contracts/Color.hpp"
 #include "optimization/ZobristHasher.hpp"
-#include "bitboard.hpp"
+#include "bitboard/bitboard.hpp"
 
 // AI's mutable board state for use during search.
 //

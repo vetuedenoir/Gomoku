@@ -14,8 +14,8 @@ void ActiveZone::initialize(const t_BWBoard19& board)
     {
         for (int x = 0; x < 19; x++)
         {
-            int pos = index(x, y);
-            if (get(board.black, pos) || get(board.white, pos))
+            int pos = index_bb19(x, y);
+            if (get_bb19(board.black, pos) || get_bb19(board.white, pos))
                 addNeighborBits(x, y);
         }
     }
@@ -33,7 +33,7 @@ void ActiveZone::addNeighborBits(int cx, int cy)
             int nx = cx + dx;
             int ny = cy + dy;
             if (in_board(nx, ny))
-                set(_candidateMask, nx, ny);
+                set_bb19(_candidateMask, nx, ny);
         }
     }
 }
@@ -45,7 +45,7 @@ const bitboard19& ActiveZone::getCandidateMask() const noexcept
 
 bool ActiveZone::contains(int col, int row) const noexcept
 {
-    return get(_candidateMask, index(col, row));
+    return get_bb19(_candidateMask, index_bb19(col, row));
 }
 
 int ActiveZone::size() const noexcept
