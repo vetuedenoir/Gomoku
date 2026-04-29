@@ -163,12 +163,12 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
                 if (_gameState->board.placeStone(col, row)) {
                     Logger::debug("NORMAL",
                         std::string(color) + " → (" + std::to_string(col) + "," + std::to_string(row) + ") ✓");
+                        test_bitboard(_gameState->board, col, row); // col et row sont inverse
                 }
                 else {
                     Logger::warn("NORMAL",
                         std::string("(") + std::to_string(col) + "," + std::to_string(row)
-                        + ") rejected — cell occupied");
-                test_bitboard(_gameState->board, col, row); // col et row sont inverse
+                        + ") rejected — cell occupied");                      
                 }
             }
             break;

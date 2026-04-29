@@ -1,7 +1,7 @@
 #ifndef ACTIVEZONE_HPP
 # define ACTIVEZONE_HPP
 
-#include "bitboard.hpp"
+#include "bitboard/bitboard.hpp"
 
 class ActiveZone
 {

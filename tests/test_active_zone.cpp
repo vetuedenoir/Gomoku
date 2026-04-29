@@ -2,7 +2,7 @@
 #include "game/GameBoard.hpp"
 #include "ai/ActiveZone.hpp"
 #include "game/DebugBoard.hpp"
-#include "bitboard.hpp"
+#include "bitboard/bitboard.hpp"
 
 static GameBoard empty_board()
 {

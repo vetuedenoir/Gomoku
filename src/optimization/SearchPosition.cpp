@@ -43,7 +43,7 @@ const ZobristHasher& SearchPosition::hasher()
 
 void SearchPosition::makeMove(int col, int row, CellStatus color)
 {
-    set(plane(_board, color), col, row);
+    set_bb19(plane(_board, color), col, row);
     _hash ^= _hasher->key(col, row, toColor(color));
     _sideToMove = (_sideToMove == Color::Black) ? Color::White : Color::Black;
 }

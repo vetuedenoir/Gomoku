@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <random>
 #include "game/contracts/Color.hpp"
-#include "bitboard.hpp"
+#include "bitboard/bitboard.hpp"
 
 // Static Zobrist lookup table.
 //

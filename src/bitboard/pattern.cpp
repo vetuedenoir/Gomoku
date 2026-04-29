@@ -1,4 +1,4 @@
-#include "../include/bitboard/pattern.hpp"
+#include "bitboard/pattern.hpp"
 
 void	pattern_universel(bitboard19 bb, int size, int pos, int strides)
 {
