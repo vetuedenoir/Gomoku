@@ -2,7 +2,7 @@
 #include "game/GameBoard.hpp"
 #include "game/Seat.hpp"
 #include "optimization/SearchPosition.hpp"
-#include "bitboard.hpp"
+#include "bitboard/bitboard.hpp"
 
 static SearchPosition emptyPos()
 {
@@ -91,11 +91,11 @@ TEST_CASE("makeMove sets stone in correct bitboard plane")
     pos.makeMove(5, 7, CellStatus::Black);
     pos.makeMove(9, 3, CellStatus::White);
 
-    CHECK(get(pos.board().black, index(5, 7)) == true);
-    CHECK(get(pos.board().white, index(5, 7)) == false);
+    CHECK(get_bb19(pos.board().black, index_bb19(5, 7)) == true);
+    CHECK(get_bb19(pos.board().white, index_bb19(5, 7)) == false);
 
-    CHECK(get(pos.board().white, index(9, 3)) == true);
-    CHECK(get(pos.board().black, index(9, 3)) == false);
+    CHECK(get_bb19(pos.board().white, index_bb19(9, 3)) == true);
+    CHECK(get_bb19(pos.board().black, index_bb19(9, 3)) == false);
 }
 
 TEST_CASE("undoMove clears stone from bitboard")
@@ -108,6 +108,6 @@ TEST_CASE("undoMove clears stone from bitboard")
     pos.undoMove(9, 3, CellStatus::White);
     pos.undoMove(5, 7, CellStatus::Black);
 
-    CHECK(get(pos.board().black, index(5, 7)) == false);
-    CHECK(get(pos.board().white, index(9, 3)) == false);
+    CHECK(get_bb19(pos.board().black, index_bb19(5, 7)) == false);
+    CHECK(get_bb19(pos.board().white, index_bb19(9, 3)) == false);
 }

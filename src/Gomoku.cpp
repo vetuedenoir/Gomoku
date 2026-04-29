@@ -168,9 +168,7 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
                 else {
                     Logger::warn("NORMAL",
                         std::string("(") + std::to_string(col) + "," + std::to_string(row)
-                        + ") rejected — cell occupied");
-                        std::cout << "salue la dedan" << std::endl;
-                        
+                        + ") rejected — cell occupied");                      
                 }
             }
             break;
