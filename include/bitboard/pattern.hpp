@@ -28,7 +28,6 @@ typedef struct {
 	int  left_pos[4];	// 16 bytes
 	int  right_pos[4];	// 16 bytes
 	uint32_t count;	// 4 bytes
-	uint8_t padding[4];		// 4 bytes de padding pour aligner à 232 bytes
 } t_MaskList4;
 
 typedef struct {
@@ -38,10 +37,10 @@ typedef struct {
 
 
 typedef struct {
-	t_PatternGroup	masks[4]; // position relative. 624 bytes
-	uint32_t		count;	// 4 bytes
-	uint8_t			padding[4];	// 4 bytes de padding pour aligner à 632 bytes
-} t_MaskList_Groupe4;  // 632 bytes total
+	t_PatternGroup	masks[5];	// 780
+	uint32_t		count;		// 4
+	uint8_t			padding[16];
+} t_MaskList_Groupe4; 	// 800 bytes total
 
 
 int	isWin_ultra(t_MaskList5 lookup_table5[361][4], const bitboard19& board,
