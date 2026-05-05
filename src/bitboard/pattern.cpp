@@ -326,7 +326,7 @@ int is_Open_4(t_MaskList4 lookup_table4[361][4], const bitboard19 &boardA, const
 
 
 static void add_pattern_group_to_lookup(t_MaskList_Groupe4 lookup_table[361][4],
-                                        t_PatternGroup *group,
+                                        t_PatternGroup4 *group,
                                         int start_x, int start_y, int dir)
 {
     for (int i = 0; i < 5; i++) {
@@ -368,7 +368,7 @@ void build_lookup_table_groupe4(t_MaskList_Groupe4 lookup_table_groupe4[361][4])
 	// 1. Horizontal (stride = 1)
 	for (int y = 0; y < 19; y++) {
 		for (int x = 0; x <= 14; x++) {
-			t_PatternGroup gmask = {};
+			t_PatternGroup4 gmask = {};
 			int start_pos = y * 20 + x;
 
 			for (int i = 0; i < 5; i++) {
@@ -392,7 +392,7 @@ void build_lookup_table_groupe4(t_MaskList_Groupe4 lookup_table_groupe4[361][4])
 	// 2. Vertical (stride = 20)
 	for (int x = 0; x < 19; x++) {
 		for (int y = 0; y <= 14; y++) {
-			t_PatternGroup gmask = {};
+			t_PatternGroup4 gmask = {};
 			int start_pos = y * 20 + x;
 
 			for (int i = 0; i < 5; i++) {
@@ -416,7 +416,7 @@ void build_lookup_table_groupe4(t_MaskList_Groupe4 lookup_table_groupe4[361][4])
 	// // 3. Diagonale \ (stride = 21)
 	for (int y = 0; y <= 14; y++) {
 		for (int x = 0; x <= 14; x++) {
-			t_PatternGroup gmask = {};
+			t_PatternGroup4 gmask = {};
 			int start_pos = y * 20 + x;
 
 			for (int i = 0; i < 5; i++) {
@@ -440,7 +440,7 @@ void build_lookup_table_groupe4(t_MaskList_Groupe4 lookup_table_groupe4[361][4])
 	// // 4. Diagonale / (stride = 19)
 	for (int y = 0; y <= 14; y++) {
 		for (int x = 4; x < 19; x++) {
-			t_PatternGroup gmask = {};
+			t_PatternGroup4 gmask = {};
 			int start_pos = y * 20 + x;
 
 			for (int i = 0; i < 5; i++) {
@@ -485,7 +485,7 @@ int check_four_align(const t_MaskList_Groupe4 lookup_table[361][4], const bitboa
 		
 		for (int i = 0; i < count; i++) // boucle des positions relatives
 		{
-			const t_PatternGroup& groupe = list_groupe.masks[i];
+			const t_PatternGroup4& groupe = list_groupe.masks[i];
 
 			if (!get_bb19(boardB, groupe.hole_pos[0]) && match_pattern(groupe.patterns[0], boardA))
 				return 1;
@@ -498,6 +498,232 @@ int check_four_align(const t_MaskList_Groupe4 lookup_table[361][4], const bitboa
 	return 0;
 }
 
+static void	add_pattern_group3_to_lookup(t_MaskList_Groupe3 lookup_table3[361][4],
+										t_PatternGroupe3 *group, int dir)
+{
+	// Parcours des 4 positions de pierres (certaines peuvent être -1 si hors plateau)
+    for (int i = 0; i < 4; i++) {
+        int pos = group->stone_pos[i];
+        if (pos == -1) // petit doute sur la validité de cette condition, a tester
+			continue; // position invalide, on ignore
+        
+        // Conversion position absolue (avec padding 1 bit) -> coordonnées plateau logique
+        int x = pos % 20;
+        int y = pos / 20;
+        int cell = y * 19 + x;   // 0..360
+        
+        t_MaskList_Groupe3 *list = &lookup_table3[cell][dir];
+        if (list->count < 4) {
+            list->patterns[list->count] = *group; // copie du pattern
+            list->count++;
+        }
+    }
+
+}
+
+void	build_lookup_table3(t_MaskList_Groupe3 lookup_table3[361][4]) {
+	int total_patterns3 = 0;
+
+	// 1. Horizontal (stride = 1)
+	for (int y = 0; y < 19; y++)
+	{
+		for (int x = 0; x < 16; x++)
+		{
+			t_PatternGroupe3 pattern = {};
+			int start_pos = y * 20 + x;
+			
+			for (int i = 0; i < 4; i++)
+			{
+				pattern.stone_pos[i] = start_pos + i;
+				if (x + i == 19)
+				{
+					pattern.stone_pos[i] = -1;
+					pattern.count = 1;
+				}
+				if  (i == 3)
+					pattern.count = 3;
+			}
+			pattern.hole_pos[0] = start_pos + 1;
+			pattern.hole_pos[1] = start_pos + 2;
+			pattern.oposant_pos[0] = (x - 2 >= 0) ? (start_pos - 2) : -1;
+			pattern.oposant_pos[1] = (x - 1 >= 0) ? (start_pos - 1) : -1;
+			pattern.oposant_pos[2] = (x + 3 < 19) ? (start_pos + 3) : -1;
+			pattern.oposant_pos[3] = (x + 4 < 19) ? (start_pos + 4) : -1;
+			add_pattern_group3_to_lookup(lookup_table3, &pattern, DIR_HORIZ);
+			total_patterns3++;
+		}
+	}
+
+	// 2. Vertical (stride = 20)
+	for (int y = 0; y < 16; y++)
+	{
+		for (int x = 0; x < 19; x++)
+		{
+			t_PatternGroupe3 pattern = {};
+			int start_pos = y * 20 + x;
+			
+			for (int i = 0; i < 4; i++)
+			{
+				pattern.stone_pos[i] = start_pos + i * 20;
+				if (y + i == 19)
+				{
+					pattern.stone_pos[i] = -1;
+					pattern.count = 1;
+				}
+				if  (i == 3)
+					pattern.count = 3;
+			}
+			pattern.hole_pos[0] = start_pos + 1 * 20;
+			pattern.hole_pos[1] = start_pos + 2 * 20;
+			pattern.oposant_pos[0] = (y - 2 >= 0) ? (start_pos - 2 * 20) : -1;
+			pattern.oposant_pos[1] = (y - 1 >= 0) ? (start_pos - 1 * 20) : -1;
+			pattern.oposant_pos[2] = (y + 3 < 19) ? (start_pos + 3 * 20) : -1;
+			pattern.oposant_pos[3] = (y + 4 < 19) ? (start_pos + 4 * 20) : -1;
+			add_pattern_group3_to_lookup(lookup_table3, &pattern, DIR_VERT);
+			total_patterns3++;
+		}
+	}
+
+	// 3. Diagonale \ (stride = 21)
+	for (int y = 0; y < 16; y++)
+	{
+		for (int x = 0; x < 16; x++)
+		{
+			t_PatternGroupe3 pattern = {};
+			int start_pos = y * 20 + x;
+			
+			for (int i = 0; i < 4; i++)
+			{
+				pattern.stone_pos[i] = start_pos + i * 21;
+				if (y + i == 19)
+				{
+					pattern.stone_pos[i] = -1;
+					pattern.count = 1;
+				}
+				if  (i == 3)
+					pattern.count = 3;
+			}
+			pattern.hole_pos[0] = start_pos + 1 * 21;
+			pattern.hole_pos[1] = start_pos + 2 * 21;
+			pattern.oposant_pos[0] = (y - 2 >= 0 && x - 2 >= 0) ? (start_pos - 2 * 21) : -1;
+			pattern.oposant_pos[1] = (y - 1 >= 0 && x - 1 >= 0) ? (start_pos - 1 * 21) : -1;
+			pattern.oposant_pos[2] = (y + 3 < 19 && x + 3 < 19) ? (start_pos + 3 * 21) : -1;
+			pattern.oposant_pos[3] = (y + 4 < 19 && x + 4 < 19) ? (start_pos + 4 * 21) : -1;
+			add_pattern_group3_to_lookup(lookup_table3, &pattern, DIR_DIAG_G);
+			total_patterns3++;
+		}
+	}
+
+	// 4. Diagonale / (stride = 19)
+	for (int y = 0; y < 16; y++)
+	{
+		for (int x = 2; x < 19; x++)
+		{
+			t_PatternGroupe3 pattern = {};
+			int start_pos = y * 20 + x;
+			
+			for (int i = 0; i < 4; i++)
+			{
+				pattern.stone_pos[i] = start_pos + i * 19;
+				if (y + i == 19)
+				{
+					pattern.stone_pos[i] = -1;
+					pattern.count = 1;
+				}
+				if  (i == 3)
+					pattern.count = 3;
+			}
+			pattern.hole_pos[0] = start_pos + 1 * 19;
+			pattern.hole_pos[1] = start_pos + 2 * 19;
+			pattern.oposant_pos[0] = (y - 2 >= 0 && x + 2 < 19) ? (start_pos - 2 * 19) : -1;
+			pattern.oposant_pos[1] = (y - 1 >= 0 && x + 1 < 19) ? (start_pos - 1 * 19) : -1;
+			pattern.oposant_pos[2] = (y + 4 < 19 && x - 4 >= 0) ? (start_pos + 4 * 19) : -1;
+			pattern.oposant_pos[3] = (y + 3 < 19 && x - 3 >= 0) ? (start_pos + 3 * 19) : -1;
+			add_pattern_group3_to_lookup(lookup_table3, &pattern, DIR_DIAG_D);
+			total_patterns3++;
+		}
+	}
+	std::cout << "total_patterns3: " << total_patterns3 << std::endl;
+}
+
+int	check_three_align(const t_MaskList_Groupe3 lookup_table[361][4], const bitboard19 &boardA, const bitboard19 &boardB,
+						const int x, const int y)
+{
+	const int	idx = IDX(x, y);
+	int			total_score = 0;
+	int			double_three = 0;
+
+	for (int dir = 0; dir < 4; dir++) // parcour des 4 directions
+	{
+		const t_MaskList_Groupe3	&list_groupe = lookup_table[idx][dir];
+		const int	count = list_groupe.count;
+
+		for (int pos = 0; pos < count; pos++)
+		{
+			// cas 00xxx00					valeur max : vaut 8
+			// 10xxx00, 00xx01				valeur moyen, same: oposant_pos[0] et [3] = 128
+			// 10xxx01, 01xxx00	 00xxx10	valeur min, same: oposant_pos[1] et [2] = 256
+
+			// 00X0XX0 et 00XX0X0			valeur max: vaut 16
+			// 10X0XX0, 00X0XX1, 01XX0X0, 00XX0X1	valeur moyen
+			// 10X0XX1 								valeur min
+
+			// double three : on divise la valeur par 4;
+			const t_PatternGroupe3& pattern = list_groupe.patterns[pos];
+			int		score = 0;
+			score  = 0;
+
+			if (pattern.oposant_pos[1] == -1 || get_bb19(boardB, pattern.oposant_pos[1]))
+				score = 256;
+			else if (pattern.oposant_pos[0] == -1 || get_bb19(boardB, pattern.oposant_pos[0]))
+				score = 128;
+			if (pattern.oposant_pos[2] == -1 || get_bb19(boardB, pattern.oposant_pos[2]))
+				score += 256;
+			else if (pattern.oposant_pos[3] == -1 || get_bb19(boardB, pattern.oposant_pos[3]))
+				score += 128;
+			
+			if (score > 256)
+			{
+					continue; // alignement de 3 pierre complètement fermé, on ignore
+			}	
+				
+			if (get_bb19(boardA, pattern.stone_pos[0]) && 
+				get_bb19(boardA, pattern.stone_pos[1]) &&
+				get_bb19(boardA, pattern.stone_pos[2]))
+			{
+				std::cout << "alignement de 3 pierre complètement ouvert, on ignore, score = " << score << std::endl;
+				total_score += score + 8;
+				double_three += 1;		
+					continue;
+			}
+			if (pattern.stone_pos[3] == -1)
+				continue;
+			// std::cout << "pattern: hole pos[0] = " << pattern.hole_pos[0] << "hole pos[1] = " << pattern.hole_pos[1] << ", stone pos = " << pattern.stone_pos[0] << std::endl;
+			if (!get_bb19(boardB, pattern.hole_pos[0]) && get_bb19(boardA, pattern.stone_pos[0]) && get_bb19(boardA, pattern.stone_pos[2]) &&
+				get_bb19(boardA, pattern.stone_pos[3]))
+			{
+				total_score += score + 16;
+				double_three += 1;
+				// std::cout << "alignement de 3 pierre avec troue, on ignore, score = " << score << std::endl;
+				continue;
+			}
+			if (!get_bb19(boardB, pattern.hole_pos[1]) && get_bb19(boardA, pattern.stone_pos[0]) && get_bb19(boardA, pattern.stone_pos[1]) &&
+				get_bb19(boardA, pattern.stone_pos[3]))
+			{
+				total_score += score + 16;
+				double_three += 1;
+				// std::cout << "alignement de 3 pierre avec troue 2, on ignore, score = " << score << std::endl;
+				continue;
+			}
+		}
+		if (double_three == 2)
+			return total_score / 4;
+	}
+	if (double_three == 0)
+		return 100000;
+	return total_score;
+}
+
 void	test_bitboard(const GameBoard& board, int x, int y)
 {
 	static bitboard19	all_masks5[MAX_WINNING_MASK] = {};
@@ -508,11 +734,14 @@ void	test_bitboard(const GameBoard& board, int x, int y)
 
 	static t_MaskList_Groupe4 lookup_table_groupe4[361][4] = {};
 
+	static t_MaskList_Groupe3 lookup_table3[361][4] = {};
+
 	static bool initialized = false;
 	if (!initialized) {
 		build_lookup_table5(lookup_table5, all_masks5);
 		build_lookup_table4(lookup_table4, all_masks4);
 		build_lookup_table_groupe4(lookup_table_groupe4);
+		build_lookup_table3(lookup_table3);
 		initialized = true;
 	}
 
@@ -542,5 +771,12 @@ void	test_bitboard(const GameBoard& board, int x, int y)
 		std::cout << "alignement de 4 pierre noir avec troue" << std::endl;
 	else if (check_four_align(lookup_table_groupe4, bitboard.white, bitboard.black, x, y) > 0)
 		std::cout << "alignement de 4 pierre blanche avec troue" << std::endl;
+	
+	int	three_black = check_three_align(lookup_table3, bitboard.black, bitboard.white, x, y);
+	int	three_white = check_three_align(lookup_table3, bitboard.white, bitboard.black, x, y);
+
+	std::cout << "valeur de retour, detection three black:  " << three_black << std::endl;
+	std::cout << "valeur de retour, detection three white:  " << three_white << std::endl;
+
 
 }
