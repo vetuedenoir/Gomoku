@@ -33,14 +33,29 @@ typedef struct {
 typedef struct {
 	uint64_t	patterns[3][6];  // 3 patterns × 6 uint64_t = 144 bytes
 	int			hole_pos[3];	// 12 bytes
-} t_PatternGroup; // 156 bytes total
+} t_PatternGroup4; // 156 bytes total
 
 
 typedef struct {
-	t_PatternGroup	masks[5];	// 780
+	t_PatternGroup4	masks[5];	// 780
 	uint32_t		count;		// 4
 	uint8_t			padding[16];
 } t_MaskList_Groupe4; 	// 800 bytes total
+
+
+// pattern en groupe de 3 pierres 
+
+typedef struct {
+	int		stone_pos[4];	// 16 bytes
+	int		hole_pos[2];	// 8 bytes
+	int		oposant_pos[4];	// 16 bytes
+	int		count;	// 4 bytes
+}	t_PatternGroupe3;
+
+typedef struct {
+	t_PatternGroupe3 patterns[4]; // 4 positions relatives de 3 pierres alignées, soit 4*44 = 176 bytes
+	uint32_t count; // 4 bytes
+} t_MaskList_Groupe3;
 
 
 int	isWin_ultra(t_MaskList5 lookup_table5[361][4], const bitboard19& board,
@@ -88,8 +103,8 @@ void	test_bitboard(const GameBoard& board, int x, int y); // Fonction de test po
 	// [A] [ ] [x] [x] [x] [ ] [A] -> open three ???
 
 
-	// [A] [x] [x] [x] [ ] [ ]-> partiel three
-	// [ ] [ ] [x] [x] [x] [A]-> partiel three
+	// [ ] [A] [x] [x] [x] [ ] [ ]-> partiel three
+	// [ ] [ ] [x] [x] [x] [A] [ ]-> partiel three
 
 	// [ ] [X] [ ] [x] [x] [ ]  -> partiel three ???
 	// [ ] [x] [x] [ ] [x] [ ]  -> partiel three ???
