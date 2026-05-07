@@ -693,8 +693,8 @@ int	check_three_align(const t_MaskList_Groupe3 lookup_table[361][4], const bitbo
 			{
 				// std::cout << "alignement de 3 pierre complètement ouvert, on ignore, score = " << score << std::endl;
 				total_score += score + 8;
-				double_three += 1;		
-					continue;
+				double_three += 1;
+				continue;
 			}
 			if (pattern.stone_pos[3] == -1)
 				continue;
@@ -724,6 +724,279 @@ int	check_three_align(const t_MaskList_Groupe3 lookup_table[361][4], const bitbo
 	return total_score;
 }
 
+
+static void	add_pattern_super4(t_MaskList_super4 lookup_table_super4[361][4], t_super4 *pattern, int start_x, int start_y, int dir)
+{
+	for (int i = 0; i < 7; i++) {
+		int case_x, case_y;
+		switch (dir) {
+			case DIR_HORIZ:
+				case_x = start_x + i;
+				case_y = start_y;
+				break;
+			case DIR_VERT:
+				case_x = start_x;
+				case_y = start_y + i;
+				break;
+			case DIR_DIAG_G:
+				case_x = start_x - i;
+				case_y = start_y + i;
+				break;
+			case DIR_DIAG_D:
+				case_x = start_x + i;
+				case_y = start_y + i;
+				break;
+		}
+		// Sécurité : on reste dans le plateau
+		if (case_x < 0 || case_x >= 19 || case_y < 0 || case_y >= 19)
+			continue;
+
+		int cell = case_y * 19 + case_x;
+		t_MaskList_super4 *list = &lookup_table_super4[cell][dir];
+		if (list->count < 4) {
+			list->l_masks[list->count] = *pattern; // copie du pattern
+			list->count++;
+		}
+	}
+}
+
+
+void build_lookup_table_super4(t_MaskList_super4 lookup_table[361][4])
+{
+	int	total_pattern = 0;
+
+	// horizontal
+	for (int y = 0; y < 19; y++)
+	{
+		for (int x = 0; x < 13; x++)
+		{
+			t_super4	pattern = {};
+			int			start_pos = y * 20 + x;
+
+			for (int i = 0; i < 7; i++)
+			{
+				int	bit = start_pos + i;
+				int	idx = bit >> 6;
+				int	offset = bit & 63;
+
+				pattern.mask[idx] |= (1ULL << offset);
+			}
+			clear_bit(pattern.mask, x + 1, y);
+			pattern.hole_pos[0] = index_bb19(x + 1, y);
+			clear_bit(pattern.mask, x + 5, y);
+			pattern.hole_pos[1] = index_bb19(x + 5, y);
+			add_pattern_super4(lookup_table, &pattern, x, y, DIR_HORIZ);
+			total_pattern++;
+		}
+	}
+
+	// vertical
+	for (int y = 0; y < 13; y++)
+	{
+		for (int x = 0; x < 19; x++)
+		{
+			t_super4	pattern = {};
+			int			start_pos = y * 20 + x;
+
+			for (int i = 0; i < 7; i++)
+			{
+				int	bit = start_pos + i * 20;
+				int	idx = bit >> 6;
+				int	offset = bit & 63;
+
+				pattern.mask[idx] |= (1ULL << offset);
+			}
+			clear_bit(pattern.mask, x, y + 1);
+			pattern.hole_pos[0] = index_bb19(x, y + 1);
+			clear_bit(pattern.mask, x, y + 5);
+			pattern.hole_pos[1] = index_bb19(x, y + 5);
+			add_pattern_super4(lookup_table, &pattern, x, y, DIR_VERT);
+			total_pattern++;
+		}
+	}
+
+	// diagonal \ (stride = 21)
+	for (int y = 0; y < 13; y++)
+	{
+		for (int x = 0; x < 13; x++)
+		{
+			t_super4	pattern = {};
+			int			start_pos = y * 20 + x;
+
+			for (int i = 0; i < 7; i++)
+			{
+				int	bit = start_pos + i * 21;
+				int	idx = bit >> 6;
+				int	offset = bit & 63;
+
+				pattern.mask[idx] |= (1ULL << offset);
+			}
+			clear_bit(pattern.mask, x + 1, y + 1);
+			pattern.hole_pos[0] = index_bb19(x + 1, y + 1);
+			clear_bit(pattern.mask, x + 5, y + 5);
+			pattern.hole_pos[1] = index_bb19(x + 5, y + 5);
+			add_pattern_super4(lookup_table, &pattern, x, y, DIR_DIAG_D);
+			total_pattern++;
+		}
+	}
+
+	// diagonal / (stride = 19)
+	for (int y = 0; y < 13; y++)
+	{
+		for (int x = 6; x < 19; x++)
+		{
+			t_super4	pattern = {};
+			int			start_pos = y * 20 + x;
+
+			for (int i = 0; i < 7; i++)
+			{
+				int	bit = start_pos + i * 19;
+				int	idx = bit >> 6;
+				int	offset = bit & 63;
+
+				pattern.mask[idx] |= (1ULL << offset);
+			}
+			clear_bit(pattern.mask, x - 1, y + 1);
+			pattern.hole_pos[0] = index_bb19(x - 1, y + 1);
+			clear_bit(pattern.mask, x - 5, y + 5);
+			pattern.hole_pos[1] = index_bb19(x - 5, y + 5);
+			add_pattern_super4(lookup_table, &pattern, x, y, DIR_DIAG_G);
+			total_pattern++;
+		}
+	}
+
+	std::cout << "total super4: " << total_pattern << std::endl;
+}
+
+int	check_super4(const t_MaskList_super4 lookup_table[361][4], const bitboard19 &boardA, const bitboard19 &boardB,
+						const int x, const int y)
+{
+	const int	idx = IDX(x, y);
+
+	for (int dir = 0; dir < 4; dir++)
+	{
+		const t_MaskList_super4	&list_super4 = lookup_table[idx][dir];
+		int count = list_super4.count;
+
+		for (int i = 0; i < count; i++)
+		{
+			const t_super4& pattern = list_super4.l_masks[i];
+
+			if (match_pattern(pattern.mask, boardA) &&
+				!get_bb19(boardB, pattern.hole_pos[0]) &&
+				!get_bb19(boardB, pattern.hole_pos[1]))
+			{
+				return 1; // super four détecté
+			}
+		}
+	}
+	return 0;
+}
+
+
+static void	add_pattern_cross_to_lookup(t_PatternList_Cross lookup_table[361], t_cross *pattern)
+{
+	int positions[5] = {pattern->middle, pattern->up, pattern->down, pattern->left, pattern->right};
+
+	for (int i = 0; i < 5; i++) {
+		int pos = positions[i];
+
+		int x = pos % 20;
+		int y = pos / 20;
+		int cell = y * 19 + x;
+
+		t_PatternList_Cross *list = &lookup_table[cell];
+		if (list->count < 5) {
+			list->cross[list->count] = *pattern;
+			list->count++;
+		}
+	}
+}
+
+void	build_lookup_table_cross(t_PatternList_Cross lookup_table[361])
+{
+	int	total_cross = 0;
+
+	for (int y = 1; y < 18; y++)
+	{
+		for (int x = 1; x < 18; x++)
+		{
+			t_cross	pattern = {};
+			int		start_pos = y * 20 + x; // position de la pierre centrale du cross
+
+			pattern.middle = start_pos;
+			pattern.up = start_pos - 20;
+			pattern.down = start_pos + 20;
+			pattern.left = start_pos - 1;
+			pattern.right = start_pos + 1;
+
+			pattern.opposant_up[0] = (y - 3 >= 0) ? (start_pos - 3 * 20) : -1;
+			pattern.opposant_up[1] = (y - 2 >= 0) ? (start_pos - 2 * 20) : -1;
+
+			pattern.opposant_down[0] = (y + 3 < 19) ? (start_pos + 3 * 20) : -1;
+			pattern.opposant_down[1] = (y + 2 < 19) ? (start_pos + 2 * 20) : -1;
+
+			pattern.opposant_left[0] = (x - 3 >= 0) ? (start_pos - 3) : -1;
+			pattern.opposant_left[1] = (x - 2 >= 0) ? (start_pos - 2) : -1;
+
+			pattern.opposant_right[0] = (x + 3 < 19) ? (start_pos + 3) : -1;
+			pattern.opposant_right[1] = (x + 2 < 19) ? (start_pos + 2) : -1;
+			add_pattern_cross_to_lookup(lookup_table, &pattern);
+			total_cross++;
+		}
+	}
+	std::cout << "total cross: " << total_cross << std::endl;
+}
+
+int	check_cross(const t_PatternList_Cross lookup_table[361], const bitboard19 &boardA, const bitboard19 &boardB
+					, const int x, const int y)
+{
+	const int	idx = IDX(x, y);
+	const	t_PatternList_Cross	&list_cross = lookup_table[idx];
+
+	for (int p = 0; p < list_cross.count; p++)
+	{
+		const t_cross	&cross = list_cross.cross[p];
+		int			opposant_score = 0;
+		int			score = 0;
+
+		if (cross.opposant_up[1] == -1 || get_bb19(boardB, cross.opposant_up[1]))
+			opposant_score = 256;
+		else if (cross.opposant_up[0] == -1 || get_bb19(boardB, cross.opposant_up[0]))
+			opposant_score = 128;
+		if (cross.opposant_down[1] == -1 || get_bb19(boardB, cross.opposant_down[1]))
+			opposant_score += 256;
+		else if (cross.opposant_down[0] == -1 || get_bb19(boardB, cross.opposant_down[0]))
+			opposant_score += 128;
+		if (cross.opposant_left[1] == -1 || get_bb19(boardB, cross.opposant_left[1]))
+			opposant_score += 256;
+		else if (cross.opposant_left[0] == -1 || get_bb19(boardB, cross.opposant_left[0]))
+			opposant_score += 128;
+		if (cross.opposant_right[1] == -1 || get_bb19(boardB, cross.opposant_right[1]))
+			opposant_score += 256;
+		else if (cross.opposant_right[0] == -1 || get_bb19(boardB, cross.opposant_right[0]))
+			opposant_score += 128;
+
+		if (opposant_score > 256)
+			continue;
+
+		if (get_bb19(boardA, cross.middle))
+			score += 2;
+		if (get_bb19(boardA, cross.up))
+			score += 3;
+		if (get_bb19(boardA, cross.down))
+			score += 3;
+		if (get_bb19(boardA, cross.left))
+			score += 3;
+		if (get_bb19(boardA, cross.right))
+			score += 3;
+		
+		if (score >= 11) // on a au moins une croix partiel
+			return score + opposant_score;
+	}
+	return 0;
+}
+
 void	test_bitboard(const GameBoard& board, int x, int y)
 {
 	static bitboard19	all_masks5[MAX_WINNING_MASK] = {};
@@ -736,12 +1009,18 @@ void	test_bitboard(const GameBoard& board, int x, int y)
 
 	static t_MaskList_Groupe3 lookup_table3[361][4] = {};
 
+	static t_MaskList_super4 lookup_table_super4[361][4] = {};
+
+	static t_PatternList_Cross lookup_table_cross[361] = {};
+
 	static bool initialized = false;
 	if (!initialized) {
 		build_lookup_table5(lookup_table5, all_masks5);
 		build_lookup_table4(lookup_table4, all_masks4);
 		build_lookup_table_groupe4(lookup_table_groupe4);
 		build_lookup_table3(lookup_table3);
+		build_lookup_table_super4(lookup_table_super4);
+		build_lookup_table_cross(lookup_table_cross);
 		initialized = true;
 	}
 
@@ -777,6 +1056,18 @@ void	test_bitboard(const GameBoard& board, int x, int y)
 
 	std::cout << "valeur de retour, detection three black:  " << three_black << std::endl;
 	std::cout << "valeur de retour, detection three white:  " << three_white << std::endl;
+
+	if (check_super4(lookup_table_super4, bitboard.black, bitboard.white, x, y))
+		std::cout << "super four noir detecte !!!" << std::endl;
+	if (check_super4(lookup_table_super4, bitboard.white, bitboard.black, x, y))
+		std::cout << "super four blanc detecte !!!" << std::endl;
+
+	int cross_black = check_cross(lookup_table_cross, bitboard.black, bitboard.white, x, y);
+	int cross_white = check_cross(lookup_table_cross, bitboard.white, bitboard.black, x, y);
+	if (cross_black > 0)
+		std::cout << "croix noir detecte, score = " << cross_black << std::endl;
+	if (cross_white > 0)
+		std::cout << "croix blanche detecte, score = " << cross_white << std::endl;
 
 
 }

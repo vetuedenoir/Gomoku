@@ -24,6 +24,16 @@ typedef struct {
 
 
 typedef struct {
+	bitboard19	mask;
+	int			hole_pos[2];
+}	t_super4;
+
+typedef struct {
+	t_super4	l_masks[7]; // 7 positions relatives de 4 pierres alignées, soit 7*128 = 896 bytes
+	uint32_t	count;
+}	t_MaskList_super4;
+
+typedef struct {
 	uint64_t masks[4][6]; //4 masks × 6 uint64_t = 192 bytes
 	int  left_pos[4];	// 16 bytes
 	int  right_pos[4];	// 16 bytes
@@ -57,6 +67,23 @@ typedef struct {
 	uint32_t count; // 4 bytes
 } t_MaskList_Groupe3;
 
+typedef struct {
+	int	up;
+	int	down;
+	int	left;
+	int	right;
+	int	middle;
+	int	opposant_up[2];
+	int	opposant_down[2];
+	int	opposant_left[2];
+	int	opposant_right[2];
+}	t_cross;
+
+typedef struct {
+	t_cross	cross[5]; // 5 positions relatives
+	int		count;
+}	t_PatternList_Cross;
+
 
 int	isWin_ultra(t_MaskList5 lookup_table5[361][4], const bitboard19& board,
 	const int x, const int y);
@@ -89,7 +116,7 @@ void	test_bitboard(const GameBoard& board, int x, int y); // Fonction de test po
 	// [X] [X] [ ] [x] [x]  -> partiel four
 	// [X] [X] [x] [ ] [x]  -> partiel four
 
-	// [X] [ ] [X] [X] [x] [ ] [x]  -> open four inutile
+	// [X] [ ] [X] [X] [x] [ ] [x]  -> open four indispendable 
 	// [X] [ ] [x] [x] [x] [ ] [ ]  -> proto open four inutile
 	// [ ] [ ] [X] [X] [x] [ ] [x]  -> proto open four inutile
 
@@ -105,49 +132,6 @@ void	test_bitboard(const GameBoard& board, int x, int y); // Fonction de test po
 
 	// [ ] [A] [x] [x] [x] [ ] [ ]-> partiel three
 	// [ ] [ ] [x] [x] [x] [A] [ ]-> partiel three
-
-	// [ ] [X] [ ] [x] [x] [ ]  -> partiel three ???
-	// [ ] [x] [x] [ ] [x] [ ]  -> partiel three ???
-
-
-	// 8 Les paterns en crois. legal si creer grace a capture.
-	// [ ] [x] [ ]
-	// [x] [x] [x]
-	// [ ] [x] [ ]
-
-	// [ ] [x] [ ]
-	// [x] [ ] [x]
-	// [ ] [x] [ ]
-
-	// 9. Les paterns en T// liste des patternes
-	// 1. alignement de 5 pierres (gagne)
-	// 2. alignement de 4 pierres partiellement ouvert (open four)
-	// 3. alignement de 4 pierres completement ouvert (open four)
-	// 4. alignement de 4 pierres troue (broken four)
-	// [ ] [x] [x] [x] [x] [ ]  -> open four
-	// [A] [x] [x] [x] [x] [ ]  -> partiel four
-	// [ ] [x] [x] [x] [x] [A]  -> partiel four
-
-	// [X] [ ] [x] [x] [x]  -> partiel four
-	// [X] [X] [ ] [x] [x]  -> partiel four
-	// [X] [X] [x] [ ] [x]  -> partiel four
-
-	// [X] [ ] [X] [X] [x] [ ] [x]  -> open four inutile
-	// [X] [ ] [x] [x] [x] [ ] [ ]  -> proto open four inutile
-	// [ ] [ ] [X] [X] [x] [ ] [x]  -> proto open four inutile
-
-	// 5. alignement de 3 pierres partiellement ouvert (open three)
-	// 6. alignement de 3 pierres completement ouvert (open three)
-	// 7. alignement de 3 pierres troue (broken three)
-	// [ ] [x] [x] [x] [ ]  -> open three
-	// [ ] [ ] [x] [x] [x] [ ] [ ] -> open three ???
-	// [A] [ ] [x] [x] [x] [ ] [ ] -> open three ???
-	// [ ] [ ] [x] [x] [x] [ ] [A] -> open three ???
-	// [A] [ ] [x] [x] [x] [ ] [A] -> open three ???
-
-
-	// [A] [x] [x] [x] [ ] [ ]-> partiel three
-	// [ ] [ ] [x] [x] [x] [A]-> partiel three
 
 	// [ ] [X] [ ] [x] [x] [ ]  -> partiel three ???
 	// [ ] [x] [x] [ ] [x] [ ]  -> partiel three ???
