@@ -17,10 +17,12 @@
 
 
 typedef struct {
-	uint64_t masks[5][6];  // 5 masks × 6 uint64_t = 240 bytes
+	bitboard19 masks[5];  // 5 masks × 6 uint64_t = 240 bytes
 	uint32_t count;          // 4 bytes
 	uint8_t padding[4]; // 12 bytes de padding pour aligner à 248 bytes
-} t_MaskList5;  // 248 bytes total
+} t_PatternList5;  // 248 bytes total
+
+//---------------------------------------------------------------------------
 
 
 typedef struct {
@@ -29,31 +31,41 @@ typedef struct {
 }	t_super4;
 
 typedef struct {
-	t_super4	l_masks[7]; // 7 positions relatives de 4 pierres alignées, soit 7*128 = 896 bytes
+	t_super4	patterns[7]; // 7 positions relatives de 4 pierres alignées, soit 7*128 = 896 bytes
 	uint32_t	count;
-}	t_MaskList_super4;
+}	t_PatternList_super4;
+
+//---------------------------------------------------------------------------
+
 
 typedef struct {
-	uint64_t masks[4][6]; //4 masks × 6 uint64_t = 192 bytes
-	int  left_pos[4];	// 16 bytes
-	int  right_pos[4];	// 16 bytes
-	uint32_t count;	// 4 bytes
-} t_MaskList4;
+	bitboard19	mask;
+	int			opposant_left;
+	int			opposant_right;
+}	t_Pattern4;
 
 typedef struct {
-	uint64_t	patterns[3][6];  // 3 patterns × 6 uint64_t = 144 bytes
+	t_Pattern4	patterns[4];
+	int			count;
+}	t_PatternList4;
+
+//---------------------------------------------------------------------------
+
+
+typedef struct {
+	bitboard19	masks[3];  // 3 masks × 6 uint64_t = 144 bytes
 	int			hole_pos[3];	// 12 bytes
 } t_PatternGroup4; // 156 bytes total
 
 
 typedef struct {
-	t_PatternGroup4	masks[5];	// 780
+	t_PatternGroup4	masks[5];	// 780 bytes
 	uint32_t		count;		// 4
 	uint8_t			padding[16];
-} t_MaskList_Groupe4; 	// 800 bytes total
+} t_PatternList_Groupe4; 	// 800 bytes total
 
+//---------------------------------------------------------------------------
 
-// pattern en groupe de 3 pierres 
 
 typedef struct {
 	int		stone_pos[4];	// 16 bytes
@@ -65,7 +77,10 @@ typedef struct {
 typedef struct {
 	t_PatternGroupe3 patterns[4]; // 4 positions relatives de 3 pierres alignées, soit 4*44 = 176 bytes
 	uint32_t count; // 4 bytes
-} t_MaskList_Groupe3;
+} t_PatternList_Groupe3;
+
+//---------------------------------------------------------------------------
+
 
 typedef struct {
 	int	up;
@@ -84,19 +99,14 @@ typedef struct {
 	int		count;
 }	t_PatternList_Cross;
 
+//---------------------------------------------------------------------------
 
-int	isWin_ultra(t_MaskList5 lookup_table5[361][4], const bitboard19& board,
+
+int	isWin_ultra(t_PatternList5 lookup_table5[361][4], const bitboard19& board,
 	const int x, const int y);
-int	is_Open_4(t_MaskList4 lookup_table4[361][4], const bitboard19 &boardA, const bitboard19 &boardB,
+int	is_Open_4(t_PatternList4 lookup_table4[361][4], const bitboard19 &boardA, const bitboard19 &boardB,
 	const int x, const int y);
 
-void	build_lookup_table5(t_MaskList5 lookup_table5[361][4], bitboard19 all_masks5[MAX_WINNING_MASK]);
-void	build_lookup_table4(t_MaskList4 lookup_table4[361][4], bitboard19 all_masks4[MAX_FOUR_MASK]);
-
-void	add_mask_to_lookup5(t_MaskList5 lookup_table5[361][4], bitboard19 all_masks5[MAX_WINNING_MASK],
-	const int mask_index, const int start_pos, const int stride);
-void	add_mask_to_lookup4(t_MaskList4 lookup_table4[361][4], bitboard19 all_masks4[MAX_FOUR_MASK],
-	const int mask_index, const int start_pos, const int stride, const  int left_pos, const int right_pos);
 		
 void	test_bitboard(const GameBoard& board, int x, int y); // Fonction de test pour vérifier les patterns sur le bitboard
 
