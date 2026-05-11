@@ -1,75 +1,99 @@
 #include "game/GameBoard.hpp"
-#include <cstring>
+#include "game/GameBoard15.hpp"
+#include "game/GameBoard19.hpp"
 
-GameBoard::GameBoard(int size, Seat firstPlayer) : _currentPlayer(firstPlayer), _size(size)
+GameBoard::GameBoard(int size, Seat firstPlayer)
 {
-    std::memset(_board, 0, sizeof(_board));
+    if (size == 15)
+        _impl = std::make_unique<GameBoard15>(size, firstPlayer);
+    else
+        _impl = std::make_unique<GameBoard19>(size, firstPlayer);
 }
 
-bool GameBoard::isFree(int col, int row) const
-{
-    return _board[row][col] == CellStatus::Empty;
-}
+GameBoard::~GameBoard() = default;
 
-bool GameBoard::isInside(int col, int row) const
-{
-    if ((col >= 0 && row >= 0) && (col <= _size && row <= _size)) {
-        return true;
-    }
-    return false;
-}
+bool GameBoard::isFree(int col, int row) const { return _impl->isFree(col, row); }
+bool GameBoard::isInside(int col, int row) const { return _impl->isInside(col, row); }
+bool GameBoard::placeStone(int col, int row) { return _impl->placeStone(col, row); }
+bool GameBoard::placeStoneOfColor(int col, int row, CellStatus color) { return _impl->placeStoneOfColor(col, row, color); }
 
-CellStatus GameBoard::getCell(int col, int row) const
-{
-    return _board[row][col];
-}
+CellStatus GameBoard::getCell(int col, int row) const { return _impl->getCell(col, row); }
+Seat GameBoard::currentSeat() const { return _impl->currentSeat(); }
+int GameBoard::getSize() const { return _impl->getSize(); }
 
-int GameBoard::getSize() const
-{
-    return _size;
-}
+void GameBoard::setCurrentPlayer(Seat player) { _impl->setCurrentPlayer(player); }
+void GameBoard::switchPlayer() { _impl->switchPlayer(); }
+void GameBoard::clearCell(int col, int row) { _impl->clearCell(col, row); }
+#include "game/GameBoard.hpp"
 
-Seat GameBoard::currentSeat() const
-{
-    return _currentPlayer;
-}
+// GameBoard::GameBoard(int size, Seat firstPlayer)
+//     : _currentPlayer(firstPlayer), _size(size), _board(size * size, CellStatus::Empty)
+// {
+// }
 
-void GameBoard::setCurrentPlayer(Seat player)
-{
-    _currentPlayer = player;
-}
+// static inline int idx(int col, int row, int size) { return row * size + col; }
 
-void GameBoard::switchPlayer()
-{
-    _currentPlayer = otherSeat(_currentPlayer);
-}
+// bool GameBoard::isFree(int col, int row) const
+// {
+//     return _board[idx(col, row, _size)] == CellStatus::Empty;
+// }
 
-bool GameBoard::placeStone(int col, int row)
-{
-    if (col < 0 || col >= _size || row < 0 || row >= _size)
-        return false;
-    if (!isFree(col, row))
-        return false;
+// bool GameBoard::isInside(int col, int row) const
+// {
+//     return (col >= 0 && row >= 0 && col < _size && row < _size);
+// }
 
-    _board[row][col] = (_currentPlayer == Seat::First) ? CellStatus::Black : CellStatus::White;
-    switchPlayer();
-    return true;
-}
+// CellStatus GameBoard::getCell(int col, int row) const
+// {
+//     return _board[idx(col, row, _size)];
+// }
 
-void GameBoard::clearCell(int col, int row)
-{
-    if (col < 0 || col >= _size || row < 0 || row >= _size)
-        return;
-    _board[row][col] = CellStatus::Empty;
-}
+// int GameBoard::getSize() const
+// {
+//     return _size;
+// }
 
-bool GameBoard::placeStoneOfColor(int col, int row, CellStatus color)
-{
-    if (col < 0 || col >= _size || row < 0 || row >= _size)
-        return false;
-    if (!isFree(col, row))
-        return false;
+// Seat GameBoard::currentSeat() const
+// {
+//     return _currentPlayer;
+// }
 
-    _board[row][col] = color;
-    return true;
-}
+// void GameBoard::setCurrentPlayer(Seat player)
+// {
+//     _currentPlayer = player;
+// }
+
+// void GameBoard::switchPlayer()
+// {
+//     _currentPlayer = otherSeat(_currentPlayer);
+// }
+
+// bool GameBoard::placeStone(int col, int row)
+// {
+//     if (!isInside(col, row))
+//         return false;
+//     if (!isFree(col, row))
+//         return false;
+
+//     _board[idx(col, row, _size)] = (_currentPlayer == Seat::First) ? CellStatus::Black : CellStatus::White;
+//     switchPlayer();
+//     return true;
+// }
+
+// void GameBoard::clearCell(int col, int row)
+// {
+//     if (!isInside(col, row))
+//         return;
+//     _board[idx(col, row, _size)] = CellStatus::Empty;
+// }
+
+// bool GameBoard::placeStoneOfColor(int col, int row, CellStatus color)
+// {
+//     if (!isInside(col, row))
+//         return false;
+//     if (!isFree(col, row))
+//         return false;
+
+//     _board[idx(col, row, _size)] = color;
+//     return true;
+// }

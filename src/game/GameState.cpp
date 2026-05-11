@@ -1,4 +1,6 @@
 #include "game/GameState.hpp"
+#include "game/GameBoard15.hpp"
+#include "game/GameBoard19.hpp"
 #include "logger/Logger.hpp"
 #include <string>
 
@@ -29,13 +31,14 @@ static const char* ruleStr(OpeningRule r)
 }
 
 GameState::GameState(int boardSize, OpeningRule rule, StoneColor firstPlayer)
-    : board(boardSize, (firstPlayer == StoneColor::Black) ? Seat::First : Seat::Second),
-      phase(GamePhase::OpeningPlacement),
+    : phase(GamePhase::OpeningPlacement),
       openingRule(rule),
       stepIdx(0),
       subIdx(0),
       currentActor(Seat::First)
 {
+    // instantiate the board wrapper which will create the correct sized implementation
+    board = std::make_unique<GameBoard>(boardSize, (firstPlayer == StoneColor::Black) ? Seat::First : Seat::Second);
     openingScript = getOpeningScript(rule);
 
     if (openingScript.empty())
@@ -78,7 +81,7 @@ void GameState::resolveColorChoice(bool swapped)
 
     const GamePhase prev = phase;
     phase = GamePhase::NormalPlay;
-    board.setCurrentPlayer(Seat::First);  // Black (Seat::First) always opens normal play
+    board->setCurrentPlayer(Seat::First);  // Black (Seat::First) always opens normal play
 
     Logger::info("PHASE",
         std::string(phaseStr(prev)) + " → " + phaseStr(phase));

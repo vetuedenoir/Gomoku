@@ -104,9 +104,9 @@ CellStatus Gomoku::computeGhostColor() const
             return _gameState->nextOpeningColor();
 
         case GamePhase::NormalPlay:
-            return (_gameState->board.currentSeat() == Seat::First)
-                    ? CellStatus::Black
-                    : CellStatus::White;
+            return (_gameState->board->currentSeat() == Seat::First)
+                ? CellStatus::Black
+                : CellStatus::White;
 
         case GamePhase::ColorChoice:
             return CellStatus::Empty;
@@ -159,11 +159,11 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
             int row = _board->getHoveredRow();
             if (col >= 0 && row >= 0)
             {
-                const char* color = (_gameState->board.currentSeat() == Seat::First) ? "Black" : "White";
-                if (_gameState->board.placeStone(col, row)) {
+                const char* color = (_gameState->board->currentSeat() == Seat::First) ? "Black" : "White";
+                if (_gameState->board->placeStone(col, row)) {
                     Logger::debug("NORMAL",
                         std::string(color) + " → (" + std::to_string(col) + "," + std::to_string(row) + ") ✓");
-                        test_bitboard(_gameState->board, col, row); // col et row sont inverse
+                        test_bitboard(*_gameState->board, col, row); // col et row sont inverse
                 }
                 else {
                     Logger::warn("NORMAL",
@@ -205,7 +205,7 @@ void Gomoku::render()
 
 void Gomoku::renderGame()
 {
-    _board->draw(_window, _gameState->board, computeGhostColor());
+    _board->draw(_window, *_gameState->board, computeGhostColor());
 
     if (_gameState->phase == GamePhase::ColorChoice)
         renderColorChoicePage();

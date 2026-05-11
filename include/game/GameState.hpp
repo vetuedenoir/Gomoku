@@ -3,7 +3,8 @@
 
 #include "game/contracts/GameConfig.hpp"
 #include "game/contracts/GamePhase.hpp"
-#include "game/GameBoard.hpp"
+# include "game/GameBoard.hpp"
+#include <memory>
 #include "game/OpeningScript.hpp"
 #include "game/Seat.hpp"
 #include <optional>
@@ -18,7 +19,7 @@ struct PlacedStone
 
 struct GameState
 {
-    GameBoard   board;
+    std::unique_ptr<GameBoard> board;
     GamePhase   phase;
     OpeningRule openingRule;
 
