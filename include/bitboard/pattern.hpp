@@ -4,9 +4,6 @@
 #include "bitboard.hpp"
 #include "string.h"
 
-#define	MAX_WINNING_MASK	1020
-#define	MAX_FOUR_MASK	1120
-
 
 #define DIR_HORIZ 0
 #define DIR_VERT  1
@@ -105,14 +102,80 @@ typedef struct {
 int	isWin_ultra(t_PatternList5 lookup_table5[361][4], const bitboard19& board,
 	const int x, const int y);
 int	is_Open_4(t_PatternList4 lookup_table4[361][4], const bitboard19 &boardA, const bitboard19 &boardB,
-	const int x, const int y);
+		const int x, const int y);
 
-		
 void	test_bitboard(const GameBoard& board, int x, int y); // Fonction de test pour vérifier les patterns sur le bitboard
+		
+//---------------------------------------------------------------------------
+
+// Liste des valeurs de retour pour la fonction check_three_align:
+
+// 0 : pas d'alignement de 3 pierres
+
+#define SCORE_3_FULL		8	// 3 pierres pleines (sans trou)
+#define SCORE_3_HOLE		12	// 3 pierres avec un trou
+
+// Modificateurs pour présence de pierre adverse
+#define SCORE_OPP_EXTERN	128	// adverse à une extrémité externe (loin des pierres)
+#define SCORE_OPP_INTERN	256	// adverse à une extrémité interne (coller aux pierres)
+
+// Scores combinés pour un alignement simple
+#define SCORE_FULL_EXTERN	(SCORE_3_FULL + SCORE_OPP_EXTERN)	// 136
+#define SCORE_HOLE_EXTERN	(SCORE_3_HOLE + SCORE_OPP_EXTERN)	// 140
+
+#define SCORE_FULL_INTERN	(SCORE_3_FULL + SCORE_OPP_INTERN)	// 264
+#define SCORE_HOLE_INTERN	(SCORE_3_HOLE + SCORE_OPP_INTERN)	// 268
+
+// Scores pour double three (somme / 4)
+#define SCORE_DOUBLE_FULL_FULL			4	// (8+8)/4
+#define SCORE_DOUBLE_HOLE_FULL			5	// (12+8)/4
+#define SCORE_DOUBLE_HOLE_HOLE			6	// (12+12)/4
+
+#define SCORE_DOUBLE_FULL_FULL_EXTERN	36	// (128+8+8)/4 = 144/4 = 36
+#define SCORE_DOUBLE_HOLE_FULL_EXTERN	37	// (128+12+8)/4 = 148/4 = 37
+#define SCORE_DOUBLE_HOLE_HOLE_EXTERN	38	// (128+12+12)/4 = 152/4 = 38
+
+#define SCORE_DOUBLE_FULL_FULL_INTERN	68	// (256+8+8)/4 = 272/4 = 68
+#define SCORE_DOUBLE_HOLE_FULL_INTERN	69	// (256+12+8)/4 = 276/4 = 69
+#define SCORE_DOUBLE_HOLE_HOLE_INTERN	70	// (256+12+12)/4 = 280/4 = 70
+
+#define SCORE_DOUBLE_FULL_FULL_MIXED	100	// (256+128+8+8)/4 = 400/4 = 100
+#define SCORE_DOUBLE_HOLE_FULL_MIXED	101	// (256+128+12+8)/4 = 404/4 = 101
+#define SCORE_DOUBLE_HOLE_HOLE_MIXED	102	// (256+128+12+12)/4 = 408/4 = 102
+
+#define SCORE_DOUBLE_FULL_FULL_INTERN2	132	// (256+256+8+8)/4 = 528/4 = 132
+#define SCORE_DOUBLE_HOLE_FULL_INTERN2	133	// (256+256+12+8)/4 = 532/4 = 133
+#define SCORE_DOUBLE_HOLE_HOLE_INTERN2	134	// (256+256+12+12)/4 = 536/4 = 134
+
+
+// Liste des valeurs de retour pour la fonction check_cross:
+
+// Patterns de base
+#define CROSS_NONE				0
+#define CROSS_DEMI_NO_MID		16	// demi-croix sans trou central
+#define CROSS_DEMI_MID			15	// demi-croix avec trou central
+#define CROSS_FULL				19	// croix complète
+
+// Modificateurs adverses
+#define CROSS_OPP_EXTERN		32	// adversaire à une extrémité
+#define CROSS_OPP_INTERN		64	// adversaire à l'intérieur
+
+// Combinaisons croix complète
+#define CROSS_FULL_OPP_EXTERN	(CROSS_FULL + CROSS_OPP_EXTERN)	// 51
+#define CROSS_FULL_OPP_INTERN	(CROSS_FULL + CROSS_OPP_INTERN)	// 83
+
+// Combinaisons demi-croix sans trou central
+#define CROSS_DEMI_NO_OPP_EXTERN	(CROSS_DEMI_NO_MID + CROSS_OPP_EXTERN)	// 48
+#define CROSS_DEMI_NO_OPP_INTERN	(CROSS_DEMI_NO_MID + CROSS_OPP_INTERN)	// 80
+
+// Combinaisons demi-croix avec trou central
+#define CROSS_DEMI_MID_OPP_EXTERN	(CROSS_DEMI_MID + CROSS_OPP_EXTERN)	// 47
+#define CROSS_DEMI_MID_OPP_INTERN	(CROSS_DEMI_MID + CROSS_OPP_INTERN)	// 79
+
 
 #endif // PATTERN_HPP
 
-
+		
 // liste des patternes
 	// 1. alignement de 5 pierres (gagne)
 	// 2. alignement de 4 pierres partiellement ouvert (open four)
@@ -152,10 +215,14 @@ void	test_bitboard(const GameBoard& board, int x, int y); // Fonction de test po
 	// [x] [x] [x]
 	// [ ] [x] [ ]
 
+
+// 0 : pas d'alignement de 3 pierres
+
 	// [ ] [x] [ ]
 	// [x] [ ] [x]
 	// [ ] [x] [ ]
 
+      
 	// 9. Les paterns en T
 	// [ ] [x] [ ]
 	// [x] [x] [x]
@@ -250,3 +317,4 @@ void	test_bitboard(const GameBoard& board, int x, int y); // Fonction de test po
 	//         [X] 			si c'est a moi de jouer.
 	//         [X]
 	//         [A]
+
