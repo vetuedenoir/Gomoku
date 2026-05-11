@@ -651,7 +651,7 @@ int	check_three_align(const t_PatternList_Groupe3 lookup_table[361][4], const bi
 			// 10xxx00, 00xx01				valeur moyen, same: oposant_pos[0] et [3] = 128
 			// 10xxx01, 01xxx00	 00xxx10	valeur min, same: oposant_pos[1] et [2] = 256
 
-			// 00X0XX0 et 00XX0X0			valeur max: vaut 16
+			// 00X0XX0 et 00XX0X0			valeur max: vaut 12
 			// 10X0XX0, 00X0XX1, 01XX0X0, 00XX0X1	valeur moyen
 			// 10X0XX1 								valeur min
 
@@ -697,7 +697,7 @@ int	check_three_align(const t_PatternList_Groupe3 lookup_table[361][4], const bi
 			if (!get_bb19(boardB, pattern.hole_pos[1]) && get_bb19(boardA, pattern.stone_pos[0]) && get_bb19(boardA, pattern.stone_pos[1]) &&
 				get_bb19(boardA, pattern.stone_pos[3]))
 			{
-				total_score += score + 16; // a change
+				total_score += score + 12;
 				double_three += 1;
 				// std::cout << "alignement de 3 pierre avec troue 2, on ignore, score = " << score << std::endl;
 				continue;
@@ -707,7 +707,7 @@ int	check_three_align(const t_PatternList_Groupe3 lookup_table[361][4], const bi
 			return total_score / 4;
 	}
 	if (double_three == 0)
-		return 100000;
+		return 0;
 	return total_score;
 }
 
@@ -941,38 +941,43 @@ int	check_cross(const t_PatternList_Cross lookup_table[361], const bitboard19 &b
 		int			opposant_score = 0;
 		int			score = 0;
 
-		if (cross.opposant_up[1] == -1 || get_bb19(boardB, cross.opposant_up[1]))
-			opposant_score = 256;
-		else if (cross.opposant_up[0] == -1 || get_bb19(boardB, cross.opposant_up[0]))
-			opposant_score = 128;
-		if (cross.opposant_down[1] == -1 || get_bb19(boardB, cross.opposant_down[1]))
-			opposant_score += 256;
-		else if (cross.opposant_down[0] == -1 || get_bb19(boardB, cross.opposant_down[0]))
-			opposant_score += 128;
-		if (cross.opposant_left[1] == -1 || get_bb19(boardB, cross.opposant_left[1]))
-			opposant_score += 256;
-		else if (cross.opposant_left[0] == -1 || get_bb19(boardB, cross.opposant_left[0]))
-			opposant_score += 128;
-		if (cross.opposant_right[1] == -1 || get_bb19(boardB, cross.opposant_right[1]))
-			opposant_score += 256;
-		else if (cross.opposant_right[0] == -1 || get_bb19(boardB, cross.opposant_right[0]))
-			opposant_score += 128;
+		if (get_bb19(boardB, cross.middle) ||
+			get_bb19(boardB, cross.up) || get_bb19(boardB, cross.down) ||
+			get_bb19(boardB, cross.left) || get_bb19(boardB, cross.right))
+			continue;
 
-		if (opposant_score > 256)
+		if (cross.opposant_up[1] == -1 || get_bb19(boardB, cross.opposant_up[1]))
+			opposant_score = 64;
+		else if (cross.opposant_up[0] == -1 || get_bb19(boardB, cross.opposant_up[0]))
+			opposant_score = 32;
+		if (cross.opposant_down[1] == -1 || get_bb19(boardB, cross.opposant_down[1]))
+			opposant_score += 64;
+		else if (cross.opposant_down[0] == -1 || get_bb19(boardB, cross.opposant_down[0]))
+			opposant_score += 32;
+		if (cross.opposant_left[1] == -1 || get_bb19(boardB, cross.opposant_left[1]))
+			opposant_score += 64;
+		else if (cross.opposant_left[0] == -1 || get_bb19(boardB, cross.opposant_left[0]))
+			opposant_score += 32;
+		if (cross.opposant_right[1] == -1 || get_bb19(boardB, cross.opposant_right[1]))
+			opposant_score += 64;
+		else if (cross.opposant_right[0] == -1 || get_bb19(boardB, cross.opposant_right[0]))
+			opposant_score += 32;
+
+		if (opposant_score > 64)
 			continue;
 
 		if (get_bb19(boardA, cross.middle))
-			score += 2;
+			score += 3;
 		if (get_bb19(boardA, cross.up))
-			score += 3;
+			score += 4;
 		if (get_bb19(boardA, cross.down))
-			score += 3;
+			score += 4;
 		if (get_bb19(boardA, cross.left))
-			score += 3;
+			score += 4;
 		if (get_bb19(boardA, cross.right))
-			score += 3;
+			score += 4;
 		
-		if (score >= 11) // on a au moins une croix partiel
+		if (score >= 15) // on a au moins une croix partiel
 			return score + opposant_score;
 	}
 	return 0;
@@ -1028,9 +1033,10 @@ void	test_bitboard(const GameBoard& board, int x, int y)
 	
 	int	three_black = check_three_align(lookup_table3, bitboard.black, bitboard.white, x, y);
 	int	three_white = check_three_align(lookup_table3, bitboard.white, bitboard.black, x, y);
-
-	std::cout << "valeur de retour, detection three black:  " << three_black << std::endl;
-	std::cout << "valeur de retour, detection three white:  " << three_white << std::endl;
+	if (three_black > 0)
+		std::cout << "valeur de retour, detection three black:  " << three_black << std::endl;
+	if (three_white > 0)
+		std::cout << "valeur de retour, detection three white:  " << three_white << std::endl;
 
 	if (check_super4(lookup_table_super4, bitboard.black, bitboard.white, x, y))
 		std::cout << "super four noir detecte !!!" << std::endl;
