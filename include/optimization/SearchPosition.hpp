@@ -2,6 +2,7 @@
 # define SEARCHPOSITION_HPP
 
 #include <cstdint>
+#include <vector>
 #include "game/GameBoard.hpp"
 #include "game/contracts/Color.hpp"
 #include "optimization/ZobristHasher.hpp"
