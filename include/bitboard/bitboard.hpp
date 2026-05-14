@@ -116,6 +116,27 @@ inline int popcount_bb_generic(const typename Traits::Bitboard& bb)
 	return n;
 }
 
+// Calls fn(x, y) for each set bit in bb.
+// Skips guard-column positions (x >= 19) produced by stride-20 layout.
+template <typename Fn>
+inline void bb_for_each_bit(const bitboard19& bb, Fn fn)
+{
+    for (int w = 0; w < 6; w++)
+    {
+        uint64_t word = bb[w];
+        while (word)
+        {
+            int bit = __builtin_ctzll(word);
+            word &= word - 1;
+            int pos = w * 64 + bit;
+            int x   = pos % 20;
+            int y   = pos / 20;
+            if (x < 19 && y < 19)
+                fn(x, y);
+        }
+    }
+}
+
 template<typename Traits>
 void print_bb_19(t_BWBoard<Traits> &bw)
 {
