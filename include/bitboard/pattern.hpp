@@ -99,13 +99,30 @@ typedef struct {
 //---------------------------------------------------------------------------
 
 
-int	isWin_ultra(t_PatternList5 lookup_table5[361][4], const bitboard19& board,
+// Build functions
+void build_lookup_table5(t_PatternList5 lookup_table5[361][4]);
+void build_lookup_table4(t_PatternList4 lookup_table4[361][4]);
+void build_lookup_table_groupe4(t_PatternList_Groupe4 lookup_table_groupe4[361][4]);
+void build_lookup_table3(t_PatternList_Groupe3 lookup_table3[361][4]);
+void build_lookup_table_super4(t_PatternList_super4 lookup_table[361][4]);
+void build_lookup_table_cross(t_PatternList_Cross lookup_table[361]);
+
+// Detection functions
+int isWin_ultra(t_PatternList5 lookup_table5[361][4], const bitboard19& board,
 	const int x, const int y);
-int	is_Open_4(t_PatternList4 lookup_table4[361][4], const bitboard19 &boardA, const bitboard19 &boardB,
+int is_Open_4(t_PatternList4 lookup_table4[361][4], const bitboard19 &boardA, const bitboard19 &boardB,
+		const int x, const int y);
+int check_four_align(const t_PatternList_Groupe4 lookup_table[361][4], const bitboard19 &boardA, const bitboard19 &boardB,
+		const int x, const int y);
+int check_three_align(const t_PatternList_Groupe3 lookup_table[361][4], const bitboard19 &boardA, const bitboard19 &boardB,
+		const int x, const int y);
+int check_super4(const t_PatternList_super4 lookup_table[361][4], const bitboard19 &boardA, const bitboard19 &boardB,
+		const int x, const int y);
+int check_cross(const t_PatternList_Cross lookup_table[361], const bitboard19 &boardA, const bitboard19 &boardB,
 		const int x, const int y);
 
-void	test_bitboard(const GameBoard& board, int x, int y); // Fonction de test pour vérifier les patterns sur le bitboard
-		
+void	test_bitboard(const GameBoard& board, int x, int y);
+
 //---------------------------------------------------------------------------
 
 // Liste des valeurs de retour pour la fonction check_three_align:
