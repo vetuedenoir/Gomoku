@@ -14,6 +14,9 @@
 
 #include "bitboard/bitboard.hpp"
 #include "bitboard/pattern.hpp"
+#include "bitboard/BitboardTool.hpp"
+#include "bitboard/BitboardTool19.hpp"
+#include "bitboard/BitboardTool15.hpp"
 
 
 enum class AppState { MainMenu, BoardSize, StoneColor, Opening, Game };
@@ -36,6 +39,7 @@ class Gomoku
 
         std::unique_ptr<Board>      _board;
         std::unique_ptr<GameState>  _gameState;
+        std::unique_ptr<IBitboardTool> _bitboardTool;
 
         MenuPage &currentPage();
         void      navigateTo(AppState s);

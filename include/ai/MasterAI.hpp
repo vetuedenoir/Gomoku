@@ -29,24 +29,13 @@ private:
     
     // contient Move_Generator
     virtual bool is_legal_move(const GameBoard& board, int col, int row) const = 0;
-    virtual void
+
     virtual bool is_winning_move(const GameBoard& board, int col, int row) const = 0;
     virtual bool check_win(const GameBoard& board) = 0;
     virtual void create_patterns(void) = 0;
 
     // int   minimax((bitboard19 ou bitboard15 board, int depth, int alpha, int beta, int player))
 };
-
-
-class Iboite_outil
-{
-    //liste des paternes a detecter pour 15x15 ou 19x19
-
-public:
-    static bool is_open_four(const GameBoard& board, int col, int row, CellStatus color);
-    static bool is_five_in_a_row(const GameBoard& board, int col, int row, CellStatus color);
-    // d'autres fonctions pour analyser le plateau et les patterns
-}
 
 #endif // MASTER_AI_HPP
 

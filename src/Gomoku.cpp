@@ -84,6 +84,13 @@ void Gomoku::startGame()
 {
     logConfig();
 
+    if (_config.boardSize == 19)
+        _bitboardTool = std::make_unique<BitboardTool19>();
+    else if (_config.boardSize == 15)
+        _bitboardTool = std::make_unique<BitboardTool15>();
+    else
+        std::cerr << "Error: Impossible size: " << _config.boardSize << std::endl;
+
     float boardSize = std::min(WIN_W, WIN_H) * 0.90f;
     _board     = std::make_unique<Board>(WIN_W / 2.f, WIN_H / 2.f, boardSize, _config.boardSize);
     _gameState = std::make_unique<GameState>(_config.boardSize,

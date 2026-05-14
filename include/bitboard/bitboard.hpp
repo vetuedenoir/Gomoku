@@ -8,11 +8,34 @@
 #include <cstdint>
 #include <iostream>
 
+// template<int SIZE>
+// template de toute les structures de données et fonctions pour les bitboards, pour faciliter l'adaptation à différentes tailles de plateau (15x15, 19x19, etc.)
+template<int SIZE>
+struct BoardTraits;
 
+template<>
+struct BoardTraits<15>
+{
+    static constexpr int BOARD_SIZE = 15;
+    static constexpr int STRIDE = 16;
+    static constexpr int CELL_COUNT = 225;
+    static constexpr int WORD_COUNT = 4;
 
+    using Bitboard = std::array<uint64_t, 4>;
+};
+
+template<>
+struct BoardTraits<19>
+{
+    static constexpr int BOARD_SIZE = 19;
+    static constexpr int STRIDE = 20;
+    static constexpr int CELL_COUNT = 361;
+    static constexpr int WORD_COUNT = 6;
+
+    using Bitboard = std::array<uint64_t, 6>;
+};
 
 typedef uint64_t bitboard19[6];
-
 typedef uint64_t bitboard15[4];
 
 typedef struct s_BWBoard19 {
@@ -25,6 +48,16 @@ typedef struct s_BWBoard15 {
 	bitboard15 white;
 }   t_BWBoard15;
 
+
+template<int STRIDE>
+inline int index_bb(int x, int y)
+{
+    return y * STRIDE + x;
+}
+
+// utilisation: 
+// int idx = index_bb<20>(x, y);
+// int idx = index_bb<16>(x, y);
 
 inline int	index_bb19(int x, int y)
 {
