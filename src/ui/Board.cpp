@@ -1,5 +1,4 @@
 #include "ui/Board.hpp"
-#include <cmath>
 
 static const sf::Color LINE_COLOR   ( 60,  35,  10);
 static const sf::Color STONE_BLACK  ( 30,  30,  30);
@@ -70,7 +69,8 @@ void Board::draw(sf::RenderWindow &window, const GameBoard &gameBoard,
                  CellStatus ghostHint) const
 {
     if (_hasBg)
-    {    window.draw(_bgSprite);
+    {
+        window.draw(_bgSprite);
     }
     
     for (const sf::RectangleShape &h : _hLines) window.draw(h);
