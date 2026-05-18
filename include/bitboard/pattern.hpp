@@ -7,10 +7,8 @@
 
 #define DIR_HORIZ 0
 #define DIR_VERT  1
-#define DIR_DIAG_G 2  //
-#define DIR_DIAG_D 3  //
-
-// #define IDX(x, y) ((y) * 19 + (x))
+#define DIR_DIAG_G 2
+#define DIR_DIAG_D 3 
 
 template<typename Traits>
 struct t_PatternList5
@@ -19,14 +17,6 @@ struct t_PatternList5
 	uint32_t count;          // 4 bytes
 	uint8_t padding[4]; // 12 bytes de padding pour aligner à 248 bytes
 };  // 248 bytes total
-
-
-// typedef struct {
-// 	bitboard19 masks[5];  // 5 masks × 6 uint64_t = 240 bytes
-// 	uint32_t count;          // 4 bytes
-// 	uint8_t padding[4]; // 12 bytes de padding pour aligner à 248 bytes
-// } t_PatternList5;  // 248 bytes total
-
 
 //---------------------------------------------------------------------------
 
@@ -41,17 +31,6 @@ struct t_PatternList_super4{
 	t_super4<Traits>	patterns[7]; // 7 positions relatives de 4 pierres alignées, soit 7*128 = 896 bytes
 	uint32_t	count;
 };
-
-
-// typedef struct {
-// 	bitboard19	mask;
-// 	int			hole_pos[2];
-// }	t_super4;
-
-// typedef struct {
-// 	t_super4	patterns[7]; // 7 positions relatives de 4 pierres alignées, soit 7*128 = 896 bytes
-// 	uint32_t	count;
-// }	t_PatternList_super4;
 
 //---------------------------------------------------------------------------
 
@@ -68,18 +47,6 @@ struct t_PatternList4{
 	int			count;
 };
 
-
-// typedef struct {
-// 	bitboard19	mask;
-// 	int			opposant_left;
-// 	int			opposant_right;
-// }	t_Pattern4;
-
-// typedef struct {
-// 	t_Pattern4	patterns[4];
-// 	int			count;
-// }	t_PatternList4;
-
 //---------------------------------------------------------------------------
 
 template<typename Traits>
@@ -94,19 +61,6 @@ struct t_PatternList_Groupe4{
 	uint32_t		count;		// 4
 	uint8_t			padding[16];
 }; 	// 800 bytes total
-
-
-// typedef struct {
-// 	bitboard19	masks[3];  // 3 masks × 6 uint64_t = 144 bytes
-// 	int			hole_pos[3];	// 12 bytes
-// } t_PatternGroup4; // 156 bytes total
-
-
-// typedef struct {
-// 	t_PatternGroup4	masks[5];	// 780 bytes
-// 	uint32_t		count;		// 4
-// 	uint8_t			padding[16];
-// } t_PatternList_Groupe4; 	// 800 bytes total
 
 //---------------------------------------------------------------------------
 
