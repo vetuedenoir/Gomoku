@@ -325,7 +325,7 @@ void add_mask_to_lookup4(t_PatternList4<Traits> lookup_table4[361][4], t_Pattern
 
 template<typename Traits>
 int	is_Open_4(t_PatternList4<Traits> lookup_table4[361][4],
-				const typename Traits::Bitboard &boardA, const typename Traits::Bitboard19 &boardB,
+			const typename Traits::Bitboard &boardA, const typename Traits::Bitboard &boardB,
 				const int x, const int y)
 {
 	const int idx = idx_generic<Traits>(x, y);

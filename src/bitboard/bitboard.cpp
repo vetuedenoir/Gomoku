@@ -113,11 +113,11 @@ void	print_binaire64(const uint64_t ut)
 	std::cout << std::endl;
 }
 
-void	print_binaire_board19(const bitboard19 bb)
-{
-	for (size_t i = 0; i < 6; i++)
-		print_binaire64(bb[i]);
-}
+// void	print_binaire_board19(const bitboard19 bb) // removed: bitboard19 type retired
+// {
+// 	for (size_t i = 0; i < 6; i++)
+// 		print_binaire64(bb[i]);
+// }
 
 
 

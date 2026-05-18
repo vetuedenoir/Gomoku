@@ -16,12 +16,12 @@ static void place(GameBoard& b, int col, int row, CellStatus color)
 
 static t_BWBoard19 to_bb(const GameBoard& b)
 {
-    return GameBoard_to_bitboard(b);
+    return GameBoard_to_bitboard<BoardTraits<19>>(b);
 }
 
 TEST_CASE("ActiveZone: empty board yields zero candidates")
 {
-    ActiveZone zone(2);
+    ActiveZone19 zone(2);
     zone.initialize(to_bb(empty_board()));
 
     CHECK(zone.size() == 0);
@@ -32,7 +32,7 @@ TEST_CASE("ActiveZone: corner stone clips to board boundary")
     GameBoard b = empty_board();
     place(b, 0, 0, CellStatus::Black);
 
-    ActiveZone zone(1);
+    ActiveZone19 zone(1);
     zone.initialize(to_bb(b));
 
     // only 3 in-board neighbors: (1,0), (0,1), (1,1)
@@ -54,7 +54,7 @@ TEST_CASE("ActiveZone: center stone radius=1 yields exactly 8 candidates")
     GameBoard b = empty_board();
     place(b, 9, 9, CellStatus::Black);
 
-    ActiveZone zone(1);
+    ActiveZone19 zone(1);
     zone.initialize(to_bb(b));
 
     CHECK(zone.size() == 8);
@@ -71,7 +71,7 @@ TEST_CASE("ActiveZone: center stone radius=2 yields exactly 24 candidates")
     GameBoard b = empty_board();
     place(b, 9, 9, CellStatus::Black);
 
-    ActiveZone zone(2);
+    ActiveZone19 zone(2);
     zone.initialize(to_bb(b));
 
     // 5x5 window minus the occupied center = 24
@@ -87,7 +87,7 @@ TEST_CASE("ActiveZone: adjacent stones merge zones correctly")
     place(b, 9,  9, CellStatus::Black);
     place(b, 10, 9, CellStatus::White);
 
-    ActiveZone zone(1);
+    ActiveZone19 zone(1);
     zone.initialize(to_bb(b));
 
     // 3x4 bounding box minus 2 occupied stones = 10 candidates
@@ -111,7 +111,7 @@ TEST_CASE("ActiveZone: edge stone clips out-of-board neighbors")
     GameBoard b = empty_board();
     place(b, 0, 9, CellStatus::Black); // left edge, mid-row
 
-    ActiveZone zone(1);
+    ActiveZone19 zone(1);
     zone.initialize(to_bb(b));
 
     // in-board neighbors: (0,8),(1,8),(1,9),(0,10),(1,10)
@@ -130,7 +130,7 @@ TEST_CASE("ActiveZone: clear() resets all candidates")
     GameBoard b = empty_board();
     place(b, 9, 9, CellStatus::Black);
 
-    ActiveZone zone(2);
+    ActiveZone19 zone(2);
     zone.initialize(to_bb(b));
 
     CHECK(zone.size() == 24);
@@ -146,7 +146,7 @@ TEST_CASE("ActiveZone: clear() resets all candidates")
 
 TEST_CASE("ActiveZone: re-initialize overwrites previous state")
 {
-    ActiveZone zone(1);
+    ActiveZone19 zone(1);
 
     GameBoard b1 = empty_board();
     place(b1, 5, 5, CellStatus::Black);
@@ -176,7 +176,7 @@ TEST_CASE("ActiveZone: visual overlay — neighbors of all stones")
     place(b, 1, 16, CellStatus::Black);
     place(b, 18, 2, CellStatus::White);
 
-    ActiveZone zone(2);
+    ActiveZone19 zone(2);
     zone.initialize(to_bb(b));
 
     CHECK(zone.contains(0, 0));

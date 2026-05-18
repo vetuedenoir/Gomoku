@@ -4,16 +4,16 @@
 #include "optimization/SearchPosition.hpp"
 #include "bitboard/bitboard.hpp"
 
-static SearchPosition emptyPos()
+static SearchPosition19 emptyPos()
 {
     GameBoard board(19, Seat::First);
-    return SearchPosition::fromBoard(board);
+    return SearchPosition19::fromBoard(board);
 }
 
 TEST_CASE("make/undo single move restores hash")
 {
-    SearchPosition pos     = emptyPos();
-    uint64_t       initial = pos.zobristHash();
+    SearchPosition19 pos     = emptyPos();
+    uint64_t         initial = pos.zobristHash();
 
     pos.makeMove(10, 10, CellStatus::Black);
     pos.undoMove(10, 10, CellStatus::Black);
@@ -28,8 +28,8 @@ TEST_CASE("make/undo single move restores hash")
 
 TEST_CASE("make/undo sequence restores hash")
 {
-    SearchPosition pos     = emptyPos();
-    uint64_t       initial = pos.zobristHash();
+    SearchPosition19 pos     = emptyPos();
+    uint64_t         initial = pos.zobristHash();
 
     pos.makeMove(5, 5, CellStatus::Black);
     pos.makeMove(6, 6, CellStatus::White);
@@ -50,13 +50,13 @@ TEST_CASE("make/undo sequence restores hash")
 
 TEST_CASE("incremental hash matches full recompute")
 {
-    SearchPosition pos = emptyPos();
+    SearchPosition19 pos = emptyPos();
 
     pos.makeMove(3,  3,  CellStatus::Black);
     pos.makeMove(10, 10, CellStatus::White);
 
     uint64_t incremental = pos.zobristHash();
-    uint64_t recomputed  = SearchPosition::hasher().compute(pos.board());
+    uint64_t recomputed  = SearchPosition19::hasher().compute(pos.board());
 
     CHECK(incremental == recomputed);
 }
@@ -72,12 +72,12 @@ TEST_CASE("incremental hash matches full recompute")
 TEST_CASE("different stone placements produce different hashes")
 {
     GameBoard boardA(19, Seat::First);
-    SearchPosition posA = SearchPosition::fromBoard(boardA);
+    SearchPosition19 posA = SearchPosition19::fromBoard(boardA);
     posA.makeMove(5, 5, CellStatus::Black);
     posA.makeMove(6, 6, CellStatus::White);
 
     GameBoard boardB(19, Seat::First);
-    SearchPosition posB = SearchPosition::fromBoard(boardB);
+    SearchPosition19 posB = SearchPosition19::fromBoard(boardB);
     posB.makeMove(6, 6, CellStatus::Black);
     posB.makeMove(5, 5, CellStatus::White);
 
@@ -86,21 +86,21 @@ TEST_CASE("different stone placements produce different hashes")
 
 TEST_CASE("makeMove sets stone in correct bitboard plane")
 {
-    SearchPosition pos = emptyPos();
+    SearchPosition19 pos = emptyPos();
 
     pos.makeMove(5, 7, CellStatus::Black);
     pos.makeMove(9, 3, CellStatus::White);
 
-    CHECK(get_bb19(pos.board().black, index_bb19(5, 7)) == true);
-    CHECK(get_bb19(pos.board().white, index_bb19(5, 7)) == false);
+    CHECK(get_bb_generic<BoardTraits<19>>(pos.board().black, 5, 7) == true);
+    CHECK(get_bb_generic<BoardTraits<19>>(pos.board().white, 5, 7) == false);
 
-    CHECK(get_bb19(pos.board().white, index_bb19(9, 3)) == true);
-    CHECK(get_bb19(pos.board().black, index_bb19(9, 3)) == false);
+    CHECK(get_bb_generic<BoardTraits<19>>(pos.board().white, 9, 3) == true);
+    CHECK(get_bb_generic<BoardTraits<19>>(pos.board().black, 9, 3) == false);
 }
 
 TEST_CASE("undoMove clears stone from bitboard")
 {
-    SearchPosition pos = emptyPos();
+    SearchPosition19 pos = emptyPos();
 
     pos.makeMove(5, 7, CellStatus::Black);
     pos.makeMove(9, 3, CellStatus::White);
@@ -108,6 +108,6 @@ TEST_CASE("undoMove clears stone from bitboard")
     pos.undoMove(9, 3, CellStatus::White);
     pos.undoMove(5, 7, CellStatus::Black);
 
-    CHECK(get_bb19(pos.board().black, index_bb19(5, 7)) == false);
-    CHECK(get_bb19(pos.board().white, index_bb19(9, 3)) == false);
+    CHECK(get_bb_generic<BoardTraits<19>>(pos.board().black, 5, 7) == false);
+    CHECK(get_bb_generic<BoardTraits<19>>(pos.board().white, 9, 3) == false);
 }

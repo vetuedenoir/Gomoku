@@ -188,9 +188,7 @@ void print_bb_19_colored(t_BWBoard<Traits> &bw)
 		str += '|';
 		for (uint64_t x = 0; x < Traits::BOARD_SIZE; x++)
 		{
-			uint64_t idx = index_bb_generic<Traits>(x, y);
-
-			if (get_bb_generic<Traits>(bw.black, x, y))
+				if (get_bb_generic<Traits>(bw.black, x, y))
 				str += BLACK_STONE "B " RESET;
 			else if (get_bb_generic<Traits>(bw.white, x, y))
 				str += WHITE_STONE "W " RESET;
@@ -246,14 +244,12 @@ bool detect_captures(const t_BWBoard<Traits>& board, int col, int row, Color att
 			if (!in_board_generic<Traits>(x1, y1) || !in_board_generic<Traits>(x2, y2) || !in_board_generic<Traits>(x3, y3))
 				continue;
 
-			int innerVictim = index_bb_generic<Traits>(x1, y1);
-			int outerVictim = index_bb_generic<Traits>(x2, y2);
-			int flank       = index_bb_generic<Traits>(x3, y3);
-
-			if (get_bb_generic<Traits>(victime, innerVictim) && get_bb_generic<Traits>(victime, outerVictim) && get_bb_generic<Traits>(attacker, flank))
+			if (get_bb_generic<Traits>(victime, x1, y1) &&
+				get_bb_generic<Traits>(victime, x2, y2) &&
+				get_bb_generic<Traits>(attacker, x3, y3))
 			{
-				capturedMask[innerVictim >> 6] |= (1ULL << (innerVictim & 63));
-				capturedMask[outerVictim >> 6] |= (1ULL << (outerVictim & 63));
+				set_bb_generic<Traits>(capturedMask, x1, y1);
+				set_bb_generic<Traits>(capturedMask, x2, y2);
 				captured = true;
 			}
 		}
@@ -274,7 +270,7 @@ void apply_captures(t_BWBoard<Traits>& board, const typename Traits::Bitboard ca
 // void	print_bb_19(t_BWBoard19 &bb);
 // void	print_bb_19_colored(t_BWBoard19 &bw);
 void	print_binaire64(const uint64_t ut);
-void	print_binaire_board19(const bitboard19 bb);
+// void	print_binaire_board19(const bitboard19 bb); // removed: bitboard19 type retired
 			
 // t_BWBoard19 GameBoard_to_bitboard(const GameBoard &board);
 

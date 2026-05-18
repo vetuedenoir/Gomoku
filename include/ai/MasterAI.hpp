@@ -5,7 +5,7 @@
 #include "bitboard/bitboard.hpp"
 # include <variant>
 
-using t_BWBoard = std::variant<Bitboard19, Bitboard15>;
+using t_BWBoard_variant = std::variant<t_BWBoard19, t_BWBoard15>;
 // a utiliser dans tout les fichier qui utilise les structures de données du bitboard.
 
 // master IA : s'occupe juste de l'IA , de trouver la bonne position et 
