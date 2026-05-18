@@ -8,16 +8,7 @@
 
 #include "ui/MenuPage.hpp"
 #include "ui/Board.hpp"
-#include "game/GameBoard.hpp"
-#include "game/contracts/GameConfig.hpp"
-#include "game/GameState.hpp"
-
-#include "bitboard/bitboard.hpp"
-#include "bitboard/pattern.hpp"
-#include "bitboard/BitboardTool.hpp"
-#include "bitboard/BitboardTool19.hpp"
-#include "bitboard/BitboardTool15.hpp"
-#include "ai/ActiveZone.hpp"
+#include "game/GameController.hpp"
 
 
 enum class AppState { MainMenu, BoardSize, StoneColor, Opening, Game };
@@ -38,11 +29,8 @@ class Gomoku
         MenuPage _opening;
         MenuPage _colorChoice;
 
-        std::unique_ptr<Board>      _board;
-        std::unique_ptr<GameState>  _gameState;
-        std::unique_ptr<IBitboardTool> _bitboardTool;
-        // std::unique_ptr<ActiveZone19> _activeZone;
-
+        std::unique_ptr<Board>          _board;
+        std::unique_ptr<GameController> _controller;
 
         MenuPage &currentPage();
         void      navigateTo(AppState s);

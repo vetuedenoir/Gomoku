@@ -1,7 +1,6 @@
 #include "Gomoku.hpp"
 #include "interface.hpp"
 #include "logger/Logger.hpp"
-#include "game/OpeningScript.hpp"
 #include <algorithm>
 #include <random>
 #include <iostream>
@@ -96,28 +95,26 @@ void Gomoku::startGame()
         std::cerr << "Error: Impossible size: " << _config.boardSize << std::endl;
 
     float boardSize = std::min(WIN_W, WIN_H) * 0.90f;
-    _board     = std::make_unique<Board>(WIN_W / 2.f, WIN_H / 2.f, boardSize, _config.boardSize);
-    _gameState = std::make_unique<GameState>(_config.boardSize,
-                                              _config.openingRule,
-                                              _config.playerStoneColor);
+    _board      = std::make_unique<Board>(WIN_W / 2.f, WIN_H / 2.f, boardSize, _config.boardSize);
+    _controller = std::make_unique<GameController>(_config);
 }
 
 // ── Ghost-colour computation ──────────────────────────────────────────────────
 
 CellStatus Gomoku::computeGhostColor() const
 {
-    if (!_gameState)
+    if (!_controller)
         return CellStatus::Empty;
 
-    switch (_gameState->phase)
+    switch (_controller->phase())
     {
         case GamePhase::OpeningPlacement:
-            return _gameState->nextOpeningColor();
+            return _controller->nextOpeningColor();
 
         case GamePhase::NormalPlay:
-            return (_gameState->board->currentSeat() == Seat::First)
-                ? CellStatus::Black
-                : CellStatus::White;
+            return (_controller->currentColor() == Color::Black)
+                    ? CellStatus::Black
+                    : CellStatus::White;
 
         case GamePhase::ColorChoice:
             return CellStatus::Empty;
@@ -141,7 +138,7 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
         return;
     }
 
-    switch (_gameState->phase)
+    switch (_controller->phase())
     {
         case GamePhase::OpeningPlacement:
         {
@@ -150,12 +147,10 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
             if (col < 0 || row < 0)
                 break;
 
-            CellStatus forced = _gameState->nextOpeningColor();
-            Move m{ col, row, forced };
-            if (!applyOpeningMove(*_gameState, m))
+            if (!_controller->handleOpeningClick(col, row))
                 break;
 
-            if (_gameState->phase == GamePhase::ColorChoice)
+            if (_controller->phase() == GamePhase::ColorChoice)
                 buildColorChoicePage();
             break;
         }
@@ -168,32 +163,13 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
         {
             int col = _board->getHoveredCol();
             int row = _board->getHoveredRow();
-            if (col >= 0 && row >= 0)
+            if (col < 0 || row < 0)
+                break;
+
+            auto result = _controller->submitMove(col, row);
+            if (result == GameController::MoveResult::Win)
             {
-                const char* color = (_gameState->board->currentSeat() == Seat::First) ? "Black" : "White";
-                if (_gameState->board->placeStone(col, row)) {
-                    Logger::debug("NORMAL",
-                        std::string(color) + " → (" + std::to_string(col) + "," + std::to_string(row) + ") ✓");
-                        // test_bitboard(*_gameState->board, col, row);
-
-                        t_BWBoard19 bwBoard = GameBoard_to_bitboard<BoardTraits<19>>(*_gameState->board);
-                        print_bb_19(bwBoard);
-                        
-                        // _activeZone->initialize(bwBoard);
-                        // _activeZone->setRadius(2);
-                        // std::vector<t_cell> moves = _activeZone->generateZoneMoves();
-                        // std::cout << "Active zone moves (" << moves.size() << "): ";
-                        // for (const auto& m : moves)
-                        //     std::cout << "(" << m.x << "," << m.y << ") ";
-                        // std::cout << std::endl;
-
-
-                }
-                else {
-                    Logger::warn("NORMAL",
-                        std::string("(") + std::to_string(col) + "," + std::to_string(row)
-                        + ") rejected — cell occupied");                      
-                }
+                Logger::info("GAME", "Game over — winner detected.");
             }
             break;
         }
@@ -205,7 +181,7 @@ void Gomoku::update(sf::Vector2f mouse)
     if (_states.top() == AppState::Game)
     {
         _board->updateHover(mouse);
-        if (_gameState->phase == GamePhase::ColorChoice)
+        if (_controller->phase() == GamePhase::ColorChoice)
             _colorChoice.updateHover(mouse);
     }
     else
@@ -229,9 +205,9 @@ void Gomoku::render()
 
 void Gomoku::renderGame()
 {
-    _board->draw(_window, *_gameState->board, computeGhostColor());
+    _board->draw(_window, _controller->visualBoard(), computeGhostColor());
 
-    if (_gameState->phase == GamePhase::ColorChoice)
+    if (_controller->phase() == GamePhase::ColorChoice)
         renderColorChoicePage();
 }
 
@@ -240,13 +216,13 @@ void Gomoku::buildColorChoicePage()
 {
     _colorChoice.clear();
 
-    const OpeningRule rule  = _gameState->openingRule;
-    const Seat        actor = _gameState->currentActor;
+    const OpeningRule rule  = _controller->openingRule();
+    const Seat        actor = _controller->currentActor();
     const float       horizontalCenterWindow    = WIN_W / 2.f;
 
     const bool threeOptions = (rule == OpeningRule::Swap2
                                && actor == Seat::Second
-                               && _gameState->stepIdx == 1);
+                               && _controller->stepIdx() == 1);
 
     const char* titleStr = threeOptions
         ? "Seat 2: Choose your option"
@@ -268,17 +244,17 @@ void Gomoku::buildColorChoicePage()
 
     _colorChoice.addItem("opt1", FonctionItem(
         Item(label1,         _font, horizontalCenterWindow, 436.f),
-        [this]() { _gameState->resolveColorChoice(false); }
+        [this]() { _controller->resolveColorChoice(false); }
     ));
     _colorChoice.addItem("opt2", FonctionItem(
         Item(label2,         _font, horizontalCenterWindow, 491.f),
-        [this]() { _gameState->resolveColorChoice(true); }
+        [this]() { _controller->resolveColorChoice(true); }
     ));
     if (threeOptions)
     {
         _colorChoice.addItem("place2", FonctionItem(
             Item("Place 2 More", _font, horizontalCenterWindow, 546.f),
-            [this]() { _gameState->continueOpeningPlacement(); }
+            [this]() { _controller->continueOpeningPlacement(); }
         ));
     }
 

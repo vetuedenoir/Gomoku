@@ -11,6 +11,7 @@ class MoveGenerator
         explicit MoveGenerator(int activeZoneRadius = 2);
 
         void generateLegalMoves(const t_BWBoard19& board, Color color, bitboard19& legalMoves) const;
+        // TODO: to migrate to new bitboard template
         bool isLegalMove(const t_BWBoard19& board, int col, int row, Color color) const;
 
     private:
