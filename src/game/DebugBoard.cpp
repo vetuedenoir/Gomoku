@@ -55,26 +55,3 @@ void appendUnique(std::vector<ScanCell>& dst, const std::vector<ScanCell>& src)
             dst.push_back(*it);
     }
 }
-
-std::vector<ScanCell> buildOverlayFromActiveZone(const ActiveZone& az)
-{
-    std::vector<ScanCell> overlay;
-
-    const bitboard19& mask = az.getCandidateMask();
-
-    for (int y = 0; y < 19; y++)
-    {
-        for (int x = 0; x < 19; x++)
-        {
-            if (get_bb19(mask, index_bb19(x, y)))
-            {
-                ScanCell cell;
-                cell.x = x;
-                cell.y = y;
-                overlay.push_back(cell);
-            }
-        }
-    }
-
-    return overlay;
-}

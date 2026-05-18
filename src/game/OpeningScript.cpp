@@ -241,7 +241,7 @@ bool applyOpeningMove(GameState& state, const Move& move)
     //     return false;
     // }
 
-    if (!isLegalPlacement(move.col, move.row, state.board.getSize(),
+    if (!isLegalPlacement(move.col, move.row, state.board->getSize(),
                          spec.constraint, state.historyPlacedStones))
     {
         std::string reason;
@@ -260,7 +260,7 @@ bool applyOpeningMove(GameState& state, const Move& move)
         return false;
     }
 
-    if (!state.board.placeStoneOfColor(move.col, move.row, spec.color))
+    if (!state.board->placeStoneOfColor(move.col, move.row, spec.color))
     {
         Logger::warn("OPENING",
             stepInfo + " | (" + std::to_string(move.col) + "," + std::to_string(move.row)
@@ -302,7 +302,7 @@ bool applyOpeningMove(GameState& state, const Move& move)
         state.phase      = GamePhase::NormalPlay;
         state.blackSeat  = Seat::First;
         state.whiteSeat  = Seat::Second;
-        state.board.setCurrentPlayer(Seat::First);
+        state.board->setCurrentPlayer(Seat::First);
 
         Logger::info("PHASE",
             std::string(phaseStr(prev)) + " → " + phaseStr(state.phase)

@@ -23,6 +23,27 @@ bool exists(const std::vector<ScanCell>& v, int x, int y);
 void appendUnique(std::vector<ScanCell>& dst, const std::vector<ScanCell>& src);
 
 // ActiveZone
-std::vector<ScanCell> buildOverlayFromActiveZone(const ActiveZone& az);
+template<typename Traits>
+std::vector<ScanCell> buildOverlayFromActiveZone(const ActiveZone<Traits>& az)
+{
+    std::vector<ScanCell> overlay;
+
+    for (int y = 0; y < Traits::BOARD_SIZE; y++)
+    {
+        for (int x = 0; x < Traits::BOARD_SIZE; x++)
+        {
+            if (az.contains(x, y))
+            {
+                ScanCell cell;
+                cell.cell = Cell::Scan;
+                cell.x    = x;
+                cell.y    = y;
+                overlay.push_back(cell);
+            }
+        }
+    }
+
+    return overlay;
+}
 
 #endif

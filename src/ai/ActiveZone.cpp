@@ -1,69 +1,8 @@
 #include "ai/ActiveZone.hpp"
-#include <cstring>
 
-ActiveZone::ActiveZone(int radius) : _radius(radius)
-{
-    memset(_candidateMask, 0, sizeof(_candidateMask));
-}
+// All ActiveZone implementation is in the header (template class).
+// Explicit instantiations ensure the two board-size variants are compiled
+// into this translation unit, keeping link times predictable.
 
-void ActiveZone::initialize(const t_BWBoard19& board)
-{
-    memset(_candidateMask, 0, sizeof(_candidateMask));
-
-    for (int y = 0; y < 19; y++)
-    {
-        for (int x = 0; x < 19; x++)
-        {
-            int pos = index_bb19(x, y);
-            if (get_bb19(board.black, pos) || get_bb19(board.white, pos))
-                addNeighborBits(x, y);
-        }
-    }
-
-    for (int i = 0; i < 6; i++)
-        _candidateMask[i] &= ~(board.black[i] | board.white[i]);
-}
-
-void ActiveZone::addNeighborBits(int cx, int cy)
-{
-    for (int dy = -_radius; dy <= _radius; dy++)
-    {
-        for (int dx = -_radius; dx <= _radius; dx++)
-        {
-            int nx = cx + dx;
-            int ny = cy + dy;
-            if (in_board(nx, ny))
-                set_bb19(_candidateMask, nx, ny);
-        }
-    }
-}
-
-const bitboard19& ActiveZone::getCandidateMask() const noexcept
-{
-    return _candidateMask;
-}
-
-bool ActiveZone::contains(int col, int row) const noexcept
-{
-    return get_bb19(_candidateMask, index_bb19(col, row));
-}
-
-int ActiveZone::size() const noexcept
-{
-    return popcount_bb(_candidateMask);
-}
-
-void ActiveZone::clear()
-{
-    memset(_candidateMask, 0, sizeof(_candidateMask));
-}
-
-void ActiveZone::setRadius(int radius) noexcept
-{
-    _radius = radius;
-}
-
-int ActiveZone::getRadius() const noexcept
-{
-    return _radius;
-}
+template class ActiveZone<BoardTraits<19>>;
+template class ActiveZone<BoardTraits<15>>;
