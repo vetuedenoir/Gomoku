@@ -68,7 +68,7 @@ struct t_PatternList_Groupe4{
 typedef struct {
 	int		stone_pos[4];	// 16 bytes
 	int		hole_pos[2];	// 8 bytes
-	int		oposant_pos[4];	// 16 bytes
+	int		oposant_pos[5];	// 16 bytes
 	int		count;	// 4 bytes
 }	t_PatternGroupe3;
 
@@ -632,6 +632,7 @@ void	build_lookup_table3(t_PatternList_Groupe3 lookup_table3[361][4])
 			pattern.oposant_pos[1] = (x - 1 >= 0) ? (start_pos - 1) : -1;
 			pattern.oposant_pos[2] = (x + 3 < Traits::BOARD_SIZE) ? (start_pos + 3) : -1;
 			pattern.oposant_pos[3] = (x + 4 < Traits::BOARD_SIZE) ? (start_pos + 4) : -1;
+			pattern.oposant_pos[4] = (x + 5 < Traits::BOARD_SIZE) ? (start_pos + 5) : -1;
 			add_pattern_group3_to_lookup<Traits>(lookup_table3, &pattern, DIR_HORIZ);
 			total_patterns3++;
 		}
@@ -662,6 +663,7 @@ void	build_lookup_table3(t_PatternList_Groupe3 lookup_table3[361][4])
 			pattern.oposant_pos[1] = (y - 1 >= 0) ? (start_pos - 1 * Traits::STRIDE) : -1;
 			pattern.oposant_pos[2] = (y + 3 < Traits::BOARD_SIZE) ? (start_pos + 3 * Traits::STRIDE) : -1;
 			pattern.oposant_pos[3] = (y + 4 < Traits::BOARD_SIZE) ? (start_pos + 4 * Traits::STRIDE) : -1;
+			pattern.oposant_pos[4] = (y + 5 < Traits::BOARD_SIZE) ? (start_pos + 5 * Traits::STRIDE) : -1;
 			add_pattern_group3_to_lookup<Traits>(lookup_table3, &pattern, DIR_VERT);
 			total_patterns3++;
 		}
@@ -692,6 +694,7 @@ void	build_lookup_table3(t_PatternList_Groupe3 lookup_table3[361][4])
 			pattern.oposant_pos[1] = (y - 1 >= 0 && x - 1 >= 0) ? (start_pos - 1 * Traits::STRIDE_D) : -1;
 			pattern.oposant_pos[2] = (y + 3 < Traits::BOARD_SIZE && x + 3 < Traits::BOARD_SIZE) ? (start_pos + 3 * Traits::STRIDE_D) : -1;
 			pattern.oposant_pos[3] = (y + 4 < Traits::BOARD_SIZE && x + 4 < Traits::BOARD_SIZE) ? (start_pos + 4 * Traits::STRIDE_D) : -1;
+			pattern.oposant_pos[4] = (y + 5 < Traits::BOARD_SIZE && x + 5 < Traits::BOARD_SIZE) ? (start_pos + 5 * Traits::STRIDE_D) : -1;
 			add_pattern_group3_to_lookup<Traits>(lookup_table3, &pattern, DIR_DIAG_G);
 			total_patterns3++;
 		}
@@ -722,6 +725,7 @@ void	build_lookup_table3(t_PatternList_Groupe3 lookup_table3[361][4])
 			pattern.oposant_pos[1] = (y - 1 >= 0 && x + 1 < Traits::BOARD_SIZE) ? (start_pos - 1 * Traits::STRIDE_G) : -1;
 			pattern.oposant_pos[2] = (y + 3 < Traits::BOARD_SIZE && x - 3 >= 0) ? (start_pos + 3 * Traits::STRIDE_G) : -1;
 			pattern.oposant_pos[3] = (y + 4 < Traits::BOARD_SIZE && x - 4 >= 0) ? (start_pos + 4 * Traits::STRIDE_G) : -1;
+			pattern.oposant_pos[4] = (y + 5 < Traits::BOARD_SIZE && x - 5 >= 0) ? (start_pos + 5 * Traits::STRIDE_G) : -1;
 			add_pattern_group3_to_lookup<Traits>(lookup_table3, &pattern, DIR_DIAG_D);
 			total_patterns3++;
 		}
@@ -771,9 +775,8 @@ int	check_three_align(const t_PatternList_Groupe3 lookup_table[361][4],
 			
 			if (score > 256)
 			{
-					continue; // alignement de 3 pierre complètement fermé, on ignore
+				continue; // alignement de 3 pierre complètement fermé, on ignore
 			}	
-				
 			if (get_bb_generic<Traits>(boardA, pattern.stone_pos[0]) && 
 				get_bb_generic<Traits>(boardA, pattern.stone_pos[1]) &&
 				get_bb_generic<Traits>(boardA, pattern.stone_pos[2]))
@@ -783,6 +786,15 @@ int	check_three_align(const t_PatternList_Groupe3 lookup_table[361][4],
 				double_three += 1;
 				continue;
 			}
+			if (pattern.oposant_pos[3] == -1 || get_bb_flate<Traits>(boardB, pattern.oposant_pos[3]))
+				score += 128;
+			else if (pattern.oposant_pos[4] == -1 || get_bb_flate<Traits>(boardB, pattern.oposant_pos[4]))
+				score += 128;
+			if (score > 256)
+			{
+				continue; // alignement de 3 pierre complètement fermé, on ignore
+			}
+
 			if (pattern.stone_pos[3] == -1)
 				continue;
 			// std::cout << "pattern: hole pos[0] = " << pattern.hole_pos[0] << "hole pos[1] = " << pattern.hole_pos[1] << ", stone pos = " << pattern.stone_pos[0] << std::endl;
