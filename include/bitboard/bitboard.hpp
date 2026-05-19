@@ -154,7 +154,7 @@ void print_bb_19_colored(t_BWBoard<Traits> &bw)
 		str += '|';
 		for (uint64_t x = 0; x < Traits::BOARD_SIZE; x++)
 		{
-				if (get_bb_generic<Traits>(bw.black, x, y))
+			if (get_bb_generic<Traits>(bw.black, x, y))
 				str += BLACK_STONE "B " RESET;
 			else if (get_bb_generic<Traits>(bw.white, x, y))
 				str += WHITE_STONE "W " RESET;

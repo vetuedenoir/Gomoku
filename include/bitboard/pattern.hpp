@@ -69,7 +69,7 @@ typedef struct {
 	int		stone_pos[4];	// 16 bytes
 	int		hole_pos[2];	// 8 bytes
 	int		oposant_pos[5];	// 16 bytes
-	int		count;	// 4 bytes
+	// int		count;	// 4 bytes
 }	t_PatternGroupe3;
 
 typedef struct {
@@ -117,7 +117,7 @@ inline bool match_pattern(
 }
 
 template<typename Traits>
-static void add_mask_to_lookup5(t_PatternList5<Traits> lookup_table5[361][4], const typename Traits::Bitboard& mask, const int start_pos, const int stride)
+static void add_mask_to_lookup5(t_PatternList5<Traits> lookup_table5[Traits::CELL_COUNT][4], const typename Traits::Bitboard& mask, const int start_pos, const int stride)
 {
 	int dir;
 
@@ -150,7 +150,7 @@ static void add_mask_to_lookup5(t_PatternList5<Traits> lookup_table5[361][4], co
 
 
 template<typename Traits>
-int	isWin_ultra(t_PatternList5<Traits> lookup_table5[361][4], const typename Traits::Bitboard& board,
+int	isWin_ultra(t_PatternList5<Traits> lookup_table5[Traits::CELL_COUNT][4], const typename Traits::Bitboard& board,
 	const int x, const int y)
 {
 	const int idx = idx_generic<Traits>(x, y);
@@ -168,8 +168,10 @@ int	isWin_ultra(t_PatternList5<Traits> lookup_table5[361][4], const typename Tra
 }
 
 template<typename Traits>
-void build_lookup_table5(t_PatternList5<Traits> lookup_table5[361][4])
+void build_lookup_table5(t_PatternList5<Traits> lookup_table5[Traits::CELL_COUNT][4])
 {
+
+	memset(lookup_table5, 0, sizeof(t_PatternList5<Traits>) * Traits::CELL_COUNT * 4);
 	// 1. Horizontal (stride = 1)
 	for (int y = 0; y < Traits::BOARD_SIZE; y++)
 	{
@@ -248,7 +250,7 @@ void build_lookup_table5(t_PatternList5<Traits> lookup_table5[361][4])
 }
 
 template<typename Traits>
-void add_mask_to_lookup4(t_PatternList4<Traits> lookup_table4[361][4], t_Pattern4<Traits> *pattern ,
+void add_mask_to_lookup4(t_PatternList4<Traits> lookup_table4[Traits::CELL_COUNT][4], t_Pattern4<Traits> *pattern ,
 	const int start_pos, const int stride)
 {
 	int dir;
@@ -278,7 +280,7 @@ void add_mask_to_lookup4(t_PatternList4<Traits> lookup_table4[361][4], t_Pattern
 }
 
 template<typename Traits>
-int	is_Open_4(t_PatternList4<Traits> lookup_table4[361][4],
+int	is_Open_4(t_PatternList4<Traits> lookup_table4[Traits::CELL_COUNT][4],
 			const typename Traits::Bitboard &boardA, const typename Traits::Bitboard &boardB,
 				const int x, const int y)
 {
@@ -313,8 +315,9 @@ int	is_Open_4(t_PatternList4<Traits> lookup_table4[361][4],
 
 
 template<typename Traits>
-void	build_lookup_table4(t_PatternList4<Traits> lookup_table4[361][4])
+void	build_lookup_table4(t_PatternList4<Traits> lookup_table4[Traits::CELL_COUNT][4])
 {
+	memset(lookup_table4, 0, sizeof(t_PatternList4<Traits>) * Traits::CELL_COUNT * 4);
 	// 1. Horizontal (stride = 1)
 	for (int y = 0; y < Traits::BOARD_SIZE; y++)
 	{
@@ -403,7 +406,7 @@ void	build_lookup_table4(t_PatternList4<Traits> lookup_table4[361][4])
 
 
 template<typename Traits>
-static void add_pattern_group4(t_PatternList_Groupe4<Traits> lookup_table[361][4],
+static void add_pattern_group4(t_PatternList_Groupe4<Traits> lookup_table[Traits::CELL_COUNT][4],
                                         t_PatternGroup4<Traits> *group,
                                         int start_x, int start_y, int dir)
 {
@@ -442,8 +445,9 @@ static void add_pattern_group4(t_PatternList_Groupe4<Traits> lookup_table[361][4
 }
 
 template<typename Traits>
-void build_lookup_table_groupe4(t_PatternList_Groupe4<Traits> lookup_table_groupe4[361][4])
+void build_lookup_table_groupe4(t_PatternList_Groupe4<Traits> lookup_table_groupe4[Traits::CELL_COUNT][4])
 {
+	memset(lookup_table_groupe4, 0, sizeof(t_PatternList_Groupe4<Traits>) * Traits::CELL_COUNT * 4);
 	// 1. Horizontal (stride = 1)
 	for (int y = 0; y < Traits::BOARD_SIZE; y++)
 	{
@@ -550,7 +554,7 @@ void build_lookup_table_groupe4(t_PatternList_Groupe4<Traits> lookup_table_group
 }
 
 template<typename Traits>
-int check_four_align(const t_PatternList_Groupe4<Traits> lookup_table[361][4],
+int check_four_align(const t_PatternList_Groupe4<Traits> lookup_table[Traits::CELL_COUNT][4],
 						const typename Traits::Bitboard &boardA, const typename Traits::Bitboard &boardB,
 						const int x, const int y)
 {
@@ -577,7 +581,7 @@ int check_four_align(const t_PatternList_Groupe4<Traits> lookup_table[361][4],
 }
 
 template<typename Traits>
-static void	add_pattern_group3_to_lookup(t_PatternList_Groupe3 lookup_table3[361][4],
+static void	add_pattern_group3_to_lookup(t_PatternList_Groupe3 lookup_table3[Traits::CELL_COUNT][4],
 										t_PatternGroupe3 *group, int dir)
 {
 	// Parcours des 4 positions de pierres (certaines peuvent être -1 si hors plateau)
@@ -603,9 +607,9 @@ static void	add_pattern_group3_to_lookup(t_PatternList_Groupe3 lookup_table3[361
 }
 
 template<typename Traits>
-void	build_lookup_table3(t_PatternList_Groupe3 lookup_table3[361][4])
+void	build_lookup_table3(t_PatternList_Groupe3 lookup_table3[Traits::CELL_COUNT][4])
 {
-	int total_patterns3 = 0;
+	memset(lookup_table3, 0, sizeof(t_PatternList_Groupe3) * Traits::CELL_COUNT * 4);
 
 	// 1. Horizontal (stride = 1)
 	for (int y = 0; y < Traits::BOARD_SIZE; y++)
@@ -618,13 +622,12 @@ void	build_lookup_table3(t_PatternList_Groupe3 lookup_table3[361][4])
 			for (int i = 0; i < 4; i++)
 			{
 				pattern.stone_pos[i] = start_pos + i;
-				if (x + i == Traits::BOARD_SIZE)
+				if (x + i >= Traits::BOARD_SIZE)
 				{
 					pattern.stone_pos[i] = -1;
-					pattern.count = 1;
+					// pattern.count = 1;
 				}
-				if  (i == 3)
-					pattern.count = 3;
+				
 			}
 			pattern.hole_pos[0] = start_pos + 1;
 			pattern.hole_pos[1] = start_pos + 2;
@@ -634,7 +637,6 @@ void	build_lookup_table3(t_PatternList_Groupe3 lookup_table3[361][4])
 			pattern.oposant_pos[3] = (x + 4 < Traits::BOARD_SIZE) ? (start_pos + 4) : -1;
 			pattern.oposant_pos[4] = (x + 5 < Traits::BOARD_SIZE) ? (start_pos + 5) : -1;
 			add_pattern_group3_to_lookup<Traits>(lookup_table3, &pattern, DIR_HORIZ);
-			total_patterns3++;
 		}
 	}
 
@@ -649,13 +651,13 @@ void	build_lookup_table3(t_PatternList_Groupe3 lookup_table3[361][4])
 			for (int i = 0; i < 4; i++)
 			{
 				pattern.stone_pos[i] = start_pos + i * Traits::STRIDE;
-				if (y + i == Traits::BOARD_SIZE)
+				if (y + i >= Traits::BOARD_SIZE)
 				{
 					pattern.stone_pos[i] = -1;
-					pattern.count = 1;
+					// pattern.count = 1;
 				}
-				if  (i == 3)
-					pattern.count = 3;
+				// if  (i == 3)
+				// 	pattern.count = 3;
 			}
 			pattern.hole_pos[0] = start_pos + 1 * Traits::STRIDE;
 			pattern.hole_pos[1] = start_pos + 2 * Traits::STRIDE;
@@ -665,7 +667,6 @@ void	build_lookup_table3(t_PatternList_Groupe3 lookup_table3[361][4])
 			pattern.oposant_pos[3] = (y + 4 < Traits::BOARD_SIZE) ? (start_pos + 4 * Traits::STRIDE) : -1;
 			pattern.oposant_pos[4] = (y + 5 < Traits::BOARD_SIZE) ? (start_pos + 5 * Traits::STRIDE) : -1;
 			add_pattern_group3_to_lookup<Traits>(lookup_table3, &pattern, DIR_VERT);
-			total_patterns3++;
 		}
 	}
 
@@ -680,13 +681,13 @@ void	build_lookup_table3(t_PatternList_Groupe3 lookup_table3[361][4])
 			for (int i = 0; i < 4; i++)
 			{
 				pattern.stone_pos[i] = start_pos + i * Traits::STRIDE_D;
-				if (y + i == Traits::BOARD_SIZE)
+				if (y + i >= Traits::BOARD_SIZE || x + i >= Traits::BOARD_SIZE)
 				{
 					pattern.stone_pos[i] = -1;
-					pattern.count = 1;
+					// pattern.count = 1;
 				}
-				if  (i == 3)
-					pattern.count = 3;
+				// if  (i == 3)
+				// 	pattern.count = 3;
 			}
 			pattern.hole_pos[0] = start_pos + 1 * Traits::STRIDE_D;
 			pattern.hole_pos[1] = start_pos + 2 * Traits::STRIDE_D;
@@ -696,7 +697,6 @@ void	build_lookup_table3(t_PatternList_Groupe3 lookup_table3[361][4])
 			pattern.oposant_pos[3] = (y + 4 < Traits::BOARD_SIZE && x + 4 < Traits::BOARD_SIZE) ? (start_pos + 4 * Traits::STRIDE_D) : -1;
 			pattern.oposant_pos[4] = (y + 5 < Traits::BOARD_SIZE && x + 5 < Traits::BOARD_SIZE) ? (start_pos + 5 * Traits::STRIDE_D) : -1;
 			add_pattern_group3_to_lookup<Traits>(lookup_table3, &pattern, DIR_DIAG_G);
-			total_patterns3++;
 		}
 	}
 
@@ -711,13 +711,13 @@ void	build_lookup_table3(t_PatternList_Groupe3 lookup_table3[361][4])
 			for (int i = 0; i < 4; i++)
 			{
 				pattern.stone_pos[i] = start_pos + i * Traits::STRIDE_G;
-				if (y + i == Traits::BOARD_SIZE)
+				if (y + i >= Traits::BOARD_SIZE || x - i >= Traits::BOARD_SIZE)
 				{
 					pattern.stone_pos[i] = -1;
-					pattern.count = 1;
+					// pattern.count = 1;
 				}
-				if  (i == 3)
-					pattern.count = 3;
+				// if  (i == 3)
+				// 	pattern.count = 3;
 			}
 			pattern.hole_pos[0] = start_pos + 1 * Traits::STRIDE_G;
 			pattern.hole_pos[1] = start_pos + 2 * Traits::STRIDE_G;
@@ -727,16 +727,14 @@ void	build_lookup_table3(t_PatternList_Groupe3 lookup_table3[361][4])
 			pattern.oposant_pos[3] = (y + 4 < Traits::BOARD_SIZE && x - 4 >= 0) ? (start_pos + 4 * Traits::STRIDE_G) : -1;
 			pattern.oposant_pos[4] = (y + 5 < Traits::BOARD_SIZE && x - 5 >= 0) ? (start_pos + 5 * Traits::STRIDE_G) : -1;
 			add_pattern_group3_to_lookup<Traits>(lookup_table3, &pattern, DIR_DIAG_D);
-			total_patterns3++;
 		}
 	}
-	std::cout << "total_patterns3: " << total_patterns3 << std::endl;
 }
 
 
 
 template<typename Traits>
-int	check_three_align(const t_PatternList_Groupe3 lookup_table[361][4],
+int	check_three_align(const t_PatternList_Groupe3 lookup_table[Traits::CELL_COUNT][4],
 						const typename Traits::Bitboard &boardA, const typename Traits::Bitboard &boardB,
 						const int x, const int y)
 {
@@ -825,7 +823,7 @@ int	check_three_align(const t_PatternList_Groupe3 lookup_table[361][4],
 
 //---------------------------------------------------------------------------
 template<typename Traits>
-static void	add_pattern_super4(t_PatternList_super4<Traits> lookup_table_super4[361][4], t_super4<Traits> *pattern, int start_x, int start_y, int dir)
+static void	add_pattern_super4(t_PatternList_super4<Traits> lookup_table_super4[Traits::CELL_COUNT][4], t_super4<Traits> *pattern, int start_x, int start_y, int dir)
 {
 	for (int i = 0; i < 7; i++)
 	{
@@ -865,8 +863,9 @@ static void	add_pattern_super4(t_PatternList_super4<Traits> lookup_table_super4[
 }
 
 template<typename Traits>
-void build_lookup_table_super4(t_PatternList_super4<Traits> lookup_table[361][4])
+void build_lookup_table_super4(t_PatternList_super4<Traits> lookup_table[Traits::CELL_COUNT][4])
 {
+	memset(lookup_table, 0, sizeof(t_PatternList_super4<Traits>) * Traits::CELL_COUNT * 4);
 	// horizontal
 	for (int y = 0; y < Traits::BOARD_SIZE; y++)
 	{
@@ -966,7 +965,7 @@ void build_lookup_table_super4(t_PatternList_super4<Traits> lookup_table[361][4]
 
 
 template<typename Traits>
-int	check_super4(const t_PatternList_super4<Traits> lookup_table[361][4],
+int	check_super4(const t_PatternList_super4<Traits> lookup_table[Traits::CELL_COUNT][4],
 					const typename Traits::Bitboard &boardA, const typename Traits::Bitboard &boardB,
 					const int x, const int y)
 {
@@ -995,7 +994,7 @@ int	check_super4(const t_PatternList_super4<Traits> lookup_table[361][4],
 //---------------------------------------------------------------------------
 
 template<typename Traits>
-static void	add_pattern_cross_to_lookup(t_PatternList_Cross lookup_table[361], t_cross *pattern)
+static void	add_pattern_cross_to_lookup(t_PatternList_Cross lookup_table[Traits::CELL_COUNT], t_cross *pattern)
 {
 	int positions[5] = {pattern->middle, pattern->up, pattern->down, pattern->left, pattern->right};
 
@@ -1017,8 +1016,10 @@ static void	add_pattern_cross_to_lookup(t_PatternList_Cross lookup_table[361], t
 }
 
 template<typename Traits>
-void	build_lookup_table_cross(t_PatternList_Cross lookup_table[361])
+void	build_lookup_table_cross(t_PatternList_Cross lookup_table[Traits::CELL_COUNT])
 {
+	memset(lookup_table, 0, sizeof(t_PatternList_Cross) * Traits::CELL_COUNT);
+
 	for (int y = 1; y < Traits::BOARD_SIZE - 1; y++)
 	{
 		for (int x = 1; x < Traits::BOARD_SIZE - 1; x++)
@@ -1050,7 +1051,7 @@ void	build_lookup_table_cross(t_PatternList_Cross lookup_table[361])
 
 
 template<typename Traits>
-int	check_cross(const t_PatternList_Cross lookup_table[361], 
+int	check_cross(const t_PatternList_Cross lookup_table[Traits::CELL_COUNT], 
 					const typename Traits::Bitboard &boardA, const typename Traits::Bitboard &boardB,
 					const int x, const int y)
 {

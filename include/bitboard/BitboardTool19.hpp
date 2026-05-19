@@ -6,12 +6,12 @@
 
 class   BitboardTool19 : public IBitboardTool
 {
-    t_PatternList5<BoardTraits<19>>	lookup_table5[361][4];
-	t_PatternList4<BoardTraits<19>>	lookup_table4[361][4];
-	t_PatternList_Groupe4<BoardTraits<19>> lookup_table_groupe4[361][4];
-	t_PatternList_Groupe3 lookup_table3[361][4];
-	t_PatternList_super4<BoardTraits<19>> lookup_table_super4[361][4];
-	t_PatternList_Cross lookup_table_cross[361];
+    t_PatternList5<BoardTraits<19>>	lookup_table5[BoardTraits<19>::CELL_COUNT][4];
+	t_PatternList4<BoardTraits<19>>	lookup_table4[BoardTraits<19>::CELL_COUNT][4];
+	t_PatternList_Groupe4<BoardTraits<19>> lookup_table_groupe4[BoardTraits<19>::CELL_COUNT][4];
+	t_PatternList_Groupe3 lookup_table3[BoardTraits<19>::CELL_COUNT][4];
+	t_PatternList_super4<BoardTraits<19>> lookup_table_super4[BoardTraits<19>::CELL_COUNT][4];
+	t_PatternList_Cross lookup_table_cross[BoardTraits<19>::CELL_COUNT];
 
 public:
     BitboardTool19();
