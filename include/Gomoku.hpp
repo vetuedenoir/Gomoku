@@ -8,7 +8,7 @@
 #include "ui/MenuPage.hpp"
 #include "ui/Board.hpp"
 #include "ui/UIRenderer.hpp"
-#include "game/GameController.hpp"
+#include "game/controller/IGameController.hpp"
 
 
 enum class AppState { MainMenu, BoardSize, StoneColor, Opening, Game, GameOver };
@@ -31,7 +31,7 @@ class Gomoku
         MenuPage _winScreen;
 
         std::unique_ptr<Board>          _board;
-        std::unique_ptr<GameController> _controller;
+        std::unique_ptr<IGameController> _controller;
 
         MenuPage &currentPage();
         void      navigateTo(AppState s);

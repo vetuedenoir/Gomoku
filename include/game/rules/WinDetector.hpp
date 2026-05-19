@@ -1,0 +1,24 @@
+#ifndef WINDETECTOR_HPP
+# define WINDETECTOR_HPP
+
+#include "bitboard/bitboard.hpp"
+#include "bitboard/pattern.hpp"
+#include "game/contracts/Color.hpp"
+#include <cstring>
+
+template<typename Traits>
+bool isWinAfterMove(const t_BWBoard<Traits>& bb, Color color, int col, int row)
+{
+    static t_PatternList5<Traits> table[Traits::BOARD_SIZE * Traits::BOARD_SIZE][4];
+    static bool                     ready = false;
+    if (!ready)
+    {
+        std::memset(table, 0, sizeof(table));
+        build_lookup_table5<Traits>(table);
+        ready = true;
+    }
+    const auto& plane = (color == Color::Black) ? bb.black : bb.white;
+    return isWin_ultra<Traits>(table, plane, col, row) > 0;
+}
+
+#endif

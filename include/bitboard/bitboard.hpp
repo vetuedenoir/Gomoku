@@ -1,7 +1,7 @@
 #ifndef BITBOARD_HPP
 # define BITBOARD_HPP
 
-#include "game/GameBoard.hpp"
+#include "game/board/GameBoard.hpp"
 #include "game/contracts/Color.hpp"
 #include "direction.hpp"
 
@@ -85,6 +85,16 @@ inline bool get_bb_generic(const typename Traits::Bitboard &bb, int x, int y)
 	return (bb[idx / 64] & (1ULL << (idx % 64))) != 0;
 }
 
+// Read a bit by its flat physical index (y*STRIDE+x).
+// Used by pattern matching code that stores pre-computed flat indices.
+// Returns false for the -1 sentinel used by pattern structs.
+template<typename Traits>
+inline bool get_bb_flat(const typename Traits::Bitboard& bb, int pos)
+{
+	if (pos < 0) return false;
+	return (bb[pos / 64] & (1ULL << (pos % 64))) != 0;
+}
+
 template<typename Traits>
 inline bool get_bb_flate(const typename Traits::Bitboard &bb, int idx)
 {
@@ -116,12 +126,11 @@ inline int popcount_bb_generic(const typename Traits::Bitboard& bb)
 	return n;
 }
 
-// Calls fn(x, y) for each set bit in bb.
-// Skips guard-column positions (x >= 19) produced by stride-20 layout.
-template <typename Fn>
-inline void bb_for_each_bit(const bitboard19& bb, Fn fn)
+// Calls fn(x, y) for each set bit in bb, skipping stride-padding positions.
+template<typename Traits, typename Fn>
+inline void bb_for_each_bit(const typename Traits::Bitboard& bb, Fn fn)
 {
-    for (int w = 0; w < 6; w++)
+    for (int w = 0; w < Traits::WORD_COUNT; w++)
     {
         uint64_t word = bb[w];
         while (word)
@@ -129,9 +138,9 @@ inline void bb_for_each_bit(const bitboard19& bb, Fn fn)
             int bit = __builtin_ctzll(word);
             word &= word - 1;
             int pos = w * 64 + bit;
-            int x   = pos % 20;
-            int y   = pos / 20;
-            if (x < 19 && y < 19)
+            int x   = pos % Traits::STRIDE;
+            int y   = pos / Traits::STRIDE;
+            if (x < Traits::BOARD_SIZE && y < Traits::BOARD_SIZE)
                 fn(x, y);
         }
     }

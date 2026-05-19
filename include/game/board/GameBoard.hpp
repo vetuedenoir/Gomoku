@@ -1,7 +1,7 @@
 #ifndef GAMEBOARD_HPP
 # define GAMEBOARD_HPP
 
-# include "game/Seat.hpp"
+# include "game/board/Seat.hpp"
 #include <memory>
 
 enum class CellStatus
@@ -29,7 +29,7 @@ class IGameBoard
 
         virtual void setCurrentPlayer(Seat player) = 0;
         virtual void switchPlayer() = 0;
-        virtual void clearCell(int col, int row) = 0; // used by SearchPosition::undoMove
+        virtual void clearCell(int col, int row) = 0;
 };
 
 // Convenience concrete wrapper preserving the old `GameBoard` name.

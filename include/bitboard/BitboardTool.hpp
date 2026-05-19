@@ -1,7 +1,7 @@
 #ifndef BITBOARDTOOL_HPP
 #define BITBOARDTOOL_HPP
 
-#include "game/GameBoard.hpp"
+#include "game/board/GameBoard.hpp"
 
 class IBitboardTool
 {

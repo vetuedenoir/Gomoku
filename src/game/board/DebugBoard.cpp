@@ -1,6 +1,6 @@
 // DebugBoard.cpp
 
-#include "game/DebugBoard.hpp"
+#include "game/board/DebugBoard.hpp"
 #include <iostream>
 
 static bool isOverlay(int x, int y, const std::vector<ScanCell>& overlay)

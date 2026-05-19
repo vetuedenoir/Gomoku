@@ -3,10 +3,10 @@
 
 #include <SFML/Graphics.hpp>
 #include "game/contracts/Color.hpp"
-#include "game/GameBoard.hpp"
+#include "game/board/GameBoard.hpp"
 
 class Board;
-class GameController;
+class IGameController;
 class MenuPage;
 
 
@@ -18,7 +18,7 @@ public:
     void renderMenu       (sf::RenderWindow& w, MenuPage& page);
 
     void renderGame       (sf::RenderWindow& w, Board& board,
-                           const GameController& ctrl, CellStatus ghost);
+                           const IGameController& ctrl, CellStatus ghost);
 
     void renderColorChoice(sf::RenderWindow& w, MenuPage& colorChoice);
 

@@ -1,7 +1,7 @@
 #ifndef GAMEBOARD19_HPP
 # define GAMEBOARD19_HPP
 
-#include "game/GameBoard.hpp"
+#include "game/board/GameBoard.hpp"
 #include <cstring>
 
 class GameBoard19 : public IGameBoard

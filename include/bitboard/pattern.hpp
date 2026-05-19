@@ -569,12 +569,12 @@ int check_four_align(const t_PatternList_Groupe4<Traits> lookup_table[Traits::CE
 		{
 			const t_PatternGroup4<Traits>& groupe = list_groupe.patterns[i];
 
-			if (!get_bb_generic<Traits>(boardB, groupe.hole_pos[0]) && match_pattern(groupe.masks[0], boardA))
-				return 1;
-			if (!get_bb_generic<Traits>(boardB, groupe.hole_pos[1]) && match_pattern(groupe.masks[1], boardA))
-				return 2;
-			if (!get_bb_generic<Traits>(boardB, groupe.hole_pos[2]) && match_pattern(groupe.masks[2], boardA))
-				return 3;
+		if (!get_bb_flat<Traits>(boardB, groupe.hole_pos[0]) && match_pattern(groupe.masks[0], boardA))
+			return 1;
+		if (!get_bb_flat<Traits>(boardB, groupe.hole_pos[1]) && match_pattern(groupe.masks[1], boardA))
+			return 2;
+		if (!get_bb_flat<Traits>(boardB, groupe.hole_pos[2]) && match_pattern(groupe.masks[2], boardA))
+			return 3;
 		}
 	}
 	return 0;
@@ -980,9 +980,9 @@ int	check_super4(const t_PatternList_super4<Traits> lookup_table[Traits::CELL_CO
 		{
 			const t_super4<Traits>& pattern = list_super4.patterns[i];
 
-			if (match_pattern<Traits>(pattern.mask, boardA) &&
-				!get_bb_generic<Traits>(boardB, pattern.hole_pos[0]) &&
-				!get_bb_generic<Traits>(boardB, pattern.hole_pos[1]))
+		if (match_pattern<Traits>(pattern.mask, boardA) &&
+			!get_bb_flat<Traits>(boardB, pattern.hole_pos[0]) &&
+			!get_bb_flat<Traits>(boardB, pattern.hole_pos[1]))
 			{
 				return 1; // super four détecté
 			}
@@ -1089,15 +1089,15 @@ int	check_cross(const t_PatternList_Cross lookup_table[Traits::CELL_COUNT],
 		if (opposant_score > 64)
 			continue;
 
-		if (get_bb_generic<Traits>(boardA, cross.middle))
+		if (get_bb_flat<Traits>(boardA, cross.middle))
 			score += 3;
-		if (get_bb_generic<Traits>(boardA, cross.up))
+		if (get_bb_flat<Traits>(boardA, cross.up))
 			score += 4;
-		if (get_bb_generic<Traits>(boardA, cross.down))
+		if (get_bb_flat<Traits>(boardA, cross.down))
 			score += 4;
-		if (get_bb_generic<Traits>(boardA, cross.left))
+		if (get_bb_flat<Traits>(boardA, cross.left))
 			score += 4;
-		if (get_bb_generic<Traits>(boardA, cross.right))
+		if (get_bb_flat<Traits>(boardA, cross.right))
 			score += 4;
 		
 		if (score >= 15) // on a au moins une croix partiel
@@ -1109,8 +1109,12 @@ int	check_cross(const t_PatternList_Cross lookup_table[Traits::CELL_COUNT],
 
 
 
-// void	test_bitboard(const GameBoard& board, int x, int y); // Fonction de test pour vérifier les patterns sur le bitboard
-		
+// Checks whether placing `color` at (col, row) on `board` creates a forbidden
+// double-three. Returns true if the move is a double-three violation.
+// The lookup table is built lazily and cached per Traits specialization.
+template<typename Traits>
+bool is_double_three_move(const t_BWBoard<Traits>& board, int col, int row, Color color);
+
 //---------------------------------------------------------------------------
 
 // Liste des valeurs de retour pour la fonction check_three_align:
@@ -1132,6 +1136,7 @@ int	check_cross(const t_PatternList_Cross lookup_table[Traits::CELL_COUNT],
 #define SCORE_HOLE_INTERN	(SCORE_3_HOLE + SCORE_OPP_INTERN)	// 268
 
 // Scores pour double three (somme / 4)
+// TODO: illegal
 #define SCORE_DOUBLE_FULL_FULL			4	// (8+8)/4
 #define SCORE_DOUBLE_HOLE_FULL			5	// (12+8)/4
 #define SCORE_DOUBLE_HOLE_HOLE			6	// (12+12)/4
@@ -1140,6 +1145,8 @@ int	check_cross(const t_PatternList_Cross lookup_table[Traits::CELL_COUNT],
 #define SCORE_DOUBLE_HOLE_FULL_EXTERN	37	// (128+12+8)/4 = 148/4 = 37
 #define SCORE_DOUBLE_HOLE_HOLE_EXTERN	38	// (128+12+12)/4 = 152/4 = 38
 
+
+// TODO; legal
 #define SCORE_DOUBLE_FULL_FULL_INTERN	68	// (256+8+8)/4 = 272/4 = 68
 #define SCORE_DOUBLE_HOLE_FULL_INTERN	69	// (256+12+8)/4 = 276/4 = 69
 #define SCORE_DOUBLE_HOLE_HOLE_INTERN	70	// (256+12+12)/4 = 280/4 = 70

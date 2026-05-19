@@ -35,6 +35,9 @@ OBJ_DIR   := .build
 
 ALL_SRCS := $(wildcard $(SRC_DIR)/*.cpp) \
 	$(wildcard $(SRC_DIR)/game/*.cpp) \
+	$(wildcard $(SRC_DIR)/game/board/*.cpp) \
+	$(wildcard $(SRC_DIR)/game/controller/*.cpp) \
+	$(wildcard $(SRC_DIR)/game/rules/*.cpp) \
 	$(wildcard $(SRC_DIR)/ai/*.cpp) \
 	$(wildcard $(SRC_DIR)/logger/*.cpp) \
 	$(wildcard $(SRC_DIR)/optimization/*.cpp) \
@@ -123,7 +126,11 @@ EXT_INC_DIR   := external/doctest
 FILTER        ?=
 
 # Sources compiled for tests: pure logic only — no main, no UI, no SFML
-TEST_GAME_SRCS := $(wildcard $(SRC_DIR)/game/*.cpp) $(wildcard $(SRC_DIR)/ai/*.cpp) \
+TEST_GAME_SRCS := $(wildcard $(SRC_DIR)/game/*.cpp) \
+                  $(wildcard $(SRC_DIR)/game/board/*.cpp) \
+                  $(wildcard $(SRC_DIR)/game/controller/*.cpp) \
+                  $(wildcard $(SRC_DIR)/game/rules/*.cpp) \
+                  $(wildcard $(SRC_DIR)/ai/*.cpp) \
                   $(wildcard $(SRC_DIR)/logger/*.cpp) \
                   $(wildcard $(SRC_DIR)/optimization/*.cpp) \
                   $(wildcard $(SRC_DIR)/bitboard/*.cpp)

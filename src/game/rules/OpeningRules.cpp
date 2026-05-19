@@ -1,12 +1,10 @@
-#include "game/OpeningScript.hpp"
+#include "game/rules/OpeningRules.hpp"
 #include "game/GameState.hpp"
-#include "game/Seat.hpp"
+#include "game/board/Seat.hpp"
 #include "logger/Logger.hpp"
 #include <cmath>
 #include <algorithm>
 #include <string>
-
-// ── Helpers for logging ─────────────────────────────────────────────────────────────
 
 static const char* colorStr(CellStatus c)
 {
@@ -25,9 +23,8 @@ static const char* phaseStr(GamePhase p)
         case GamePhase::OpeningPlacement: return "Opening placement";
         case GamePhase::ColorChoice:      return "Color choice";
         case GamePhase::NormalPlay:       return "Normal play";
-        default:                         return "Unknown phase";
+        default:                          return "Unknown phase";
     }
-    return "undefined";
 }
 
 static Seat toSeat(OpeningActor a)
@@ -37,15 +34,13 @@ static Seat toSeat(OpeningActor a)
 
 static std::string stepCtx(const GameState& state)
 {
-    const OpeningStep& step = state.openingScript[state.stepIdx];
+    const OpeningStep& step = state.openingSteps[state.stepIdx];
     return "step " + std::to_string(state.stepIdx)
-        + "/" + std::to_string(static_cast<int>(state.openingScript.size()) - 1)
-        + "  sub "  + std::to_string(state.subIdx)
+        + "/" + std::to_string(static_cast<int>(state.openingSteps.size()) - 1)
+        + "  sub " + std::to_string(state.subIdx)
         + "/" + std::to_string(static_cast<int>(step.stones.size()) - 1)
         + "  actor=" + seatStr(toSeat(step.actor));
 }
-
-// ── Constraints ─────────────────────────────────────────────────────────────
 
 static PlacementConstraint centerConstraint()
 {
@@ -62,8 +57,6 @@ static PlacementConstraint distanceConstraint(int refIdx, int minDist)
     return c;
 }
 
-// Builds one scripted step.
-// samePlayerPlacesAll is always true for every rule currently defined; triggersColorChoice defaults to false.
 static OpeningStep makeStep(OpeningActor                    actor,
                             std::initializer_list<StoneSpec> stones,
                             bool                             triggersChoice = false)
@@ -76,8 +69,6 @@ static OpeningStep makeStep(OpeningActor                    actor,
     return s;
 }
 
-// Pro and LongPro share the same 3-step structure; only the minimum distance
-// for the third stone differs.
 static std::vector<OpeningStep> proScript(int thirdStoneMinDist)
 {
     return {
@@ -87,43 +78,35 @@ static std::vector<OpeningStep> proScript(int thirdStoneMinDist)
     };
 }
 
-// ── Script builder ────────────────────────────────────────────────────────────
-
-std::vector<OpeningStep> getOpeningScript(OpeningRule rule)
+std::vector<OpeningStep> buildOpeningSteps(OpeningRule rule)
 {
     switch (rule)
     {
         case OpeningRule::Normal:
             return {};
-
         case OpeningRule::Pro:
             return proScript(3);
-
         case OpeningRule::LongPro:
             return proScript(4);
-
         case OpeningRule::Swap:
             return {
                 makeStep(OpeningActor::TentativeFirst, {
                     { CellStatus::Black, {} },
                     { CellStatus::Black, {} },
                     { CellStatus::White, {} },
-                }, /*triggersChoice=*/true),
+                }, true),
             };
-
         case OpeningRule::Swap2:
             return {
-                // Step 0 — TentativeFirst places B B W; TentativeSecond then chooses.
                 makeStep(OpeningActor::TentativeFirst, {
                     { CellStatus::Black, {} },
                     { CellStatus::Black, {} },
                     { CellStatus::White, {} },
-                }, /*triggersChoice=*/true),
-                // Step 1 — only reached via Swap2 option 3: TentativeSecond places B W.
+                }, true),
                 makeStep(OpeningActor::TentativeSecond, {
                     { CellStatus::Black, {} },
                     { CellStatus::White, {} },
-                }, /*triggersChoice=*/true),
+                }, true),
             };
     }
     return {};
@@ -134,14 +117,13 @@ static int chebyshevDist(int c1, int r1, int c2, int r2)
     return std::max(std::abs(c1 - c2), std::abs(r1 - r2));
 }
 
-// Returns true when a cell satisfies the stone's placement constraint.
 static bool isLegalPlacement(int col, int row, int boardSize,
                              const PlacementConstraint& c,
                              const std::vector<PlacedStone>& history)
 {
     if (c.mustBeCenter)
     {
-        int center = boardSize / 2;
+        const int center = boardSize / 2;
         if (col != center || row != center)
             return false;
     }
@@ -158,15 +140,35 @@ static bool isLegalPlacement(int col, int row, int boardSize,
 
 OpeningStep getCurrentOpeningStep(const GameState& state)
 {
-    return state.openingScript[state.stepIdx];
+    return state.openingSteps[state.stepIdx];
 }
 
-bool isOpeningPlacementFinished(const GameState& state)
+bool isOpeningComplete(const GameState& state)
 {
-    return state.openingScript.empty()
-        || state.stepIdx >= (int)state.openingScript.size();
+    return state.openingSteps.empty()
+        || state.stepIdx >= (int)state.openingSteps.size();
 }
 
+bool canPlaceOpeningStone(const GameState& state, const Move& move)
+{
+    if (isOpeningComplete(state))
+        return false;
+
+    const OpeningStep& step = state.openingSteps[state.stepIdx];
+    const StoneSpec&   spec = step.stones[state.subIdx];
+
+    if (move.forcedColor != CellStatus::Empty && move.forcedColor != spec.color)
+        return false;
+
+    if (!state.board->isFree(move.col, move.row))
+        return false;
+
+    if (!isLegalPlacement(move.col, move.row, state.board->getSize(),
+                          spec.constraint, state.historyPlacedStones))
+        return false;
+
+    return true;
+}
 
 static std::string openingStepDescription(OpeningRule rule, int stepIdx)
 {
@@ -181,7 +183,6 @@ static std::string openingStepDescription(OpeningRule rule, int stepIdx)
                             "at least 3 intersections (Chebyshev) from the first stone";
             }
             break;
-
         case OpeningRule::LongPro:
             switch (stepIdx)
             {
@@ -191,39 +192,36 @@ static std::string openingStepDescription(OpeningRule rule, int stepIdx)
                             "at least 4 intersections (Chebyshev) from the first stone";
             }
             break;
-
         case OpeningRule::Swap:
             if (stepIdx == 0)
                 return "Swap  step 0/0 — TentativeFirst places 3 stones (Black, Black, White) "
-                    "anywhere; TentativeSecond will then choose which colour to play as";
+                       "anywhere; TentativeSecond will then choose which colour to play as";
             break;
-
         case OpeningRule::Swap2:
             switch (stepIdx)
-                {
+            {
                 case 0: return "Swap2  step 0/1 — TentativeFirst places 3 stones (Black, Black, White) anywhere; "
                             "TentativeSecond may (A) play White, (B) swap to Black, "
                             "or (C) place 2 more stones and pass the choice back";
                 case 1: return "Swap2  step 1/1 — TentativeSecond places 2 stones (Black, White) anywhere "
                             "(option C was chosen); TentativeFirst will now choose which colour to play as";
-                }
+            }
             break;
-
         default:
             break;
-        }
+    }
     return "Unknown step";
 }
 
-bool applyOpeningMove(GameState& state, const Move& move)
+bool commitOpeningMove(GameState& state, const Move& move)
 {
-    if (isOpeningPlacementFinished(state))
+    if (isOpeningComplete(state))
     {
-        Logger::warn("OPENING", "applyOpeningMove called but placement is already finished");
+        Logger::warn("OPENING", "commitOpeningMove called but opening is already complete");
         return false;
     }
 
-    const OpeningStep& step = state.openingScript[state.stepIdx];
+    const OpeningStep& step = state.openingSteps[state.stepIdx];
     const StoneSpec&   spec = step.stones[state.subIdx];
 
     if (state.subIdx == 0)
@@ -231,42 +229,41 @@ bool applyOpeningMove(GameState& state, const Move& move)
 
     const std::string stepInfo = stepCtx(state);
 
-    // TODO: AI engine protection
-    //  Reject wrong forced color
-    // if (move.forcedColor != spec.color)
-    // {
-    //     Logger::warn("OPENING",
-    //         stepInfo + " | wrong colour: got " + colorStr(move.forcedColor)
-    //         + ", expected " + colorStr(spec.color));
-    //     return false;
-    // }
-
-    if (!isLegalPlacement(move.col, move.row, state.board->getSize(),
-                         spec.constraint, state.historyPlacedStones))
+    if (!canPlaceOpeningStone(state, move))
     {
-        std::string reason;
-        if (spec.constraint.mustBeCenter)
-            reason = "must be centre";
-        else if (spec.constraint.refStoneIdx >= 0)
-            reason = "too close to stone["
-                     + std::to_string(spec.constraint.refStoneIdx)
-                     + "] (min dist " + std::to_string(spec.constraint.minDist) + ")";
+        if (move.forcedColor != CellStatus::Empty && move.forcedColor != spec.color)
+        {
+            Logger::warn("OPENING",
+                stepInfo + " | wrong colour: got " + colorStr(move.forcedColor)
+                + ", expected " + colorStr(spec.color));
+        }
+        else if (!state.board->isFree(move.col, move.row))
+        {
+            Logger::warn("OPENING",
+                stepInfo + " | (" + std::to_string(move.col) + "," + std::to_string(move.row)
+                + ") cell occupied");
+        }
         else
-            reason = "constraint violated";
+        {
+            std::string reason;
+            if (spec.constraint.mustBeCenter)
+                reason = "must be centre";
+            else if (spec.constraint.refStoneIdx >= 0)
+                reason = "too close to stone["
+                         + std::to_string(spec.constraint.refStoneIdx)
+                         + "] (min dist " + std::to_string(spec.constraint.minDist) + ")";
+            else
+                reason = "constraint violated";
 
-        Logger::warn("OPENING",
-            stepInfo + " | (" + std::to_string(move.col) + "," + std::to_string(move.row)
-            + ") rejected — " + reason);
+            Logger::warn("OPENING",
+                stepInfo + " | (" + std::to_string(move.col) + "," + std::to_string(move.row)
+                + ") rejected — " + reason);
+        }
         return false;
     }
 
     if (!state.board->placeStoneOfColor(move.col, move.row, spec.color))
-    {
-        Logger::warn("OPENING",
-            stepInfo + " | (" + std::to_string(move.col) + "," + std::to_string(move.row)
-            + ") cell occupied");
         return false;
-    }
 
     Logger::debug("OPENING",
         stepInfo + " | " + colorStr(spec.color)
@@ -277,7 +274,7 @@ bool applyOpeningMove(GameState& state, const Move& move)
     ++state.subIdx;
 
     if (state.subIdx < (int)step.stones.size())
-        return true;  // more stones to place in this step
+        return true;
 
     const bool hadColorChoice = step.triggersColorChoice;
     ++state.stepIdx;
@@ -288,20 +285,20 @@ bool applyOpeningMove(GameState& state, const Move& move)
 
     if (hadColorChoice)
     {
-        const GamePhase prev    = state.phase;
-        state.phase       = GamePhase::ColorChoice;
+        const GamePhase prev = state.phase;
+        state.phase        = GamePhase::ColorChoice;
         state.currentActor = otherSeat(toSeat(step.actor));
 
         Logger::info("PHASE",
             std::string(phaseStr(prev)) + " → " + phaseStr(state.phase)
             + "  chooser=" + seatStr(state.currentActor));
     }
-    else if (state.stepIdx >= (int)state.openingScript.size())
+    else if (state.stepIdx >= (int)state.openingSteps.size())
     {
         const GamePhase prev = state.phase;
-        state.phase      = GamePhase::NormalPlay;
-        state.blackSeat  = Seat::First;
-        state.whiteSeat  = Seat::Second;
+        state.phase     = GamePhase::NormalPlay;
+        state.blackSeat = Seat::First;
+        state.whiteSeat = Seat::Second;
         state.board->setCurrentPlayer(Seat::First);
 
         Logger::info("PHASE",
@@ -313,8 +310,27 @@ bool applyOpeningMove(GameState& state, const Move& move)
     return true;
 }
 
-std::vector<Move> generateOpeningMoves(const GameState& state)
+std::vector<Move> enumerateOpeningMoves(const GameState& state)
 {
-    (void)state;
-    return {};
+    std::vector<Move> moves;
+    if (isOpeningComplete(state))
+        return moves;
+
+    const OpeningStep& step = state.openingSteps[state.stepIdx];
+    const StoneSpec&   spec = step.stones[state.subIdx];
+    const int          size = state.board->getSize();
+
+    for (int row = 0; row < size; ++row)
+    {
+        for (int col = 0; col < size; ++col)
+        {
+            const Move m{ col, row, spec.color };
+            if (canPlaceOpeningStone(state, m))
+                moves.push_back(m);
+        }
+    }
+
+    Logger::info("OPENING",
+        "enumerateOpeningMoves: " + std::to_string(moves.size()) + " candidates");
+    return moves;
 }

@@ -1,6 +1,6 @@
 #include "game/GameState.hpp"
-#include "game/GameBoard15.hpp"
-#include "game/GameBoard19.hpp"
+#include "game/board/GameBoard15.hpp"
+#include "game/board/GameBoard19.hpp"
 #include "logger/Logger.hpp"
 #include <string>
 
@@ -39,9 +39,9 @@ GameState::GameState(int boardSize, OpeningRule rule, StoneColor firstPlayer)
 {
     // instantiate the board wrapper which will create the correct sized implementation
     board = std::make_unique<GameBoard>(boardSize, (firstPlayer == StoneColor::Black) ? Seat::First : Seat::Second);
-    openingScript = getOpeningScript(rule);
+    openingSteps = buildOpeningSteps(rule);
 
-    if (openingScript.empty())
+    if (openingSteps.empty())
     {
         phase     = GamePhase::NormalPlay;
         blackSeat = (firstPlayer == StoneColor::Black) ? Seat::First : Seat::Second;
@@ -52,7 +52,7 @@ GameState::GameState(int boardSize, OpeningRule rule, StoneColor firstPlayer)
         std::string("rule=") + ruleStr(rule)
         + "  board=" + std::to_string(boardSize) + "x" + std::to_string(boardSize)
         + "  phase=" + phaseStr(phase)
-        + "  steps=" + std::to_string(openingScript.size()));
+        + "  steps=" + std::to_string(openingSteps.size()));
 }
 
 
@@ -107,7 +107,7 @@ void GameState::continueOpeningPlacement()
 
 CellStatus GameState::nextOpeningColor() const
 {
-    if (isOpeningPlacementFinished(*this))
+    if (isOpeningComplete(*this))
         return CellStatus::Empty;
-    return openingScript[stepIdx].stones[subIdx].color;
+    return openingSteps[stepIdx].stones[subIdx].color;
 }

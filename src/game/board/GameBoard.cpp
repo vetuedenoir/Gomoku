@@ -1,6 +1,6 @@
-#include "game/GameBoard.hpp"
-#include "game/GameBoard15.hpp"
-#include "game/GameBoard19.hpp"
+#include "game/board/GameBoard.hpp"
+#include "game/board/GameBoard15.hpp"
+#include "game/board/GameBoard19.hpp"
 
 GameBoard::GameBoard(int size, Seat firstPlayer)
 {
@@ -24,7 +24,7 @@ int GameBoard::getSize() const { return _impl->getSize(); }
 void GameBoard::setCurrentPlayer(Seat player) { _impl->setCurrentPlayer(player); }
 void GameBoard::switchPlayer() { _impl->switchPlayer(); }
 void GameBoard::clearCell(int col, int row) { _impl->clearCell(col, row); }
-#include "game/GameBoard.hpp"
+#include "game/board/GameBoard.hpp"
 
 // GameBoard::GameBoard(int size, Seat firstPlayer)
 //     : _currentPlayer(firstPlayer), _size(size), _board(size * size, CellStatus::Empty)

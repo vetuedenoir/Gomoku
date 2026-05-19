@@ -3,11 +3,9 @@
 
 #include "game/contracts/GameConfig.hpp"
 #include "game/contracts/GamePhase.hpp"
-# include "game/GameBoard.hpp"
-#include <memory>
-#include "game/OpeningScript.hpp"
-#include "game/Seat.hpp"
-#include <optional>
+# include "game/board/GameBoard.hpp"
+#include "game/rules/OpeningRules.hpp"
+#include "game/board/Seat.hpp"
 #include <vector>
 
 struct PlacedStone
@@ -23,7 +21,7 @@ struct GameState
     GamePhase   phase;
     OpeningRule openingRule;
 
-    std::vector<OpeningStep> openingScript;
+    std::vector<OpeningStep> openingSteps;
     int                      stepIdx;
     int                      subIdx;
 

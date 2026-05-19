@@ -1,7 +1,7 @@
 #include "ui/UIRenderer.hpp"
 #include "ui/MenuPage.hpp"
 #include "ui/Board.hpp"
-#include "game/GameController.hpp"
+#include "game/controller/IGameController.hpp"
 #include "interface.hpp"
 
 void UIRenderer::renderMenu(sf::RenderWindow& w, MenuPage& page)
@@ -10,7 +10,7 @@ void UIRenderer::renderMenu(sf::RenderWindow& w, MenuPage& page)
 }
 
 void UIRenderer::renderGame(sf::RenderWindow& w, Board& board,
-                             const GameController& ctrl, CellStatus ghost)
+                             const IGameController& ctrl, CellStatus ghost)
 {
     board.draw(w, ctrl.visualBoard(), ghost);
 }

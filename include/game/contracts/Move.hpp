@@ -1,7 +1,7 @@
 #ifndef MOVE_HPP
 # define MOVE_HPP
 
-#include "game/GameBoard.hpp"
+#include "game/board/GameBoard.hpp"
 
 // A move in the game.
 // During OpeningPlacement, forcedColor is set by the opening script;

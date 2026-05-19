@@ -2,7 +2,7 @@
 #ifndef DEBUGBOARD_HPP
 #define DEBUGBOARD_HPP
 
-#include "game/GameBoard.hpp"
+#include "game/board/GameBoard.hpp"
 #include "ai/ActiveZone.hpp"
 #include <vector>
 
