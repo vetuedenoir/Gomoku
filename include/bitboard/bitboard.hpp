@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <array>
 
 #define BLACK_STONE "\033[1;30m"   // bright black (gray)
 #define WHITE_STONE "\033[1;37m"   // bright white
@@ -83,6 +84,13 @@ inline bool get_bb_generic(const typename Traits::Bitboard &bb, int x, int y)
 	int idx = index_bb_generic<Traits>(x, y);
 	return (bb[idx / 64] & (1ULL << (idx % 64))) != 0;
 }
+
+template<typename Traits>
+inline bool get_bb_flate(const typename Traits::Bitboard &bb, int idx)
+{
+	return (bb[idx / 64] & (1ULL << (idx % 64))) != 0;
+}
+
 
 template<typename Traits>
 inline void clear_bit_generic(typename Traits::Bitboard &bb, int x, int y)

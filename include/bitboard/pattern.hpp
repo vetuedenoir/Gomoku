@@ -301,9 +301,9 @@ int	is_Open_4(t_PatternList4<Traits> lookup_table4[361][4],
 			
 			if (!match_pattern<Traits>(pattern->mask, boardA)) // Si le pattern ne match pas, on continue
 				continue;
-			if (pattern->opposant_left == -1 || get_bb_generic<Traits>(boardB, pattern->opposant_left))
+			if (pattern->opposant_left == -1 || get_bb_flate<Traits>(boardB, pattern->opposant_left))
 				opening_score -= 1;
-			if (pattern->opposant_right == -1 || get_bb_generic<Traits>(boardB, pattern->opposant_right))
+			if (pattern->opposant_right == -1 || get_bb_flate<Traits>(boardB, pattern->opposant_right))
 				opening_score -= 1;
 			return opening_score;
 		}
@@ -760,13 +760,13 @@ int	check_three_align(const t_PatternList_Groupe3 lookup_table[361][4],
 			int		score = 0;
 			score  = 0;
 
-			if (pattern.oposant_pos[1] == -1 || get_bb_generic<Traits>(boardB, pattern.oposant_pos[1]))
+			if (pattern.oposant_pos[1] == -1 || get_bb_flate<Traits>(boardB, pattern.oposant_pos[1]))
 				score = 256;
-			else if (pattern.oposant_pos[0] == -1 || get_bb_generic<Traits>(boardB, pattern.oposant_pos[0]))
+			else if (pattern.oposant_pos[0] == -1 || get_bb_flate<Traits>(boardB, pattern.oposant_pos[0]))
 				score = 128;
-			if (pattern.oposant_pos[2] == -1 || get_bb_generic<Traits>(boardB, pattern.oposant_pos[2]))
+			if (pattern.oposant_pos[2] == -1 || get_bb_flate<Traits>(boardB, pattern.oposant_pos[2]))
 				score += 256;
-			else if (pattern.oposant_pos[3] == -1 || get_bb_generic<Traits>(boardB, pattern.oposant_pos[3]))
+			else if (pattern.oposant_pos[3] == -1 || get_bb_flate<Traits>(boardB, pattern.oposant_pos[3]))
 				score += 128;
 			
 			if (score > 256)
@@ -786,7 +786,7 @@ int	check_three_align(const t_PatternList_Groupe3 lookup_table[361][4],
 			if (pattern.stone_pos[3] == -1)
 				continue;
 			// std::cout << "pattern: hole pos[0] = " << pattern.hole_pos[0] << "hole pos[1] = " << pattern.hole_pos[1] << ", stone pos = " << pattern.stone_pos[0] << std::endl;
-			if (!get_bb_generic<Traits>(boardB, pattern.hole_pos[0]) && get_bb_generic<Traits>(boardA, pattern.stone_pos[0]) && get_bb_generic<Traits>(boardA, pattern.stone_pos[2]) &&
+			if (!get_bb_generic<Traits>(boardB, pattern.hole_pos[0]) && get_bb_flate<Traits>(boardA, pattern.stone_pos[0]) && get_bb_flate<Traits>(boardA, pattern.stone_pos[2]) &&
 				get_bb_generic<Traits>(boardA, pattern.stone_pos[3]))
 			{
 				total_score += score + 12; // a change
@@ -794,7 +794,7 @@ int	check_three_align(const t_PatternList_Groupe3 lookup_table[361][4],
 				// std::cout << "alignement de 3 pierre avec troue, on ignore, score = " << score << std::endl;
 				continue;
 			}
-			if (!get_bb_generic<Traits>(boardB, pattern.hole_pos[1]) && get_bb_generic<Traits>(boardA, pattern.stone_pos[0]) && get_bb_generic<Traits>(boardA, pattern.stone_pos[1]) &&
+			if (!get_bb_generic<Traits>(boardB, pattern.hole_pos[1]) && get_bb_flate<Traits>(boardA, pattern.stone_pos[0]) && get_bb_flate<Traits>(boardA, pattern.stone_pos[1]) &&
 				get_bb_generic<Traits>(boardA, pattern.stone_pos[3]))
 			{
 				total_score += score + 12;
@@ -1052,25 +1052,25 @@ int	check_cross(const t_PatternList_Cross lookup_table[361],
 		int			score = 0;
 
 		if (get_bb_generic<Traits>(boardB, cross.middle) ||
-			get_bb_generic<Traits>(boardB, cross.up) || get_bb_generic<Traits>(boardB, cross.down) ||
-			get_bb_generic<Traits>(boardB, cross.left) || get_bb_generic<Traits>(boardB, cross.right))
+			get_bb_generic<Traits>(boardB, cross.up) || get_bb_flate<Traits>(boardB, cross.down) ||
+			get_bb_generic<Traits>(boardB, cross.left) || get_bb_flate<Traits>(boardB, cross.right))
 			continue;
 
-		if (cross.opposant_up[1] == -1 || get_bb_generic<Traits>(boardB, cross.opposant_up[1]))
+		if (cross.opposant_up[1] == -1 || get_bb_flate<Traits>(boardB, cross.opposant_up[1]))
 			opposant_score = 64;
-		else if (cross.opposant_up[0] == -1 || get_bb_generic<Traits>(boardB, cross.opposant_up[0]))
+		else if (cross.opposant_up[0] == -1 || get_bb_flate<Traits>(boardB, cross.opposant_up[0]))
 			opposant_score = 32;
-		if (cross.opposant_down[1] == -1 || get_bb_generic<Traits>(boardB, cross.opposant_down[1]))
+		if (cross.opposant_down[1] == -1 || get_bb_flate<Traits>(boardB, cross.opposant_down[1]))
 			opposant_score += 64;
-		else if (cross.opposant_down[0] == -1 || get_bb_generic<Traits>(boardB, cross.opposant_down[0]))
+		else if (cross.opposant_down[0] == -1 || get_bb_flate<Traits>(boardB, cross.opposant_down[0]))
 			opposant_score += 32;
-		if (cross.opposant_left[1] == -1 || get_bb_generic<Traits>(boardB, cross.opposant_left[1]))
+		if (cross.opposant_left[1] == -1 || get_bb_flate<Traits>(boardB, cross.opposant_left[1]))
 			opposant_score += 64;
-		else if (cross.opposant_left[0] == -1 || get_bb_generic<Traits>(boardB, cross.opposant_left[0]))
+		else if (cross.opposant_left[0] == -1 || get_bb_flate<Traits>(boardB, cross.opposant_left[0]))
 			opposant_score += 32;
-		if (cross.opposant_right[1] == -1 || get_bb_generic<Traits>(boardB, cross.opposant_right[1]))
+		if (cross.opposant_right[1] == -1 || get_bb_flate<Traits>(boardB, cross.opposant_right[1]))
 			opposant_score += 64;
-		else if (cross.opposant_right[0] == -1 || get_bb_generic<Traits>(boardB, cross.opposant_right[0]))
+		else if (cross.opposant_right[0] == -1 || get_bb_flate<Traits>(boardB, cross.opposant_right[0]))
 			opposant_score += 32;
 
 		if (opposant_score > 64)
