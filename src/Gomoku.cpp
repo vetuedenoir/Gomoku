@@ -6,6 +6,8 @@
 #include <random>
 #include <iostream>
 
+// #include "bitboard/bitboard.hpp"
+
 #ifdef __APPLE__
     static const char *FONT = "/System/Library/Fonts/Helvetica.ttc";
 #else
@@ -25,6 +27,8 @@ Gomoku::Gomoku()
     buildOpeningPage();
 
     _states.push(AppState::MainMenu);
+
+    // _activeZone = std::make_unique<ActiveZone19>(2);
 }
 
 void Gomoku::run()
@@ -171,6 +175,19 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
                     Logger::debug("NORMAL",
                         std::string(color) + " → (" + std::to_string(col) + "," + std::to_string(row) + ") ✓");
                         // test_bitboard(*_gameState->board, col, row);
+
+                        t_BWBoard19 bwBoard = GameBoard_to_bitboard<BoardTraits<19>>(*_gameState->board);
+                        print_bb_19(bwBoard);
+                        
+                        // _activeZone->initialize(bwBoard);
+                        // _activeZone->setRadius(2);
+                        // std::vector<t_cell> moves = _activeZone->generateZoneMoves();
+                        // std::cout << "Active zone moves (" << moves.size() << "): ";
+                        // for (const auto& m : moves)
+                        //     std::cout << "(" << m.x << "," << m.y << ") ";
+                        // std::cout << std::endl;
+
+
                 }
                 else {
                     Logger::warn("NORMAL",

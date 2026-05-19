@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         libsfml-dev \
         fonts-liberation \
+        # valgrind \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -21,3 +22,4 @@ COPY src/ src/
 RUN make all -j"$(nproc)"
 
 CMD ["./gomoku"]
+# CMD ["valgrind", "./gomoku"]
