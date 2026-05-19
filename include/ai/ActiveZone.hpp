@@ -2,32 +2,43 @@
 # define ACTIVEZONE_HPP
 
 #include "bitboard/bitboard.hpp"
+#include <vector>
+
+typedef struct t_cell
+{
+	int x;
+	int y;
+}	t_cell;
 
 template<typename Traits>
 class ActiveZone
 {
-    public:
-        explicit ActiveZone(int radius);
+	public:
+		explicit ActiveZone(int radius);
+		explicit ActiveZone();
+	
 
-        void initialize(const t_BWBoard<Traits>& board);
+		void initialize(const t_BWBoard<Traits>& board);
 
-        const typename Traits::Bitboard& getCandidateMask() const noexcept;
+		const typename Traits::Bitboard& getCandidateMask() const noexcept;
 
-        bool contains(int col, int row) const noexcept;
+		bool contains(int col, int row) const noexcept;
 
-        int size() const noexcept;
+		int size() const noexcept;
 
-        void clear();
+		void clear();
 
-        void setRadius(int radius) noexcept;
+		void setRadius(int radius) noexcept;
 
-        int getRadius() const noexcept;
+		int getRadius() const noexcept;
 
-    private:
-        typename Traits::Bitboard _candidateMask;
-        int                       _radius;
+		std::vector<t_cell> generateZoneMoves();
 
-        void addNeighborBits(int cx, int cy);
+	private:
+		typename Traits::Bitboard _candidateMask;
+		int                       _radius;
+
+		void addNeighborBits(int cx, int cy);
 };
 
 // ── Implementation ────────────────────────────────────────────────────────────
@@ -37,78 +48,101 @@ ActiveZone<Traits>::ActiveZone(int radius) : _candidateMask({}), _radius(radius)
 {}
 
 template<typename Traits>
+ActiveZone<Traits>::ActiveZone() : _candidateMask({}), _radius(2)
+{}
+
+template<typename Traits>
 void ActiveZone<Traits>::initialize(const t_BWBoard<Traits>& board)
 {
-    _candidateMask = {};
+	_candidateMask = {};
 
-    for (int y = 0; y < Traits::BOARD_SIZE; y++)
-    {
-        for (int x = 0; x < Traits::BOARD_SIZE; x++)
-        {
-            if (get_bb_generic<Traits>(board.black, x, y) ||
-                get_bb_generic<Traits>(board.white, x, y))
-                addNeighborBits(x, y);
-        }
-    }
+	for (int y = 0; y < Traits::BOARD_SIZE; y++)
+	{
+		for (int x = 0; x < Traits::BOARD_SIZE; x++)
+		{
+			if (get_bb_generic<Traits>(board.black, x, y) ||
+				get_bb_generic<Traits>(board.white, x, y))
+				addNeighborBits(x, y);
+		}
+	}
 
-    for (int i = 0; i < Traits::WORD_COUNT; i++)
-        _candidateMask[i] &= ~(board.black[i] | board.white[i]);
+	for (int i = 0; i < Traits::WORD_COUNT; i++)
+		_candidateMask[i] &= ~(board.black[i] | board.white[i]);
 }
 
 template<typename Traits>
 void ActiveZone<Traits>::addNeighborBits(int cx, int cy)
 {
-    for (int dy = -_radius; dy <= _radius; dy++)
-    {
-        for (int dx = -_radius; dx <= _radius; dx++)
-        {
-            int nx = cx + dx;
-            int ny = cy + dy;
-            if (in_board_generic<Traits>(nx, ny))
-                set_bb_generic<Traits>(_candidateMask, nx, ny);
-        }
-    }
+	for (int dy = -_radius; dy <= _radius; dy++)
+	{
+		for (int dx = -_radius; dx <= _radius; dx++)
+		{
+			int nx = cx + dx;
+			int ny = cy + dy;
+			if (in_board_generic<Traits>(nx, ny))
+				set_bb_generic<Traits>(_candidateMask, nx, ny);
+		}
+	}
 }
 
 template<typename Traits>
 const typename Traits::Bitboard& ActiveZone<Traits>::getCandidateMask() const noexcept
 {
-    return _candidateMask;
+	return _candidateMask;
 }
 
 template<typename Traits>
 bool ActiveZone<Traits>::contains(int col, int row) const noexcept
 {
-    return get_bb_generic<Traits>(_candidateMask, col, row);
+	return get_bb_generic<Traits>(_candidateMask, col, row);
 }
 
 template<typename Traits>
 int ActiveZone<Traits>::size() const noexcept
 {
-    return popcount_bb_generic<Traits>(_candidateMask);
+	return popcount_bb_generic<Traits>(_candidateMask);
 }
 
 template<typename Traits>
 void ActiveZone<Traits>::clear()
 {
-    _candidateMask = {};
+	_candidateMask = {};
 }
 
 template<typename Traits>
 void ActiveZone<Traits>::setRadius(int radius) noexcept
 {
-    _radius = radius;
+	_radius = radius;
 }
 
 template<typename Traits>
 int ActiveZone<Traits>::getRadius() const noexcept
 {
-    return _radius;
+	return _radius;
 }
 
 // ── Convenience aliases ───────────────────────────────────────────────────────
 
 using ActiveZone19 = ActiveZone<BoardTraits<19>>;
 using ActiveZone15 = ActiveZone<BoardTraits<15>>;
+
+
+template<typename Traits>
+std::vector<t_cell> ActiveZone<Traits>::generateZoneMoves()
+{
+	std::vector<t_cell> moves;
+
+	for (int y = 0; y < Traits::BOARD_SIZE; y++)
+	{
+		for (int x = 0; x < Traits::BOARD_SIZE; x++)
+		{
+			if (contains(x, y))
+			{
+				moves.push_back({x, y});
+			}
+		}
+	}
+	return moves;
+}
 
 #endif // ACTIVEZONE_HPP
