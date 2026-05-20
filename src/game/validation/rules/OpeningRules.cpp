@@ -1,4 +1,4 @@
-#include "game/rules/OpeningRules.hpp"
+#include "game/validation/rules/OpeningRules.hpp"
 #include "game/GameState.hpp"
 #include "game/board/Seat.hpp"
 #include "logger/Logger.hpp"

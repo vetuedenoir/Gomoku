@@ -4,7 +4,7 @@
 #include "game/contracts/GameConfig.hpp"
 #include "game/contracts/GamePhase.hpp"
 # include "game/board/GameBoard.hpp"
-#include "game/rules/OpeningRules.hpp"
+#include "game/validation/rules/OpeningRules.hpp"
 #include "game/board/Seat.hpp"
 #include <vector>
 

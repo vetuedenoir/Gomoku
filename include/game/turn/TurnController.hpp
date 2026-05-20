@@ -4,7 +4,7 @@
 #include "game/controller/IGameController.hpp"
 #include "game/GameState.hpp"
 #include "game/contracts/Move.hpp"
-#include "game/rules/WinDetector.hpp"
+#include "game/turn/WinDetector.hpp"
 #include "bitboard/bitboard.hpp"
 #include "logger/Logger.hpp"
 #include <optional>

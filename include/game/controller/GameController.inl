@@ -1,4 +1,4 @@
-#include "game/rules/OpeningRules.hpp"
+#include "game/validation/rules/OpeningRules.hpp"
 #include "logger/Logger.hpp"
 #include <string>
 
@@ -111,30 +111,32 @@ std::optional<Move> GameController<Traits>::requestAIMove()
         return std::nullopt;
     }
 
-    const std::vector<Move> candidates = _validator.getLegalMoves(_state);
+    Logger::info("AI", "requestAIMove — in progress");
 
-    if (_state.phase == GamePhase::Opening)
-    {
-        for (const Move& m : candidates)
-        {
-            if (handleOpeningClick(m.col, m.row))
-                return m;
-        }
-        Logger::warn("AI", "requestAIMove — no opening move committed");
-        return std::nullopt;
-    }
+    // const std::vector<Move> candidates = _validator.getLegalMoves(_state);
 
-    if (_state.phase == GamePhase::Standard)
-    {
-        for (const Move& m : candidates)
-        {
-            const MoveResult r = submitMove(m.col, m.row);
-            if (r == MoveResult::Ok || r == MoveResult::Win)
-                return m;
-        }
-        Logger::warn("AI", "requestAIMove — no standard move committed");
-        return std::nullopt;
-    }
+    // if (_state.phase == GamePhase::Opening)
+    // {
+    //     for (const Move& m : candidates)
+    //     {
+    //         if (handleOpeningClick(m.col, m.row))
+    //             return m;
+    //     }
+    //     Logger::warn("AI", "requestAIMove — no opening move committed");
+    //     return std::nullopt;
+    // }
+
+    // if (_state.phase == GamePhase::Standard)
+    // {
+    //     for (const Move& m : candidates)
+    //     {
+    //         const MoveResult r = submitMove(m.col, m.row);
+    //         if (r == MoveResult::Ok || r == MoveResult::Win)
+    //             return m;
+    //     }
+    //     Logger::warn("AI", "requestAIMove — no standard move committed");
+    //     return std::nullopt;
+    // }
 
     return std::nullopt;
 }

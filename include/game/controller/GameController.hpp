@@ -3,7 +3,7 @@
 
 #include "game/controller/IGameController.hpp"
 #include "game/GameState.hpp"
-#include "game/rules/MoveValidator.hpp"
+#include "game/validation/MoveValidator.hpp"
 #include "game/turn/TurnController.hpp"
 
 template<typename Traits>
