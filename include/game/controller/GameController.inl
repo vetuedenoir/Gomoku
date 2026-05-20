@@ -1,6 +1,4 @@
 #include "game/rules/OpeningRules.hpp"
-#include "game/rules/WinDetector.hpp"
-#include "bitboard/bitboard.hpp"
 #include "logger/Logger.hpp"
 #include <string>
 
@@ -16,20 +14,20 @@ CellStatus colorToCell(Color c)
 
 template<typename Traits>
 GameController<Traits>::GameController(const GameConfig& config)
-    : _state(config.boardSize, config.openingRule, config.playerStoneColor)
+    : _state(config.boardSize, config.openingProtocol, config.playerColor)
 {
-    if (_state.phase == GamePhase::NormalPlay)
-        onEnteredNormalPlay();
+    if (_state.phase == GamePhase::Standard)
+        beginNormalPlay();
 }
 
 template<typename Traits>
-void GameController<Traits>::onEnteredNormalPlay()
+void GameController<Traits>::beginNormalPlay()
 {
     const Seat blackSeat = _state.blackSeat.value_or(Seat::First);
     _state.board->setCurrentPlayer(blackSeat);
 
     Logger::info("PHASE",
-        std::string("NormalPlay — Black=") + seatStr(blackSeat)
+        std::string("Standard — Black=") + seatStr(blackSeat)
         + "  White=" + seatStr(_state.whiteSeat.value_or(Seat::Second))
         + "  to move=" + seatStr(_state.board->currentSeat()));
 }
@@ -44,94 +42,22 @@ Color GameController<Traits>::currentColor() const
 }
 
 template<typename Traits>
-MoveResult GameController<Traits>::submitMoveImpl(int col, int row)
-{
-    const Color      color     = currentColor();
-    const CellStatus cellColor = colorToCell(color);
-    const char*      colorStr  = (color == Color::Black) ? "Black" : "White";
-
-    const Move move{ col, row, cellColor };
-    if (!_validator.isLegal(_state, move))
-        return MoveResult::Illegal;
-
-    t_BWBoard<Traits> bb = GameBoard_to_bitboard<Traits>(*_state.board);
-
-    typename Traits::Bitboard capturedMask = {};
-    detect_captures<Traits>(bb, col, row, color, capturedMask);
-
-    const int newCaptures = popcount_bb_generic<Traits>(capturedMask);
-    if (color == Color::Black)
-        _capturesBlack += newCaptures;
-    else
-        _capturesWhite += newCaptures;
-
-    set_bb_generic<Traits>(
-        (color == Color::Black) ? bb.black : bb.white, col, row);
-    apply_captures<Traits>(bb, capturedMask, color);
-
-    _state.board->placeStoneOfColor(col, row, cellColor);
-    bb_for_each_bit<Traits>(capturedMask, [this](int x, int y) {
-        _state.board->clearCell(x, y);
-    });
-
-    Logger::debug("CONTROLLER",
-        std::string(colorStr) + " → (" + std::to_string(col) + "," + std::to_string(row)
-        + ") ✓" + (newCaptures > 0 ? " captures=" + std::to_string(newCaptures) : ""));
-
-    const int moverCaptures =
-        (color == Color::Black) ? _capturesBlack : _capturesWhite;
-    if (moverCaptures >= 10)
-    {
-        _winner = color;
-        Logger::info("CONTROLLER", std::string(colorStr) + " wins by capture!");
-        _state.board->switchPlayer();
-        return MoveResult::Win;
-    }
-
-    if (isWinAfterMove<Traits>(bb, color, col, row))
-    {
-        _winner = color;
-        Logger::info("CONTROLLER", std::string(colorStr) + " wins by alignment!");
-        _state.board->switchPlayer();
-        return MoveResult::Win;
-    }
-
-    _state.board->switchPlayer();
-    return MoveResult::Ok;
-}
-
-template<typename Traits>
-MoveResult GameController<Traits>::submitMove(int col, int row)
-{
-    if (_winner.has_value())
-        return MoveResult::Illegal;
-
-    if (_state.phase != GamePhase::NormalPlay)
-    {
-        Logger::warn("CONTROLLER", "submitMove rejected — not NormalPlay");
-        return MoveResult::Illegal;
-    }
-
-    return submitMoveImpl(col, row);
-}
-
-template<typename Traits>
 bool GameController<Traits>::handleOpeningClick(int col, int row)
 {
-    if (_state.phase != GamePhase::OpeningPlacement)
+    if (_state.phase != GamePhase::Opening)
     {
-        Logger::warn("CONTROLLER", "handleOpeningClick rejected — not OpeningPlacement");
+        Logger::warn("CONTROLLER", "handleOpeningClick rejected — not Opening");
         return false;
     }
 
     const GamePhase prevPhase = _state.phase;
-    const CellStatus forced   = _state.nextOpeningColor();
+    const CellStatus forced     = _state.nextOpeningColor();
     const Move       m{ col, row, forced };
     if (!commitOpeningMove(_state, m))
         return false;
 
-    if (prevPhase != GamePhase::NormalPlay && _state.phase == GamePhase::NormalPlay)
-        onEnteredNormalPlay();
+    if (prevPhase != GamePhase::Standard && _state.phase == GamePhase::Standard)
+        beginNormalPlay();
 
     return true;
 }
@@ -140,13 +66,34 @@ template<typename Traits>
 void GameController<Traits>::resolveColorChoice(bool swapped)
 {
     _state.resolveColorChoice(swapped);
-    onEnteredNormalPlay();
+    beginNormalPlay();
 }
 
 template<typename Traits>
 void GameController<Traits>::continueOpeningPlacement()
 {
     _state.continueOpeningPlacement();
+}
+
+template<typename Traits>
+MoveResult GameController<Traits>::submitMove(int col, int row)
+{
+    if (_winner.has_value())
+        return MoveResult::Illegal;
+
+    if (_state.phase != GamePhase::Standard)
+        return MoveResult::Illegal;
+
+    const Move move{ col, row, colorToCell(currentColor()) };
+
+    if (!_validator.isLegal(_state, move))
+        return MoveResult::Illegal;
+
+    const PlayResult r = _turnController.play(_state, _capturesBlack, _capturesWhite, move);
+    if (r.winner)
+        _winner = r.winner;
+
+    return r.result;
 }
 
 template<typename Traits>
@@ -164,40 +111,28 @@ std::optional<Move> GameController<Traits>::requestAIMove()
         return std::nullopt;
     }
 
-    const std::vector<Move> candidates = _validator.legalMoves(_state);
-    Logger::info("AI",
-        "requestAIMove — " + std::to_string(candidates.size()) + " candidates");
+    const std::vector<Move> candidates = _validator.getLegalMoves(_state);
 
-    if (_state.phase == GamePhase::OpeningPlacement)
+    if (_state.phase == GamePhase::Opening)
     {
         for (const Move& m : candidates)
         {
             if (handleOpeningClick(m.col, m.row))
-            {
-                Logger::debug("AI",
-                    "committed opening (" + std::to_string(m.col) + ","
-                    + std::to_string(m.row) + ")");
                 return m;
-            }
         }
         Logger::warn("AI", "requestAIMove — no opening move committed");
         return std::nullopt;
     }
 
-    if (_state.phase == GamePhase::NormalPlay)
+    if (_state.phase == GamePhase::Standard)
     {
         for (const Move& m : candidates)
         {
             const MoveResult r = submitMove(m.col, m.row);
             if (r == MoveResult::Ok || r == MoveResult::Win)
-            {
-                Logger::debug("AI",
-                    "committed normal (" + std::to_string(m.col) + ","
-                    + std::to_string(m.row) + ")");
                 return m;
-            }
         }
-        Logger::warn("AI", "requestAIMove — no normal move committed");
+        Logger::warn("AI", "requestAIMove — no standard move committed");
         return std::nullopt;
     }
 
@@ -229,9 +164,9 @@ CellStatus GameController<Traits>::nextOpeningColor() const
 }
 
 template<typename Traits>
-OpeningRule GameController<Traits>::openingRule() const
+OpeningProtocol GameController<Traits>::openingProtocol() const
 {
-    return _state.openingRule;
+    return _state.openingProtocol;
 }
 
 template<typename Traits>

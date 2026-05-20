@@ -20,9 +20,9 @@ static const char* phaseStr(GamePhase p)
 {
     switch (p)
     {
-        case GamePhase::OpeningPlacement: return "Opening placement";
+        case GamePhase::Opening: return "Opening";
         case GamePhase::ColorChoice:      return "Color choice";
-        case GamePhase::NormalPlay:       return "Normal play";
+        case GamePhase::Standard:       return "Standard";
         default:                          return "Unknown phase";
     }
 }
@@ -78,17 +78,17 @@ static std::vector<OpeningStep> proScript(int thirdStoneMinDist)
     };
 }
 
-std::vector<OpeningStep> buildOpeningSteps(OpeningRule rule)
+std::vector<OpeningStep> buildOpeningSteps(OpeningProtocol openingProtocol)
 {
-    switch (rule)
+    switch (openingProtocol)
     {
-        case OpeningRule::Normal:
+        case OpeningProtocol::Standard:
             return {};
-        case OpeningRule::Pro:
+        case OpeningProtocol::Pro:
             return proScript(3);
-        case OpeningRule::LongPro:
+        case OpeningProtocol::LongPro:
             return proScript(4);
-        case OpeningRule::Swap:
+        case OpeningProtocol::Swap:
             return {
                 makeStep(OpeningActor::TentativeFirst, {
                     { CellStatus::Black, {} },
@@ -96,7 +96,7 @@ std::vector<OpeningStep> buildOpeningSteps(OpeningRule rule)
                     { CellStatus::White, {} },
                 }, true),
             };
-        case OpeningRule::Swap2:
+        case OpeningProtocol::Swap2:
             return {
                 makeStep(OpeningActor::TentativeFirst, {
                     { CellStatus::Black, {} },
@@ -170,11 +170,11 @@ bool canPlaceOpeningStone(const GameState& state, const Move& move)
     return true;
 }
 
-static std::string openingStepDescription(OpeningRule rule, int stepIdx)
+static std::string openingStepDescription(OpeningProtocol openingProtocol, int stepIdx)
 {
-    switch (rule)
+    switch (openingProtocol)
     {
-        case OpeningRule::Pro:
+        case OpeningProtocol::Pro:
             switch (stepIdx)
             {
                 case 0: return "Pro  step 0/2 — TentativeFirst places 1 Black stone at the board centre (forced)";
@@ -183,7 +183,7 @@ static std::string openingStepDescription(OpeningRule rule, int stepIdx)
                             "at least 3 intersections (Chebyshev) from the first stone";
             }
             break;
-        case OpeningRule::LongPro:
+        case OpeningProtocol::LongPro:
             switch (stepIdx)
             {
                 case 0: return "LongPro  step 0/2 — TentativeFirst places 1 Black stone at the board centre (forced)";
@@ -192,12 +192,12 @@ static std::string openingStepDescription(OpeningRule rule, int stepIdx)
                             "at least 4 intersections (Chebyshev) from the first stone";
             }
             break;
-        case OpeningRule::Swap:
+        case OpeningProtocol::Swap:
             if (stepIdx == 0)
                 return "Swap  step 0/0 — TentativeFirst places 3 stones (Black, Black, White) "
                        "anywhere; TentativeSecond will then choose which colour to play as";
             break;
-        case OpeningRule::Swap2:
+        case OpeningProtocol::Swap2:
             switch (stepIdx)
             {
                 case 0: return "Swap2  step 0/1 — TentativeFirst places 3 stones (Black, Black, White) anywhere; "
@@ -225,7 +225,7 @@ bool commitOpeningMove(GameState& state, const Move& move)
     const StoneSpec&   spec = step.stones[state.subIdx];
 
     if (state.subIdx == 0)
-        Logger::info("OPENING", openingStepDescription(state.openingRule, state.stepIdx));
+        Logger::info("OPENING", openingStepDescription(state.openingProtocol, state.stepIdx));
 
     const std::string stepInfo = stepCtx(state);
 
@@ -296,10 +296,9 @@ bool commitOpeningMove(GameState& state, const Move& move)
     else if (state.stepIdx >= (int)state.openingSteps.size())
     {
         const GamePhase prev = state.phase;
-        state.phase     = GamePhase::NormalPlay;
+        state.phase     = GamePhase::Standard;
         state.blackSeat = Seat::First;
         state.whiteSeat = Seat::Second;
-        state.board->setCurrentPlayer(Seat::First);
 
         Logger::info("PHASE",
             std::string(phaseStr(prev)) + " → " + phaseStr(state.phase)
@@ -310,7 +309,7 @@ bool commitOpeningMove(GameState& state, const Move& move)
     return true;
 }
 
-std::vector<Move> enumerateOpeningMoves(const GameState& state)
+std::vector<Move> getLegalOpeningMoves(const GameState& state)
 {
     std::vector<Move> moves;
     if (isOpeningComplete(state))
@@ -331,6 +330,6 @@ std::vector<Move> enumerateOpeningMoves(const GameState& state)
     }
 
     Logger::info("OPENING",
-        "enumerateOpeningMoves: " + std::to_string(moves.size()) + " candidates");
+        "getLegalOpeningMoves: " + std::to_string(moves.size()) + " candidates");
     return moves;
 }

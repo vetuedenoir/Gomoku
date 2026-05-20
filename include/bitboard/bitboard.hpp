@@ -109,6 +109,17 @@ inline void clear_bit_generic(typename Traits::Bitboard &bb, int x, int y)
 	bb[idx >> 6] &= ~(1ULL << (idx & 63));
 }
 
+template<typename Traits>
+inline const typename Traits::Bitboard& bitboardForColor(const t_BWBoard<Traits>& board, Color color)
+{
+	return (color == Color::Black) ? board.black : board.white;
+}
+
+template<typename Traits>
+inline typename Traits::Bitboard& bitboardForColor(t_BWBoard<Traits>& board, Color color)
+{
+	return (color == Color::Black) ? board.black : board.white;
+}
 
 template<typename Traits>
 inline bool in_board_generic(int x, int y)
@@ -221,8 +232,9 @@ t_BWBoard<Traits> GameBoard_to_bitboard(const GameBoard &board)
 template<typename Traits>
 bool detect_captures(const t_BWBoard<Traits>& board, int col, int row, Color attackerColor, typename Traits::Bitboard& capturedMask)
 {
-	const typename Traits::Bitboard& attacker = (attackerColor == Color::Black) ? board.black : board.white;
-	const typename Traits::Bitboard& victime = (attackerColor == Color::Black) ? board.white : board.black;
+	const typename Traits::Bitboard& attacker = bitboardForColor(board, attackerColor);
+	const Color victimColor = (attackerColor == Color::Black) ? Color::White : Color::Black;
+	const typename Traits::Bitboard& victime = bitboardForColor(board, victimColor);
 
 	bool captured = false;
 
@@ -257,7 +269,8 @@ bool detect_captures(const t_BWBoard<Traits>& board, int col, int row, Color att
 template<typename Traits>
 void apply_captures(t_BWBoard<Traits>& board, const typename Traits::Bitboard captured, Color attacker)
 {
-	typename Traits::Bitboard& victimBitboard = (attacker == Color::Black) ? board.white : board.black;
+	const Color victimColor = (attacker == Color::Black) ? Color::White : Color::Black;
+	typename Traits::Bitboard& victimBitboard = bitboardForColor(board, victimColor);
 	for (int i = 0; i < Traits::WORD_COUNT; i++)
 		victimBitboard[i] &= ~captured[i];
 }

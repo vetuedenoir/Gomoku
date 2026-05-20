@@ -13,11 +13,8 @@ using t_BWBoard_variant = std::variant<t_BWBoard19, t_BWBoard15>;
 
 class MasterIA
 {
-public:
-    virtual ~MasterIA() = default;
-
-    virtual std::optional<Move> chooseMove(const GameBoard& board, GamePhase phase,
-                                           const GameState& state) = 0;
+    public:
+        virtual ~MasterIA() = default;
 };
 
 #endif

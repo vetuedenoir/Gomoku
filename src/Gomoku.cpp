@@ -75,12 +75,12 @@ void Gomoku::goBack()
 void Gomoku::logConfig() const
 {
     const char *stoneStr[]   = { "Black (plays first)", "White" };
-    const char *openingStr[] = { "Normal", "Pro", "Long Pro", "Swap", "Swap 2" };
+    const char *openingStr[] = { "Standard", "Pro", "Long Pro", "Swap", "Swap 2" };
 
     Logger::info("CONFIG",
         std::string("board=")   + std::to_string(_config.boardSize) + "x" + std::to_string(_config.boardSize)
-        + "  stone="   + stoneStr  [static_cast<int>(_config.playerStoneColor)]
-        + "  opening=" + openingStr[static_cast<int>(_config.openingRule)]);
+        + "  stone="   + stoneStr  [static_cast<int>(_config.playerColor)]
+        + "  opening=" + openingStr[static_cast<int>(_config.openingProtocol)]);
 }
 
 void Gomoku::onBoardSizeSelected(int size)
@@ -91,13 +91,13 @@ void Gomoku::onBoardSizeSelected(int size)
 
 void Gomoku::onStoneColorSelected(StoneColor color)
 {
-    _config.playerStoneColor = color;
+    _config.playerColor = color;
     navigateTo(AppState::Opening);
 }
 
-void Gomoku::onOpeningRuleSelected(OpeningRule rule)
+void Gomoku::onOpeningProtocolSelected(OpeningProtocol openingProtocol)
 {
-    _config.openingRule = rule;
+    _config.openingProtocol = openingProtocol;
     navigateTo(AppState::Game);
 }
 
@@ -119,10 +119,10 @@ CellStatus Gomoku::computeGhostColor() const
 
     switch (_controller->phase())
     {
-        case GamePhase::OpeningPlacement:
+        case GamePhase::Opening:
             return _controller->nextOpeningColor();
 
-        case GamePhase::NormalPlay:
+        case GamePhase::Standard:
             return (_controller->currentColor() == Color::Black)
                     ? CellStatus::Black
                     : CellStatus::White;
@@ -157,7 +157,7 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
 
     switch (_controller->phase())
     {
-        case GamePhase::OpeningPlacement:
+        case GamePhase::Opening:
         {
             int col = _board->getHoveredCol();
             int row = _board->getHoveredRow();
@@ -176,7 +176,7 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
             _colorChoice.handleClick(mouse);
             break;
 
-        case GamePhase::NormalPlay:
+        case GamePhase::Standard:
         {
             int col = _board->getHoveredCol();
             int row = _board->getHoveredRow();
@@ -251,9 +251,9 @@ void Gomoku::buildColorChoicePage()
 {
     _colorChoice.clear();
 
-    const OpeningRule rule  = _controller->openingRule();
+    const OpeningProtocol openingProtocol  = _controller->openingProtocol();
     const Seat        actor = _controller->currentActor();
-    const bool threeOptions = (rule == OpeningRule::Swap2
+    const bool threeOptions = (openingProtocol == OpeningProtocol::Swap2
                                && actor == Seat::Second
                                && _controller->stepIdx() == 1);
 
@@ -475,25 +475,25 @@ void Gomoku::buildOpeningPage()
     const float col1 = WIN_W * 0.25f;
     const float col2 = WIN_W * 0.55f;
 
-    _opening.addItem("normal", FonctionItem(
-        Item("Normal",   _font, col1, WIN_H * 0.275f),
-        [this]() { onOpeningRuleSelected(OpeningRule::Normal); }
+    _opening.addItem("Standard", FonctionItem(
+        Item("Standard",   _font, col1, WIN_H * 0.275f),
+        [this]() { onOpeningProtocolSelected(OpeningProtocol::Standard); }
     ));
     _opening.addItem("pro", FonctionItem(
         Item("Pro",      _font, col2, WIN_H * 0.275f),
-        [this]() { onOpeningRuleSelected(OpeningRule::Pro); }
+        [this]() { onOpeningProtocolSelected(OpeningProtocol::Pro); }
     ));
     _opening.addItem("longpro", FonctionItem(
         Item("Long Pro", _font, col1, WIN_H * 0.375f),
-        [this]() { onOpeningRuleSelected(OpeningRule::LongPro); }
+        [this]() { onOpeningProtocolSelected(OpeningProtocol::LongPro); }
     ));
     _opening.addItem("swap", FonctionItem(
         Item("Swap",     _font, col2, WIN_H * 0.375f),
-        [this]() { onOpeningRuleSelected(OpeningRule::Swap); }
+        [this]() { onOpeningProtocolSelected(OpeningProtocol::Swap); }
     ));
     _opening.addItem("swap2", FonctionItem(
         Item("Swap 2",   _font, CX, WIN_H * 0.475f),
-        [this]() { onOpeningRuleSelected(OpeningRule::Swap2); }
+        [this]() { onOpeningProtocolSelected(OpeningProtocol::Swap2); }
     ));
     _opening.addItem("return", FonctionItem(
         Item("Return",   _font, col1, WIN_H * 0.6125f),
@@ -507,7 +507,7 @@ void Gomoku::buildOpeningPage()
     _opening.setDrawFunction([](MenuPage &page, sf::RenderWindow &win) {
         if (auto *t  = page.getText("title"))   win.draw(*t);
         if (auto *t  = page.getText("sub"))     win.draw(*t);
-        if (auto *fi = page.getItem("normal"))  fi->item.draw(win);
+        if (auto *fi = page.getItem("Standard"))  fi->item.draw(win);
         if (auto *fi = page.getItem("pro"))     fi->item.draw(win);
         if (auto *fi = page.getItem("longpro")) fi->item.draw(win);
         if (auto *fi = page.getItem("swap"))    fi->item.draw(win);

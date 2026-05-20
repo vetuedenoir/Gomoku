@@ -1,19 +1,19 @@
-#ifndef GOMOKURULES_HPP
-# define GOMOKURULES_HPP
+#ifndef STANDARDRULES_HPP
+# define STANDARDRULES_HPP
 
 #include "bitboard/bitboard.hpp"
 #include "bitboard/pattern.hpp"
 #include "game/contracts/Color.hpp"
 
 template<typename Traits>
-class GomokuRules
+class StandardRules
 {
     public:
         bool isLegal(const t_BWBoard<Traits>& board, int col, int row, Color color) const;
 };
 
 template<typename Traits>
-bool GomokuRules<Traits>::isLegal(const t_BWBoard<Traits>& board, int col, int row, Color color) const
+bool StandardRules<Traits>::isLegal(const t_BWBoard<Traits>& board, int col, int row, Color color) const
 {
     if (!in_board_generic<Traits>(col, row))
         return false;
@@ -36,7 +36,7 @@ bool GomokuRules<Traits>::isLegal(const t_BWBoard<Traits>& board, int col, int r
     return true;
 }
 
-using GomokuRules19 = GomokuRules<BoardTraits<19>>;
-using GomokuRules15 = GomokuRules<BoardTraits<15>>;
+using StandardRules19 = StandardRules<BoardTraits<19>>;
+using StandardRules15 = StandardRules<BoardTraits<15>>;
 
 #endif

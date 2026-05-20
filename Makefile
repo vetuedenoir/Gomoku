@@ -38,6 +38,7 @@ ALL_SRCS := $(wildcard $(SRC_DIR)/*.cpp) \
 	$(wildcard $(SRC_DIR)/game/board/*.cpp) \
 	$(wildcard $(SRC_DIR)/game/controller/*.cpp) \
 	$(wildcard $(SRC_DIR)/game/rules/*.cpp) \
+	$(wildcard $(SRC_DIR)/game/turn/*.cpp) \
 	$(wildcard $(SRC_DIR)/ai/*.cpp) \
 	$(wildcard $(SRC_DIR)/logger/*.cpp) \
 	$(wildcard $(SRC_DIR)/optimization/*.cpp) \

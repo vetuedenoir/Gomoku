@@ -4,8 +4,8 @@
 #include "game/board/GameBoard.hpp"
 
 // A move in the game.
-// During OpeningPlacement, forcedColor is set by the opening script;
-// During NormalPlay, forcedColor == CellStatus::Empty (use current player).
+// During Opening, forcedColor is set by the opening script;
+// During Standard, forcedColor == CellStatus::Empty (use current player).
 struct Move
 {
     int        col;

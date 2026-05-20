@@ -35,7 +35,7 @@ struct OpeningStep
 
 struct GameState;
 
-std::vector<OpeningStep> buildOpeningSteps(OpeningRule rule);
+std::vector<OpeningStep> buildOpeningSteps(OpeningProtocol openingProtocol);
 
 OpeningStep              getCurrentOpeningStep(const GameState& state);
 
@@ -45,6 +45,6 @@ bool                     canPlaceOpeningStone(const GameState& state, const Move
 
 bool                     commitOpeningMove(GameState& state, const Move& move);
 
-std::vector<Move>        enumerateOpeningMoves(const GameState& state);
+std::vector<Move>        getLegalOpeningMoves(const GameState& state);
 
 #endif

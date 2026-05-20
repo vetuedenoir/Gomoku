@@ -4,7 +4,7 @@
 #include "ai/ActiveZone.hpp"
 #include "bitboard/bitboard.hpp"
 #include "bitboard/pattern.hpp"
-#include "game/rules/GomokuRules.hpp"
+#include "game/rules/StandardRules.hpp"
 
 template<typename Traits>
 class MoveGenerator
@@ -20,7 +20,7 @@ class MoveGenerator
 
     private:
         int                 _activeZoneRadius;
-        GomokuRules<Traits> _gomokuRules;
+        StandardRules<Traits> _standardRules;
 };
 
 template<typename Traits>
@@ -54,7 +54,7 @@ template<typename Traits>
 bool MoveGenerator<Traits>::isLegalMove(const t_BWBoard<Traits>& board,
                                         int col, int row, Color color) const
 {
-    return _gomokuRules.isLegal(board, col, row, color);
+    return _standardRules.isLegal(board, col, row, color);
 }
 
 using MoveGenerator19 = MoveGenerator<BoardTraits<19>>;

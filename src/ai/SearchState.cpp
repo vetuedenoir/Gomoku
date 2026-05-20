@@ -1,4 +1,4 @@
-#include "ai/SearchState.hpp"
+#include "ai/SearchPosition.hpp"
 
-template class SearchState<BoardTraits<19>>;
-template class SearchState<BoardTraits<15>>;
+template class SearchPosition<BoardTraits<19>>;
+template class SearchPosition<BoardTraits<15>>;

@@ -48,7 +48,7 @@ class Gomoku
 
         void onBoardSizeSelected(int size);
         void onStoneColorSelected(StoneColor color);
-        void onOpeningRuleSelected(OpeningRule rule);
+        void onOpeningProtocolSelected(OpeningProtocol openingProtocol);
 
         void logConfig() const;
         void resetToMainMenu();

@@ -4,7 +4,7 @@
 #include "game/GameState.hpp"
 #include "game/contracts/Move.hpp"
 #include "game/rules/OpeningRules.hpp"
-#include "game/rules/GomokuRules.hpp"
+#include "game/rules/StandardRules.hpp"
 #include "ai/MoveGenerator.hpp"
 #include "bitboard/bitboard.hpp"
 #include "logger/Logger.hpp"
@@ -19,7 +19,7 @@ public:
     {
         switch (state.phase)
         {
-            case GamePhase::OpeningPlacement:
+            case GamePhase::Opening:
             {
                 const bool ok = canPlaceOpeningStone(state, move);
                 if (!ok)
@@ -32,17 +32,17 @@ public:
                         + ") ok");
                 return ok;
             }
-            case GamePhase::NormalPlay:
+            case GamePhase::Standard:
             {
                 const Color color = sideToMove(state);
-                const bool  ok  = isLegalNormal(state, move.col, move.row, color);
+                const bool  ok  = isLegalStandard(state, move.col, move.row, color);
                 if (!ok)
                     Logger::warn("VALIDATOR",
-                        "normal (" + std::to_string(move.col) + "," + std::to_string(move.row)
+                        "Standard (" + std::to_string(move.col) + "," + std::to_string(move.row)
                         + ") rejected");
                 else
                     Logger::debug("VALIDATOR",
-                        "normal (" + std::to_string(move.col) + "," + std::to_string(move.row)
+                        "Standard (" + std::to_string(move.col) + "," + std::to_string(move.row)
                         + ") ok");
                 return ok;
             }
@@ -52,14 +52,14 @@ public:
         }
     }
 
-    std::vector<Move> legalMoves(const GameState& state) const
+    std::vector<Move> getLegalMoves(const GameState& state) const
     {
         switch (state.phase)
         {
-            case GamePhase::OpeningPlacement:
-                return enumerateOpeningMoves(state);
-            case GamePhase::NormalPlay:
-                return legalMovesNormal(state);
+            case GamePhase::Opening:
+                return getLegalOpeningMoves(state);
+            // case GamePhase::Standard:
+            //     return getLegalStandardMoves(state);
             default:
                 return {};
         }
@@ -74,33 +74,13 @@ private:
         return (seat == Seat::First) ? Color::Black : Color::White;
     }
 
-    bool isLegalNormal(const GameState& state, int col, int row, Color color) const
+    bool isLegalStandard(const GameState& state, int col, int row, Color color) const
     {
         const t_BWBoard<Traits> bb = GameBoard_to_bitboard<Traits>(*state.board);
-        return _gomokuRules.isLegal(bb, col, row, color);
+        return _standardRules.isLegal(bb, col, row, color);
     }
 
-    std::vector<Move> legalMovesNormal(const GameState& state) const
-    {
-        std::vector<Move>           moves;
-        const Color                 color = sideToMove(state);
-        const t_BWBoard<Traits>     bb    = GameBoard_to_bitboard<Traits>(*state.board);
-        typename Traits::Bitboard   mask  = {};
-        MoveGenerator<Traits>       gen(2);
-        gen.generateLegalMoves(bb, color, mask);
-
-        for (int y = 0; y < Traits::BOARD_SIZE; ++y)
-        {
-            for (int x = 0; x < Traits::BOARD_SIZE; ++x)
-            {
-                if (get_bb_generic<Traits>(mask, x, y))
-                    moves.push_back({ x, y, CellStatus::Empty });
-            }
-        }
-        return moves;
-    }
-
-    GomokuRules<Traits> _gomokuRules;
+    StandardRules<Traits> _standardRules;
 };
 
 #endif

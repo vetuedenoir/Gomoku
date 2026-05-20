@@ -10,46 +10,45 @@ static const char* phaseStr(GamePhase p)
 {
     switch (p)
     {
-        case GamePhase::OpeningPlacement: return "OpeningPlacement";
+        case GamePhase::Opening: return "Opening";
         case GamePhase::ColorChoice:      return "ColorChoice";
-        case GamePhase::NormalPlay:       return "NormalPlay";
+        case GamePhase::Standard:       return "Standard";
     }
     return "Unknown";
 }
 
-static const char* ruleStr(OpeningRule r)
+static const char* openingProtocolStr(OpeningProtocol openingProtocol)
 {
-    switch (r)
+    switch (openingProtocol)
     {
-        case OpeningRule::Normal:  return "Normal";
-        case OpeningRule::Pro:     return "Pro";
-        case OpeningRule::LongPro: return "LongPro";
-        case OpeningRule::Swap:    return "Swap";
-        case OpeningRule::Swap2:   return "Swap2";
+        case OpeningProtocol::Pro:     return "Pro";
+        case OpeningProtocol::LongPro: return "LongPro";
+        case OpeningProtocol::Swap:    return "Swap";  
+        case OpeningProtocol::Swap2:   return "Swap2";
+        default: return "Standard";
     }
-    return "Unknown";
 }
 
-GameState::GameState(int boardSize, OpeningRule rule, StoneColor firstPlayer)
-    : phase(GamePhase::OpeningPlacement),
-      openingRule(rule),
+GameState::GameState(int boardSize, OpeningProtocol openingProtocol, StoneColor firstPlayer)
+    : phase(GamePhase::Opening),
+      openingProtocol(openingProtocol),
       stepIdx(0),
       subIdx(0),
       currentActor(Seat::First)
 {
     // instantiate the board wrapper which will create the correct sized implementation
     board = std::make_unique<GameBoard>(boardSize, (firstPlayer == StoneColor::Black) ? Seat::First : Seat::Second);
-    openingSteps = buildOpeningSteps(rule);
+    openingSteps = buildOpeningSteps(openingProtocol);
 
     if (openingSteps.empty())
     {
-        phase     = GamePhase::NormalPlay;
+        phase     = GamePhase::Standard;
         blackSeat = (firstPlayer == StoneColor::Black) ? Seat::First : Seat::Second;
         whiteSeat = (firstPlayer == StoneColor::Black) ? Seat::Second : Seat::First;
     }
 
     Logger::info("GAMESTATE",
-        std::string("rule=") + ruleStr(rule)
+        std::string("openingProtocol=") + openingProtocolStr(openingProtocol)
         + "  board=" + std::to_string(boardSize) + "x" + std::to_string(boardSize)
         + "  phase=" + phaseStr(phase)
         + "  steps=" + std::to_string(openingSteps.size()));
@@ -80,8 +79,7 @@ void GameState::resolveColorChoice(bool swapped)
         + "  |  White → " + seatStr(*whiteSeat));
 
     const GamePhase prev = phase;
-    phase = GamePhase::NormalPlay;
-    board->setCurrentPlayer(Seat::First);  // Black (Seat::First) always opens normal play
+    phase = GamePhase::Standard;
 
     Logger::info("PHASE",
         std::string(phaseStr(prev)) + " → " + phaseStr(phase));
@@ -95,7 +93,7 @@ void GameState::continueOpeningPlacement()
         "Seat::Second chose option 3 — placing 2 more stones (B + W)");
 
     const GamePhase prev = phase;
-    phase        = GamePhase::OpeningPlacement;
+    phase        = GamePhase::Opening;
     currentActor = Seat::Second;
     subIdx       = 0;
 

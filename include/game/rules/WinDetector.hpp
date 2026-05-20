@@ -17,8 +17,8 @@ bool isWinAfterMove(const t_BWBoard<Traits>& bb, Color color, int col, int row)
         build_lookup_table5<Traits>(table);
         ready = true;
     }
-    const auto& plane = (color == Color::Black) ? bb.black : bb.white;
-    return isWin_ultra<Traits>(table, plane, col, row) > 0;
+    const auto& stonesBb = bitboardForColor(bb, color);
+    return isWin_ultra<Traits>(table, stonesBb, col, row) > 0;
 }
 
 #endif
