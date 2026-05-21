@@ -21,7 +21,7 @@ TEST_CASE("super4: empty board returns 0")
 {
     PatternTables& t = PatternTables::get();
     t_BWBoard19 board = empty_bb();
-    CHECK(check_super4(t.lts4, board.black, board.white, 9, 9) == 0);
+    CHECK(check_super4_19(t.lts4, board.black, board.white, 9, 9) == 0);
 }
 
 TEST_CASE("super4: only 4 stones (missing one anchor) returns 0")
@@ -35,7 +35,7 @@ TEST_CASE("super4: only 4 stones (missing one anchor) returns 0")
     set_bb19(board.black, 6, 5);
     set_bb19(board.black, 7, 5);
     // hole at (8, 5) — no stone at (9, 5)
-    CHECK(check_super4(t.lts4, board.black, board.white, 5, 5) == 0);
+    CHECK(check_super4_19(t.lts4, board.black, board.white, 5, 5) == 0);
 }
 
 // ─── Horizontal ──────────────────────────────────────────────────────────────
@@ -53,13 +53,13 @@ TEST_CASE("super4: horizontal B _ B B B _ B — detected from every cell in wind
     // hole at (8, 5)
     set_bb19(board.black, 9, 5);
 
-    SUBCASE("query from stone at x=3") { CHECK(check_super4(t.lts4, board.black, board.white, 3, 5) == 1); }
-    SUBCASE("query from hole  at x=4") { CHECK(check_super4(t.lts4, board.black, board.white, 4, 5) == 1); }
-    SUBCASE("query from stone at x=5") { CHECK(check_super4(t.lts4, board.black, board.white, 5, 5) == 1); }
-    SUBCASE("query from stone at x=6") { CHECK(check_super4(t.lts4, board.black, board.white, 6, 5) == 1); }
-    SUBCASE("query from stone at x=7") { CHECK(check_super4(t.lts4, board.black, board.white, 7, 5) == 1); }
-    SUBCASE("query from hole  at x=8") { CHECK(check_super4(t.lts4, board.black, board.white, 8, 5) == 1); }
-    SUBCASE("query from stone at x=9") { CHECK(check_super4(t.lts4, board.black, board.white, 9, 5) == 1); }
+    SUBCASE("query from stone at x=3") { CHECK(check_super4_19(t.lts4, board.black, board.white, 3, 5) == 1); }
+    SUBCASE("query from hole  at x=4") { CHECK(check_super4_19(t.lts4, board.black, board.white, 4, 5) == 1); }
+    SUBCASE("query from stone at x=5") { CHECK(check_super4_19(t.lts4, board.black, board.white, 5, 5) == 1); }
+    SUBCASE("query from stone at x=6") { CHECK(check_super4_19(t.lts4, board.black, board.white, 6, 5) == 1); }
+    SUBCASE("query from stone at x=7") { CHECK(check_super4_19(t.lts4, board.black, board.white, 7, 5) == 1); }
+    SUBCASE("query from hole  at x=8") { CHECK(check_super4_19(t.lts4, board.black, board.white, 8, 5) == 1); }
+    SUBCASE("query from stone at x=9") { CHECK(check_super4_19(t.lts4, board.black, board.white, 9, 5) == 1); }
 }
 
 TEST_CASE("super4: opponent at hole 1 blocks detection")
@@ -73,7 +73,7 @@ TEST_CASE("super4: opponent at hole 1 blocks detection")
     set_bb19(board.black, 7, 5);
     // hole at (8, 5) is free
     set_bb19(board.black, 9, 5);
-    CHECK(check_super4(t.lts4, board.black, board.white, 5, 5) == 0);
+    CHECK(check_super4_19(t.lts4, board.black, board.white, 5, 5) == 0);
 }
 
 TEST_CASE("super4: opponent at hole 2 blocks detection")
@@ -87,7 +87,7 @@ TEST_CASE("super4: opponent at hole 2 blocks detection")
     set_bb19(board.black, 7, 5);
     set_bb19(board.white, 8, 5);  // opponent in hole 2
     set_bb19(board.black, 9, 5);
-    CHECK(check_super4(t.lts4, board.black, board.white, 5, 5) == 0);
+    CHECK(check_super4_19(t.lts4, board.black, board.white, 5, 5) == 0);
 }
 
 TEST_CASE("super4: opponent in both holes blocks detection")
@@ -101,7 +101,7 @@ TEST_CASE("super4: opponent in both holes blocks detection")
     set_bb19(board.black, 7, 5);
     set_bb19(board.white, 8, 5);
     set_bb19(board.black, 9, 5);
-    CHECK(check_super4(t.lts4, board.black, board.white, 6, 5) == 0);
+    CHECK(check_super4_19(t.lts4, board.black, board.white, 6, 5) == 0);
 }
 
 // ─── Vertical ────────────────────────────────────────────────────────────────
@@ -118,7 +118,7 @@ TEST_CASE("super4: vertical B _ B B B _ B returns 1")
     set_bb19(board.black, 5, 7);
     // hole at (5, 8)
     set_bb19(board.black, 5, 9);
-    CHECK(check_super4(t.lts4, board.black, board.white, 5, 5) == 1);
+    CHECK(check_super4_19(t.lts4, board.black, board.white, 5, 5) == 1);
 }
 
 TEST_CASE("super4: vertical — opponent at hole blocks detection")
@@ -132,7 +132,7 @@ TEST_CASE("super4: vertical — opponent at hole blocks detection")
     set_bb19(board.black, 5, 7);
     // hole at (5, 8)
     set_bb19(board.black, 5, 9);
-    CHECK(check_super4(t.lts4, board.black, board.white, 5, 5) == 0);
+    CHECK(check_super4_19(t.lts4, board.black, board.white, 5, 5) == 0);
 }
 
 // ─── Diagonal backslash (\) ───────────────────────────────────────────────────
@@ -149,7 +149,7 @@ TEST_CASE("super4: diagonal-backslash B _ B B B _ B returns 1")
     set_bb19(board.black, 7, 7);
     // hole at (8, 8)
     set_bb19(board.black, 9, 9);
-    CHECK(check_super4(t.lts4, board.black, board.white, 5, 5) == 1);
+    CHECK(check_super4_19(t.lts4, board.black, board.white, 5, 5) == 1);
 }
 
 TEST_CASE("super4: diagonal-backslash — opponent at hole blocks detection")
@@ -163,7 +163,7 @@ TEST_CASE("super4: diagonal-backslash — opponent at hole blocks detection")
     set_bb19(board.black, 7, 7);
     // hole at (8, 8)
     set_bb19(board.black, 9, 9);
-    CHECK(check_super4(t.lts4, board.black, board.white, 5, 5) == 0);
+    CHECK(check_super4_19(t.lts4, board.black, board.white, 5, 5) == 0);
 }
 
 // ─── Diagonal slash (/) ──────────────────────────────────────────────────────
@@ -182,7 +182,7 @@ TEST_CASE("super4: diagonal-slash B _ B B B _ B returns 1")
     set_bb19(board.black, 5, 7);
     // hole at (4, 8)
     set_bb19(board.black, 3, 9);
-    CHECK(check_super4(t.lts4, board.black, board.white, 7, 5) == 1);
+    CHECK(check_super4_19(t.lts4, board.black, board.white, 7, 5) == 1);
 }
 
 // ─── Color isolation ─────────────────────────────────────────────────────────
@@ -196,7 +196,7 @@ TEST_CASE("super4: white B _ B B B _ B detected on white board")
     set_bb19(board.white, 6, 5);
     set_bb19(board.white, 7, 5);
     set_bb19(board.white, 9, 5);
-    CHECK(check_super4(t.lts4, board.white, board.black, 5, 5) == 1);
+    CHECK(check_super4_19(t.lts4, board.white, board.black, 5, 5) == 1);
 }
 
 TEST_CASE("super4: black stones do not show on white-side query")
@@ -208,5 +208,5 @@ TEST_CASE("super4: black stones do not show on white-side query")
     set_bb19(board.black, 6, 5);
     set_bb19(board.black, 7, 5);
     set_bb19(board.black, 9, 5);
-    CHECK(check_super4(t.lts4, board.white, board.black, 5, 5) == 0);
+    CHECK(check_super4_19(t.lts4, board.white, board.black, 5, 5) == 0);
 }

@@ -1,7 +1,7 @@
 #include "doctest.h"
-#include "game/GameBoard.hpp"
+#include "game/board/GameBoard.hpp"
 #include "ai/ActiveZone.hpp"
-#include "game/DebugBoard.hpp"
+#include "game/board/DebugBoard.hpp"
 #include "bitboard/bitboard.hpp"
 
 static GameBoard empty_board()

@@ -1,7 +1,7 @@
 #include "doctest.h"
 #include "ai/MoveGenerator.hpp"
-#include "game/GameBoard.hpp"
-#include "bitboard/bitboard.hpp"
+#include "game/board/GameBoard.hpp"
+#include "test_helpers.hpp"
 #include <iostream>
 
 static GameBoard empty_board()
@@ -16,12 +16,12 @@ static void place(GameBoard& b, int col, int row, CellStatus color)
 
 static t_BWBoard19 to_bb(const GameBoard& b)
 {
-    return GameBoard_to_bitboard(b);
+    return GameBoard_to_bitboard<TestTraits>(b);
 }
 
 TEST_CASE("MoveGenerator: empty board has no active-zone legal moves")
 {
-    MoveGenerator gen(1);
+    MoveGenerator19 gen(1);
     bitboard19 legalMoves = {};
 
     gen.generateLegalMoves(to_bb(empty_board()), Color::Black, legalMoves);
@@ -34,7 +34,7 @@ TEST_CASE("MoveGenerator: center stone radius=1 produces eight legal moves")
     GameBoard b = empty_board();
     place(b, 9, 9, CellStatus::Black);
 
-    MoveGenerator gen(1);
+    MoveGenerator19 gen(1);
     bitboard19 legalMoves = {};
 
     gen.generateLegalMoves(to_bb(b), Color::White, legalMoves);
@@ -53,7 +53,7 @@ TEST_CASE("MoveGenerator: corner stone radius=1 clips to board")
     GameBoard b = empty_board();
     place(b, 0, 0, CellStatus::Black);
 
-    MoveGenerator gen(1);
+    MoveGenerator19 gen(1);
     bitboard19 legalMoves = {};
 
     gen.generateLegalMoves(to_bb(b), Color::White, legalMoves);
@@ -71,7 +71,7 @@ TEST_CASE("MoveGenerator: adjacent occupied cells stay excluded")
     place(b, 9,  9, CellStatus::Black);
     place(b, 10, 9, CellStatus::White);
 
-    MoveGenerator gen(1);
+    MoveGenerator19 gen(1);
     bitboard19 legalMoves = {};
 
     gen.generateLegalMoves(to_bb(b), Color::Black, legalMoves);
@@ -88,7 +88,7 @@ TEST_CASE("MoveGenerator: isLegalMove rejects out-of-board and occupied cells")
     GameBoard b = empty_board();
     place(b, 5, 5, CellStatus::Black);
 
-    MoveGenerator gen(1);
+    MoveGenerator19 gen(1);
     t_BWBoard19 board = to_bb(b);
 
     CHECK(gen.isLegalMove(board, 6, 5, Color::White));
@@ -114,7 +114,7 @@ TEST_CASE("isLegalMove: double-three is illegal")
     place(b, 5, 7, CellStatus::Black);
     place(b, 5, 8, CellStatus::Black);
 
-    MoveGenerator gen(2);
+    MoveGenerator19 gen(2);
     t_BWBoard19 board = to_bb(b);
 
     std::cout << "\n[double-three illegal] Board before move — candidate: (5,9) Black\n";
@@ -132,7 +132,7 @@ TEST_CASE("isLegalMove: single free-three is legal")
     place(b, 3, 9, CellStatus::Black);
     place(b, 4, 9, CellStatus::Black);
 
-    MoveGenerator gen(2);
+    MoveGenerator19 gen(2);
     t_BWBoard19 board = to_bb(b);
 
     std::cout << "\n[single free-three legal] Board before move — candidate: (5,9) Black\n";
@@ -158,7 +158,7 @@ TEST_CASE("isLegalMove: double-three is legal when move also captures")
     place(b, 7, 9, CellStatus::White);
     place(b, 8, 9, CellStatus::Black);
 
-    MoveGenerator gen(2);
+    MoveGenerator19 gen(2);
     t_BWBoard19 board = to_bb(b);
 
     std::cout << "\n[double-three + capture legal] Board before move — candidate: (5,9) Black\n";
@@ -185,7 +185,7 @@ TEST_CASE("isLegalMove: double-three with vertical arm touching top edge is ille
     place(b, 3, 2, CellStatus::Black);
     place(b, 4, 2, CellStatus::Black);
 
-    MoveGenerator gen(2);
+    MoveGenerator19 gen(2);
     t_BWBoard19 board = to_bb(b);
 
     std::cout << "\n[top-edge double-three illegal] Vertical arm (5,0)-(5,1)-(5,2), horizontal (3,2)-(4,2)-(5,2)\n";
@@ -211,7 +211,7 @@ TEST_CASE("isLegalMove: near-top double-three is legal when move captures")
     place(b, 7, 2, CellStatus::White);
     place(b, 8, 2, CellStatus::Black);
 
-    MoveGenerator gen(2);
+    MoveGenerator19 gen(2);
     t_BWBoard19 board = to_bb(b);
 
     std::cout << "\n[top-edge double-three + capture legal] Candidate: (5,2) Black\n";
@@ -244,7 +244,7 @@ TEST_CASE("isLegalMove: opponent double-blocks one arm leaving single free-three
     place(b, 5, 7, CellStatus::Black);
     place(b, 5, 8, CellStatus::Black);
 
-    MoveGenerator gen(2);
+    MoveGenerator19 gen(2);
     t_BWBoard19 board = to_bb(b);
 
     std::cout << "\n[arm closed by opponent on both sides] Horizontal arm blocked, vertical arm free\n";
@@ -273,7 +273,7 @@ TEST_CASE("isLegalMove: double-three with only one-white near edge is still ille
     place(b, 17, 9, CellStatus::White);
     // No black anchor at col 19 (off-board) → capture impossible
 
-    MoveGenerator gen(2);
+    MoveGenerator19 gen(2);
     t_BWBoard19 board = to_bb(b);
 
     std::cout << "\n[one-white near edge — no capture] Candidate: (16,9) Black\n";

@@ -34,7 +34,7 @@ TEST_CASE("cross: empty board returns 0")
 {
     PatternTables& t = PatternTables::get();
     t_BWBoard19 board = empty_bb();
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == 0);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == 0);
 }
 
 TEST_CASE("cross: only 2 arms (score=8 < 15) returns 0")
@@ -43,7 +43,7 @@ TEST_CASE("cross: only 2 arms (score=8 < 15) returns 0")
     t_BWBoard19 board = empty_bb();
     set_bb19(board.black, 9, 8);   // up
     set_bb19(board.black, 9, 10);  // down
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == 0);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == 0);
 }
 
 TEST_CASE("cross: only centre + 2 arms (score=11 < 15) returns 0")
@@ -53,7 +53,7 @@ TEST_CASE("cross: only centre + 2 arms (score=11 < 15) returns 0")
     set_bb19(board.black, 9, 9);   // centre
     set_bb19(board.black, 9, 8);   // up
     set_bb19(board.black, 8, 9);   // left
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == 0);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == 0);
 }
 
 TEST_CASE("cross: cross on board edge (no pattern built) returns 0")
@@ -64,7 +64,7 @@ TEST_CASE("cross: cross on board edge (no pattern built) returns 0")
     set_bb19(board.black, 0, 0);
     set_bb19(board.black, 1, 0);
     set_bb19(board.black, 0, 1);
-    CHECK(check_cross(t.ltcross, board.black, board.white, 0, 0) == 0);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 0, 0) == 0);
 }
 
 // ─── Full cross — CROSS_FULL (19) ────────────────────────────────────────────
@@ -81,7 +81,7 @@ TEST_CASE("cross: full cross (centre + 4 arms) returns CROSS_FULL")
     set_bb19(board.black, 9, 9);
     set_bb19(board.black, 10, 9);
     set_bb19(board.black, 9, 10);
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == CROSS_FULL);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == CROSS_FULL);
 }
 
 TEST_CASE("cross: full cross queried from each arm position")
@@ -94,11 +94,11 @@ TEST_CASE("cross: full cross queried from each arm position")
     set_bb19(board.black, 10, 9);
     set_bb19(board.black, 9, 10);
 
-    SUBCASE("query from up arm   (9,8)")  { CHECK(check_cross(t.ltcross, board.black, board.white, 9, 8)  == CROSS_FULL); }
-    SUBCASE("query from left arm (8,9)")  { CHECK(check_cross(t.ltcross, board.black, board.white, 8, 9)  == CROSS_FULL); }
-    SUBCASE("query from centre   (9,9)")  { CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9)  == CROSS_FULL); }
-    SUBCASE("query from right arm (10,9)"){ CHECK(check_cross(t.ltcross, board.black, board.white, 10, 9) == CROSS_FULL); }
-    SUBCASE("query from down arm (9,10)") { CHECK(check_cross(t.ltcross, board.black, board.white, 9, 10) == CROSS_FULL); }
+    SUBCASE("query from up arm   (9,8)")  { CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 8)  == CROSS_FULL); }
+    SUBCASE("query from left arm (8,9)")  { CHECK(check_cross_19(t.ltcross, board.black, board.white, 8, 9)  == CROSS_FULL); }
+    SUBCASE("query from centre   (9,9)")  { CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9)  == CROSS_FULL); }
+    SUBCASE("query from right arm (10,9)"){ CHECK(check_cross_19(t.ltcross, board.black, board.white, 10, 9) == CROSS_FULL); }
+    SUBCASE("query from down arm (9,10)") { CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 10) == CROSS_FULL); }
 }
 
 // ─── Partial cross ───────────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ TEST_CASE("cross: four arms without centre returns CROSS_DEMI_NO_MID")
     // no centre stone
     set_bb19(board.black, 10, 9);
     set_bb19(board.black, 9, 10);
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == CROSS_DEMI_NO_MID);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == CROSS_DEMI_NO_MID);
 }
 
 TEST_CASE("cross: centre + 3 arms (missing down) returns CROSS_DEMI_MID")
@@ -125,7 +125,7 @@ TEST_CASE("cross: centre + 3 arms (missing down) returns CROSS_DEMI_MID")
     set_bb19(board.black, 8, 9);
     set_bb19(board.black, 9, 9);
     set_bb19(board.black, 10, 9);
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == CROSS_DEMI_MID);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == CROSS_DEMI_MID);
 }
 
 TEST_CASE("cross: centre + 3 arms (missing left) returns CROSS_DEMI_MID")
@@ -137,7 +137,7 @@ TEST_CASE("cross: centre + 3 arms (missing left) returns CROSS_DEMI_MID")
     set_bb19(board.black, 9, 9);
     set_bb19(board.black, 10, 9);
     set_bb19(board.black, 9, 10);
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == CROSS_DEMI_MID);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == CROSS_DEMI_MID);
 }
 
 // ─── Opponent on cross positions ─────────────────────────────────────────────
@@ -151,7 +151,7 @@ TEST_CASE("cross: opponent on centre stops detection")
     set_bb19(board.white, 9, 9);   // opponent on centre
     set_bb19(board.black, 10, 9);
     set_bb19(board.black, 9, 10);
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == 0);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == 0);
 }
 
 TEST_CASE("cross: opponent on up arm stops detection")
@@ -163,7 +163,7 @@ TEST_CASE("cross: opponent on up arm stops detection")
     set_bb19(board.black, 9, 9);
     set_bb19(board.black, 10, 9);
     set_bb19(board.black, 9, 10);
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == 0);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == 0);
 }
 
 TEST_CASE("cross: opponent on right arm stops detection")
@@ -175,7 +175,7 @@ TEST_CASE("cross: opponent on right arm stops detection")
     set_bb19(board.black, 9, 9);
     set_bb19(board.white, 10, 9);  // opponent on right arm
     set_bb19(board.black, 9, 10);
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == 0);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == 0);
 }
 
 // ─── Opponent near the cross (modifier scores) ───────────────────────────────
@@ -192,7 +192,7 @@ TEST_CASE("cross: full cross + one far opponent (up, distance 3) returns CROSS_F
     set_bb19(board.black, 10, 9);
     set_bb19(board.black, 9, 10);
     set_bb19(board.white, 9, 6);   // far up opponent (distance 3)
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == CROSS_FULL_OPP_EXTERN);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == CROSS_FULL_OPP_EXTERN);
 }
 
 TEST_CASE("cross: full cross + one close opponent (up, distance 2) returns CROSS_FULL_OPP_INTERN")
@@ -207,7 +207,7 @@ TEST_CASE("cross: full cross + one close opponent (up, distance 2) returns CROSS
     set_bb19(board.black, 10, 9);
     set_bb19(board.black, 9, 10);
     set_bb19(board.white, 9, 7);   // close up opponent (distance 2)
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == CROSS_FULL_OPP_INTERN);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == CROSS_FULL_OPP_INTERN);
 }
 
 TEST_CASE("cross: full cross + far opponent on right side returns CROSS_FULL_OPP_EXTERN")
@@ -221,7 +221,7 @@ TEST_CASE("cross: full cross + far opponent on right side returns CROSS_FULL_OPP
     set_bb19(board.black, 10, 9);
     set_bb19(board.black, 9, 10);
     set_bb19(board.white, 12, 9);  // far right opponent (distance 3)
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == CROSS_FULL_OPP_EXTERN);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == CROSS_FULL_OPP_EXTERN);
 }
 
 TEST_CASE("cross: two close opponents (score=128 > 64) causes skip — returns 0")
@@ -236,7 +236,7 @@ TEST_CASE("cross: two close opponents (score=128 > 64) causes skip — returns 0
     set_bb19(board.black, 9, 10);
     set_bb19(board.white, 9, 7);   // close up (64)
     set_bb19(board.white, 9, 11);  // close down (64)
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == 0);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == 0);
 }
 
 TEST_CASE("cross: close-up + far-left opponent (score=96 > 64) causes skip — returns 0")
@@ -251,7 +251,7 @@ TEST_CASE("cross: close-up + far-left opponent (score=96 > 64) causes skip — r
     set_bb19(board.black, 9, 10);
     set_bb19(board.white, 9, 7);   // close up (64)
     set_bb19(board.white, 6, 9);   // far left (32)
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == 0);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == 0);
 }
 
 // ─── Partial cross with opponent modifier ────────────────────────────────────
@@ -267,7 +267,7 @@ TEST_CASE("cross: CROSS_DEMI_NO_MID + far opponent returns CROSS_DEMI_NO_OPP_EXT
     set_bb19(board.black, 10, 9);
     set_bb19(board.black, 9, 10);
     set_bb19(board.white, 9, 6);   // far up opponent
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == CROSS_DEMI_NO_OPP_EXTERN);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == CROSS_DEMI_NO_OPP_EXTERN);
 }
 
 TEST_CASE("cross: CROSS_DEMI_MID + far opponent returns CROSS_DEMI_MID_OPP_EXTERN")
@@ -281,7 +281,7 @@ TEST_CASE("cross: CROSS_DEMI_MID + far opponent returns CROSS_DEMI_MID_OPP_EXTER
     set_bb19(board.black, 10, 9);
     // no down arm
     set_bb19(board.white, 9, 6);   // far up opponent
-    CHECK(check_cross(t.ltcross, board.black, board.white, 9, 9) == CROSS_DEMI_MID_OPP_EXTERN);
+    CHECK(check_cross_19(t.ltcross, board.black, board.white, 9, 9) == CROSS_DEMI_MID_OPP_EXTERN);
 }
 
 // ─── Color isolation ─────────────────────────────────────────────────────────
@@ -295,7 +295,7 @@ TEST_CASE("cross: white full cross detected on white board")
     set_bb19(board.white, 9, 9);
     set_bb19(board.white, 10, 9);
     set_bb19(board.white, 9, 10);
-    CHECK(check_cross(t.ltcross, board.white, board.black, 9, 9) == CROSS_FULL);
+    CHECK(check_cross_19(t.ltcross, board.white, board.black, 9, 9) == CROSS_FULL);
 }
 
 TEST_CASE("cross: black stones do not show on white-side query")
@@ -307,5 +307,5 @@ TEST_CASE("cross: black stones do not show on white-side query")
     set_bb19(board.black, 9, 9);
     set_bb19(board.black, 10, 9);
     set_bb19(board.black, 9, 10);
-    CHECK(check_cross(t.ltcross, board.white, board.black, 9, 9) == 0);
+    CHECK(check_cross_19(t.ltcross, board.white, board.black, 9, 9) == 0);
 }
