@@ -1,26 +1,25 @@
+# Dockerfile.fast - Version simple et rapide
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Pas de cache mount - juste l'installation normale
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         libsfml-dev \
         fonts-liberation \
+        # valgrind \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
+# Copier dans le bon ordre pour maximiser le cache Docker
 COPY Makefile .
-COPY src/     src/
+COPY assets/ assets/ 
 COPY include/ include/
+COPY src/ src/
 
-RUN make all
+RUN make all -j"$(nproc)"
 
-# Requires DISPLAY to be set at runtime for X11 forwarding:
-#
-#   docker run --rm \
-#     -e DISPLAY=$DISPLAY \
-#     -v /tmp/.X11-unix:/tmp/.X11-unix \
-#     gomoku
-#
 CMD ["./gomoku"]
+# CMD ["valgrind", "./gomoku"]
