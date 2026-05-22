@@ -3,7 +3,6 @@
 
 #include "ai/ActiveZone.hpp"
 #include "bitboard/bitboard.hpp"
-#include "bitboard/pattern.hpp"
 #include "game/validation/rules/StandardRules.hpp"
 
 template<typename Traits>

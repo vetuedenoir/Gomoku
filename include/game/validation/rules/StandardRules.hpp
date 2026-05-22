@@ -2,8 +2,9 @@
 # define STANDARDRULES_HPP
 
 #include "bitboard/bitboard.hpp"
-#include "bitboard/pattern.hpp"
+#include "bitboard/BitboardTool.hpp"
 #include "game/contracts/contracts.hpp"
+#include "logger/Logger.hpp"
 
 template<typename Traits>
 class StandardRules
@@ -22,12 +23,15 @@ bool StandardRules<Traits>::isLegal(const t_BWBoard<Traits>& board, int col, int
         get_bb_generic<Traits>(board.white, col, row))
         return false;
 
-    if (is_double_three_move<Traits>(board, col, row, color))
+    t_BWBoard<Traits> temp = board;
+    typename Traits::Bitboard& moverPlane =
+        (color == Color::Black) ? temp.black : temp.white;
+    typename Traits::Bitboard& oppPlane =
+        (color == Color::Black) ? temp.white : temp.black;
+    set_bb_generic<Traits>(moverPlane, col, row);
+
+    if (BitboardTool<Traits>::instance().is_double_three_at(moverPlane, oppPlane, col, row))
     {
-        t_BWBoard<Traits> temp = board;
-        typename Traits::Bitboard& moverPlane =
-            (color == Color::Black) ? temp.black : temp.white;
-        set_bb_generic<Traits>(moverPlane, col, row);
         typename Traits::Bitboard captureMask = {};
         if (!detect_captures<Traits>(temp, col, row, color, captureMask))
             return false;
