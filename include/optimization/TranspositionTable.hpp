@@ -2,7 +2,7 @@
 # define TRANSPOSITIONTABLE_HPP
 
 #include <cstdint>
-#include "game/contracts/Move.hpp"
+#include "game/contracts/contracts.hpp"
 
 // // How to interpret the stored score relative to the search window.
 // enum class TTFlag : uint8_t

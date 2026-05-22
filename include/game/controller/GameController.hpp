@@ -28,7 +28,7 @@ class GameController : public IGameController
         OpeningProtocol      openingProtocol()  const override;
         int                  stepIdx()          const override;
         std::optional<Color> winner()           const override;
-        int                  captureCount(Color c) const override;
+        int                  captureCount(const Color c) const override;
 
     private:
         void beginNormalPlay();

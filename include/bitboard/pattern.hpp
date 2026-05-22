@@ -569,11 +569,11 @@ int check_four_align(const t_PatternList_Groupe4<Traits> lookup_table[Traits::CE
 		{
 			const t_PatternGroup4<Traits>& groupe = list_groupe.patterns[i];
 
-		if (!get_bb_flat<Traits>(boardB, groupe.hole_pos[0]) && match_pattern(groupe.masks[0], boardA))
+		if (!get_bb_flate<Traits>(boardB, groupe.hole_pos[0]) && match_pattern<Traits>(groupe.masks[0], boardA))
 			return 1;
-		if (!get_bb_flat<Traits>(boardB, groupe.hole_pos[1]) && match_pattern(groupe.masks[1], boardA))
+		if (!get_bb_flate<Traits>(boardB, groupe.hole_pos[1]) && match_pattern<Traits>(groupe.masks[1], boardA))
 			return 2;
-		if (!get_bb_flat<Traits>(boardB, groupe.hole_pos[2]) && match_pattern(groupe.masks[2], boardA))
+		if (!get_bb_flate<Traits>(boardB, groupe.hole_pos[2]) && match_pattern<Traits>(groupe.masks[2], boardA))
 			return 3;
 		}
 	}
@@ -770,46 +770,45 @@ int	check_three_align(const t_PatternList_Groupe3 lookup_table[Traits::CELL_COUN
 				score += 256;
 			else if (pattern.oposant_pos[3] == -1 || get_bb_flate<Traits>(boardB, pattern.oposant_pos[3]))
 				score += 128;
-			
+
 			if (score > 256)
+				continue;
+
+			if (get_bb_flate<Traits>(boardA, pattern.stone_pos[0]) &&
+				get_bb_flate<Traits>(boardA, pattern.stone_pos[1]) &&
+				get_bb_flate<Traits>(boardA, pattern.stone_pos[2]))
 			{
-				continue; // alignement de 3 pierre complètement fermé, on ignore
-			}	
-			if (get_bb_generic<Traits>(boardA, pattern.stone_pos[0]) && 
-				get_bb_generic<Traits>(boardA, pattern.stone_pos[1]) &&
-				get_bb_generic<Traits>(boardA, pattern.stone_pos[2]))
-			{
-				// std::cout << "alignement de 3 pierre complètement ouvert, on ignore, score = " << score << std::endl;
 				total_score += score + 8;
 				double_three += 1;
 				continue;
 			}
+
 			if (pattern.oposant_pos[3] == -1 || get_bb_flate<Traits>(boardB, pattern.oposant_pos[3]))
 				score += 128;
 			else if (pattern.oposant_pos[4] == -1 || get_bb_flate<Traits>(boardB, pattern.oposant_pos[4]))
 				score += 128;
 			if (score > 256)
-			{
-				continue; // alignement de 3 pierre complètement fermé, on ignore
-			}
+				continue;
 
 			if (pattern.stone_pos[3] == -1)
 				continue;
-			// std::cout << "pattern: hole pos[0] = " << pattern.hole_pos[0] << "hole pos[1] = " << pattern.hole_pos[1] << ", stone pos = " << pattern.stone_pos[0] << std::endl;
-			if (!get_bb_generic<Traits>(boardB, pattern.hole_pos[0]) && get_bb_flate<Traits>(boardA, pattern.stone_pos[0]) && get_bb_flate<Traits>(boardA, pattern.stone_pos[2]) &&
-				get_bb_generic<Traits>(boardA, pattern.stone_pos[3]))
-			{
-				total_score += score + 12; // a change
-				double_three += 1;
-				// std::cout << "alignement de 3 pierre avec troue, on ignore, score = " << score << std::endl;
-				continue;
-			}
-			if (!get_bb_generic<Traits>(boardB, pattern.hole_pos[1]) && get_bb_flate<Traits>(boardA, pattern.stone_pos[0]) && get_bb_flate<Traits>(boardA, pattern.stone_pos[1]) &&
-				get_bb_generic<Traits>(boardA, pattern.stone_pos[3]))
+
+			if (!get_bb_flate<Traits>(boardB, pattern.hole_pos[0]) &&
+				get_bb_flate<Traits>(boardA, pattern.stone_pos[0]) &&
+				get_bb_flate<Traits>(boardA, pattern.stone_pos[2]) &&
+				get_bb_flate<Traits>(boardA, pattern.stone_pos[3]))
 			{
 				total_score += score + 12;
 				double_three += 1;
-				// std::cout << "alignement de 3 pierre avec troue 2, on ignore, score = " << score << std::endl;
+				continue;
+			}
+			if (!get_bb_flate<Traits>(boardB, pattern.hole_pos[1]) &&
+				get_bb_flate<Traits>(boardA, pattern.stone_pos[0]) &&
+				get_bb_flate<Traits>(boardA, pattern.stone_pos[1]) &&
+				get_bb_flate<Traits>(boardA, pattern.stone_pos[3]))
+			{
+				total_score += score + 12;
+				double_three += 1;
 				continue;
 			}
 		}
@@ -981,8 +980,8 @@ int	check_super4(const t_PatternList_super4<Traits> lookup_table[Traits::CELL_CO
 			const t_super4<Traits>& pattern = list_super4.patterns[i];
 
 		if (match_pattern<Traits>(pattern.mask, boardA) &&
-			!get_bb_flat<Traits>(boardB, pattern.hole_pos[0]) &&
-			!get_bb_flat<Traits>(boardB, pattern.hole_pos[1]))
+			!get_bb_flate<Traits>(boardB, pattern.hole_pos[0]) &&
+			!get_bb_flate<Traits>(boardB, pattern.hole_pos[1]))
 			{
 				return 1; // super four détecté
 			}
@@ -1064,9 +1063,11 @@ int	check_cross(const t_PatternList_Cross lookup_table[Traits::CELL_COUNT],
 		int			opposant_score = 0;
 		int			score = 0;
 
-		if (get_bb_generic<Traits>(boardB, cross.middle) ||
-			get_bb_generic<Traits>(boardB, cross.up) || get_bb_flate<Traits>(boardB, cross.down) ||
-			get_bb_generic<Traits>(boardB, cross.left) || get_bb_flate<Traits>(boardB, cross.right))
+		if (get_bb_flate<Traits>(boardB, cross.middle) ||
+			get_bb_flate<Traits>(boardB, cross.up) ||
+			get_bb_flate<Traits>(boardB, cross.down) ||
+			get_bb_flate<Traits>(boardB, cross.left) ||
+			get_bb_flate<Traits>(boardB, cross.right))
 			continue;
 
 		if (cross.opposant_up[1] == -1 || get_bb_flate<Traits>(boardB, cross.opposant_up[1]))
@@ -1089,15 +1090,15 @@ int	check_cross(const t_PatternList_Cross lookup_table[Traits::CELL_COUNT],
 		if (opposant_score > 64)
 			continue;
 
-		if (get_bb_flat<Traits>(boardA, cross.middle))
+		if (get_bb_flate<Traits>(boardA, cross.middle))
 			score += 3;
-		if (get_bb_flat<Traits>(boardA, cross.up))
+		if (get_bb_flate<Traits>(boardA, cross.up))
 			score += 4;
-		if (get_bb_flat<Traits>(boardA, cross.down))
+		if (get_bb_flate<Traits>(boardA, cross.down))
 			score += 4;
-		if (get_bb_flat<Traits>(boardA, cross.left))
+		if (get_bb_flate<Traits>(boardA, cross.left))
 			score += 4;
-		if (get_bb_flat<Traits>(boardA, cross.right))
+		if (get_bb_flate<Traits>(boardA, cross.right))
 			score += 4;
 		
 		if (score >= 15) // on a au moins une croix partiel
@@ -1113,7 +1114,7 @@ int	check_cross(const t_PatternList_Cross lookup_table[Traits::CELL_COUNT],
 // double-three. Returns true if the move is a double-three violation.
 // The lookup table is built lazily and cached per Traits specialization.
 template<typename Traits>
-bool is_double_three_move(const t_BWBoard<Traits>& board, int col, int row, Color color);
+bool is_double_three_move(const t_BWBoard<Traits>& board, int col, int row, const Color color);
 
 //---------------------------------------------------------------------------
 

@@ -5,7 +5,7 @@
 // different internal representations. See include/game/validation/RULES.md.
 
 #include "game/GameState.hpp"
-#include "game/contracts/Move.hpp"
+#include "game/contracts/contracts.hpp"
 #include "game/validation/policy/OpeningMovePolicy.hpp"
 #include "game/validation/policy/StandardMovePolicy.hpp"
 #include "logger/Logger.hpp"

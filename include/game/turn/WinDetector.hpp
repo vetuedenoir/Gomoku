@@ -3,11 +3,11 @@
 
 #include "bitboard/bitboard.hpp"
 #include "bitboard/pattern.hpp"
-#include "game/contracts/Color.hpp"
+#include "game/contracts/contracts.hpp"
 #include <cstring>
 
 template<typename Traits>
-bool isWinAfterMove(const t_BWBoard<Traits>& bb, Color color, int col, int row)
+bool isWinAfterMove(const t_BWBoard<Traits>& bb, const Color color, int col, int row)
 {
     static t_PatternList5<Traits> table[Traits::BOARD_SIZE * Traits::BOARD_SIZE][4];
     static bool                     ready = false;

@@ -1,8 +1,7 @@
 #ifndef OPENINGRULES_HPP
 # define OPENINGRULES_HPP
 
-#include "game/contracts/GameConfig.hpp"
-#include "game/contracts/Move.hpp"
+#include "game/contracts/contracts.hpp"
 #include "game/board/GameBoard.hpp"
 #include <vector>
 

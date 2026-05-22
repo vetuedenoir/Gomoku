@@ -3,7 +3,7 @@
 
 #include <cstdint>
 #include "game/board/GameBoard.hpp"
-#include "game/contracts/Color.hpp"
+#include "game/contracts/contracts.hpp"
 #include "optimization/ZobristHasher.hpp"
 #include "bitboard/bitboard.hpp"
 
@@ -27,7 +27,7 @@ public:
     Color                    sideToMove()  const;
 
 private:
-    SearchPosition(t_BWBoard<Traits> board, uint64_t hash, Color side,
+    SearchPosition(t_BWBoard<Traits> board, uint64_t hash, const Color side,
                 const ZobristHasher<Traits>& hasher);
 
     t_BWBoard<Traits>              _board;
@@ -43,7 +43,7 @@ static Color toColor(CellStatus s)
 }
 
 template<typename Traits>
-SearchPosition<Traits>::SearchPosition(t_BWBoard<Traits> board, uint64_t hash, Color side,
+SearchPosition<Traits>::SearchPosition(t_BWBoard<Traits> board, uint64_t hash, const Color side,
                                  const ZobristHasher<Traits>& hasher)
     : _board(board), _hash(hash), _sideToMove(side), _hasher(hasher)
 {}

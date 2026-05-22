@@ -2,15 +2,8 @@
 # define GAMEBOARD_HPP
 
 # include "game/board/Seat.hpp"
+# include "game/contracts/contracts.hpp"
 #include <memory>
-
-enum class CellStatus
-{
-    Empty = 0,
-    Black = 1,
-    White = 2,
-    Neighbor = 3
-};
 
 // Abstract interface implemented by concrete fixed-size boards
 class IGameBoard

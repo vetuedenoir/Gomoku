@@ -3,7 +3,7 @@
 
 #include "game/controller/IGameController.hpp"
 #include "game/GameState.hpp"
-#include "game/contracts/Move.hpp"
+#include "game/contracts/contracts.hpp"
 #include "game/turn/WinDetector.hpp"
 #include "bitboard/bitboard.hpp"
 #include "logger/Logger.hpp"
@@ -31,21 +31,19 @@ public:
 
 private:
     static Color colorFromCell(CellStatus cell);
-    static const char* colorLabel(Color color);
+    static const char* colorLabel(const Color color);
 
-    t_BWBoard<Traits> boardFromState(const GameState& state) const;
-
-    CaptureResult<Traits> resolveCaptures(t_BWBoard<Traits>& bb, int col, int row, Color color,
+    CaptureResult<Traits> resolveCaptures(t_BWBoard<Traits>& bb, int col, int row, const Color color,
                                           int& capturesBlack, int& capturesWhite) const;
 
     void commitMove(GameState& state, t_BWBoard<Traits>& bb, const Move& move,
                     const typename Traits::Bitboard& capturedMask) const;
 
-    std::optional<Color> checkWin(const t_BWBoard<Traits>& bb, Color color, int col, int row,
+    std::optional<Color> checkWin(const t_BWBoard<Traits>& bb, const Color color, int col, int row,
                                   int capturesBlack, int capturesWhite) const;
 
     void finishTurn(GameState& state) const;
-    void logMove(Color color, const Move& move, int newCaptures) const;
+    void logMove(const Color color, const Move& move, int newCaptures) const;
 };
 
 template<typename Traits>
@@ -55,20 +53,14 @@ Color TurnController<Traits>::colorFromCell(CellStatus cell)
 }
 
 template<typename Traits>
-const char* TurnController<Traits>::colorLabel(Color color)
+const char* TurnController<Traits>::colorLabel(const Color color)
 {
     return (color == Color::Black) ? "Black" : "White";
 }
 
 template<typename Traits>
-t_BWBoard<Traits> TurnController<Traits>::boardFromState(const GameState& state) const
-{
-    return GameBoard_to_bitboard<Traits>(*state.board);
-}
-
-template<typename Traits>
 CaptureResult<Traits> TurnController<Traits>::resolveCaptures(t_BWBoard<Traits>& bb, int col,
-                                                              int row, Color color,
+                                                              int row, const Color color,
                                                               int& capturesBlack,
                                                               int& capturesWhite) const
 {
@@ -91,7 +83,7 @@ void TurnController<Traits>::commitMove(GameState& state, t_BWBoard<Traits>& bb,
     const Color      color     = colorFromCell(move.forcedColor);
     const CellStatus cellColor = move.forcedColor;
 
-    set_bb_generic<Traits>(bitboardForColor(bb, color), move.col, move.row);
+    set_bb_generic<Traits>(bitboardForColor<Traits>(bb, color), move.col, move.row);
     apply_captures<Traits>(bb, capturedMask, color);
 
     state.board->placeStoneOfColor(move.col, move.row, cellColor);
@@ -101,7 +93,7 @@ void TurnController<Traits>::commitMove(GameState& state, t_BWBoard<Traits>& bb,
 }
 
 template<typename Traits>
-std::optional<Color> TurnController<Traits>::checkWin(const t_BWBoard<Traits>& bb, Color color,
+std::optional<Color> TurnController<Traits>::checkWin(const t_BWBoard<Traits>& bb, const Color color,
                                                       int col, int row, int capturesBlack,
                                                       int capturesWhite) const
 {
@@ -130,7 +122,7 @@ void TurnController<Traits>::finishTurn(GameState& state) const
 }
 
 template<typename Traits>
-void TurnController<Traits>::logMove(Color color, const Move& move, int newCaptures) const
+void TurnController<Traits>::logMove(const Color color, const Move& move, int newCaptures) const
 {
     Logger::debug("TURN",
         std::string(colorLabel(color)) + " → (" + std::to_string(move.col) + ","
@@ -143,7 +135,7 @@ PlayResult TurnController<Traits>::play(GameState& state, int& capturesBlack, in
                                         const Move& move)
 {
     const Color color = colorFromCell(move.forcedColor);
-    t_BWBoard<Traits> bb = boardFromState(state);
+    t_BWBoard<Traits> bb = GameBoard_to_bitboard<Traits>(*state.board);
 
     const CaptureResult<Traits> caps = resolveCaptures(bb, move.col, move.row, color, capturesBlack, capturesWhite);
     commitMove(state, bb, move, caps.mask);

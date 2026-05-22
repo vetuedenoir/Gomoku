@@ -3,17 +3,17 @@
 
 #include "bitboard/bitboard.hpp"
 #include "bitboard/pattern.hpp"
-#include "game/contracts/Color.hpp"
+#include "game/contracts/contracts.hpp"
 
 template<typename Traits>
 class StandardRules
 {
     public:
-        bool isLegal(const t_BWBoard<Traits>& board, int col, int row, Color color) const;
+        bool isLegal(const t_BWBoard<Traits>& board, int col, int row, const Color color) const;
 };
 
 template<typename Traits>
-bool StandardRules<Traits>::isLegal(const t_BWBoard<Traits>& board, int col, int row, Color color) const
+bool StandardRules<Traits>::isLegal(const t_BWBoard<Traits>& board, int col, int row, const Color color) const
 {
     if (!in_board_generic<Traits>(col, row))
         return false;

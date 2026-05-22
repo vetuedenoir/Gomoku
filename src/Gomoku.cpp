@@ -89,7 +89,7 @@ void Gomoku::onBoardSizeSelected(int size)
     navigateTo(AppState::StoneColor);
 }
 
-void Gomoku::onStoneColorSelected(StoneColor color)
+void Gomoku::onStoneColorSelected(const Color color)
 {
     _config.playerColor = color;
     navigateTo(AppState::Opening);
@@ -303,7 +303,7 @@ void Gomoku::buildColorChoicePage()
     });
 }
 
-void Gomoku::buildWinScreenPage(Color winner, int capturesBlack, int capturesWhite)
+void Gomoku::buildWinScreenPage(const Color winner, int capturesBlack, int capturesWhite)
 {
     _winScreen.clear();
 
@@ -426,18 +426,18 @@ void Gomoku::buildStoneColorPage()
 
     _stoneColor.addItem("white", FonctionItem(
         Item("White", _font, CX, WIN_H * 0.3375f),
-        [this]() { onStoneColorSelected(StoneColor::White); }
+        [this]() { onStoneColorSelected(Color::White); }
     ));
     _stoneColor.addItem("black", FonctionItem(
         Item("Black", _font, CX, WIN_H * 0.4375f),
-        [this]() { onStoneColorSelected(StoneColor::Black); }
+        [this]() { onStoneColorSelected(Color::Black); }
     ));
     _stoneColor.addItem("random", FonctionItem(
         Item("Random", _font, CX, WIN_H * 0.5375f),
         [this]() {
             static std::mt19937 rng(std::random_device{}());
-            onStoneColorSelected(static_cast<StoneColor>(
-                std::uniform_int_distribution<int>(0, 1)(rng)));
+            onStoneColorSelected(static_cast<Color>(
+            std::uniform_int_distribution<int>(0, 1)(rng)));
         }
     ));
     _stoneColor.addItem("return", FonctionItem(

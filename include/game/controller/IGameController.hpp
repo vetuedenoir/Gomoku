@@ -1,21 +1,13 @@
 #ifndef IGAMECONTROLLER_HPP
 # define IGAMECONTROLLER_HPP
 
-#include "game/contracts/GameConfig.hpp"
-#include "game/contracts/Color.hpp"
-#include "game/contracts/GamePhase.hpp"
-#include "game/contracts/Move.hpp"
-#include "game/contracts/OpeningProtocol.hpp"
-#include "game/contracts/Stone.hpp"
+#include "game/contracts/contracts.hpp"
 #include "game/board/GameBoard.hpp"
 #include "game/board/Seat.hpp"
 #include <memory>
 #include <optional>
-#include <vector>
 
 const int CAPTURES_TO_WIN = 10;
-enum class MoveResult { Illegal, Ok, Win };
-
 
 class IGameController
 {
@@ -39,7 +31,7 @@ class IGameController
         virtual OpeningProtocol      openingProtocol()  const = 0;
         virtual int                  stepIdx()          const = 0;
         virtual std::optional<Color> winner()           const = 0;
-        virtual int                  captureCount(Color c) const = 0;
+        virtual int                  captureCount(const Color c) const = 0;
 };
 
 std::unique_ptr<IGameController> makeGameController(const GameConfig& config);

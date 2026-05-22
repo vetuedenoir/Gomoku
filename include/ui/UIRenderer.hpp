@@ -2,7 +2,7 @@
 # define UIRENDERER_HPP
 
 #include <SFML/Graphics.hpp>
-#include "game/contracts/Color.hpp"
+#include "game/contracts/contracts.hpp"
 #include "game/board/GameBoard.hpp"
 
 class Board;

@@ -5,6 +5,7 @@
 #include <stack>
 #include <memory>
 
+#include "game/contracts/contracts.hpp"
 #include "ui/MenuPage.hpp"
 #include "ui/Board.hpp"
 #include "ui/UIRenderer.hpp"
@@ -44,10 +45,10 @@ class Gomoku
         void buildStoneColorPage();
         void buildOpeningPage();
         void buildColorChoicePage();
-        void buildWinScreenPage(Color winner, int capturesBlack, int capturesWhite);
+        void buildWinScreenPage(const Color winner, int capturesBlack, int capturesWhite);
 
         void onBoardSizeSelected(int size);
-        void onStoneColorSelected(StoneColor color);
+        void onStoneColorSelected(const Color color);
         void onOpeningProtocolSelected(OpeningProtocol openingProtocol);
 
         void logConfig() const;

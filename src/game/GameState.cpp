@@ -29,7 +29,7 @@ static const char* openingProtocolStr(OpeningProtocol openingProtocol)
     }
 }
 
-GameState::GameState(int boardSize, OpeningProtocol openingProtocol, StoneColor firstPlayer)
+GameState::GameState(int boardSize, OpeningProtocol openingProtocol, const Color playerColor)
     : phase(GamePhase::Opening),
       openingProtocol(openingProtocol),
       stepIdx(0),
@@ -37,14 +37,14 @@ GameState::GameState(int boardSize, OpeningProtocol openingProtocol, StoneColor 
       currentActor(Seat::First)
 {
     // instantiate the board wrapper which will create the correct sized implementation
-    board = std::make_unique<GameBoard>(boardSize, (firstPlayer == StoneColor::Black) ? Seat::First : Seat::Second);
+    board = std::make_unique<GameBoard>(boardSize, (playerColor == Color::Black) ? Seat::First : Seat::Second);
     openingSteps = buildOpeningSteps(openingProtocol);
 
     if (openingSteps.empty())
     {
         phase     = GamePhase::Standard;
-        blackSeat = (firstPlayer == StoneColor::Black) ? Seat::First : Seat::Second;
-        whiteSeat = (firstPlayer == StoneColor::Black) ? Seat::Second : Seat::First;
+        blackSeat = (playerColor == Color::Black) ? Seat::First : Seat::Second;
+        whiteSeat = (playerColor == Color::Black) ? Seat::Second : Seat::First;
     }
 
     Logger::info("GAMESTATE",

@@ -2,9 +2,8 @@
 # define OPENINGMOVEPOLICY_HPP
 
 #include "game/GameState.hpp"
-#include "game/contracts/Move.hpp"
+#include "game/contracts/contracts.hpp"
 #include "game/validation/rules/OpeningRules.hpp"
-#include <vector>
 
 // Opening-phase move checks. Uses GameBoard + OpeningRules (not bitboard).
 // See RULES.md.

@@ -5,7 +5,7 @@
 namespace
 {
 
-CellStatus colorToCell(Color c)
+CellStatus colorToCell(const Color c)
 {
     return (c == Color::Black) ? CellStatus::Black : CellStatus::White;
 }
@@ -184,7 +184,7 @@ std::optional<Color> GameController<Traits>::winner() const
 }
 
 template<typename Traits>
-int GameController<Traits>::captureCount(Color c) const
+int GameController<Traits>::captureCount(const Color c) const
 {
     return (c == Color::Black) ? _capturesBlack : _capturesWhite;
 }

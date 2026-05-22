@@ -2,7 +2,7 @@
 # define BITBOARD_HPP
 
 #include "game/board/GameBoard.hpp"
-#include "game/contracts/Color.hpp"
+#include "game/contracts/contracts.hpp"
 #include "direction.hpp"
 
 #include <cstdint>
@@ -89,14 +89,7 @@ inline bool get_bb_generic(const typename Traits::Bitboard &bb, int x, int y)
 // Used by pattern matching code that stores pre-computed flat indices.
 // Returns false for the -1 sentinel used by pattern structs.
 template<typename Traits>
-inline bool get_bb_flat(const typename Traits::Bitboard& bb, int pos)
-{
-	if (pos < 0) return false;
-	return (bb[pos / 64] & (1ULL << (pos % 64))) != 0;
-}
-
-template<typename Traits>
-inline bool get_bb_flate(const typename Traits::Bitboard &bb, int idx)
+inline bool get_bb_flate(const typename Traits::Bitboard& bb, int idx)
 {
 	return (bb[idx / 64] & (1ULL << (idx % 64))) != 0;
 }
@@ -110,13 +103,13 @@ inline void clear_bit_generic(typename Traits::Bitboard &bb, int x, int y)
 }
 
 template<typename Traits>
-inline const typename Traits::Bitboard& bitboardForColor(const t_BWBoard<Traits>& board, Color color)
+inline typename Traits::Bitboard& bitboardForColor(t_BWBoard<Traits>& board, const Color color)
 {
 	return (color == Color::Black) ? board.black : board.white;
 }
 
 template<typename Traits>
-inline typename Traits::Bitboard& bitboardForColor(t_BWBoard<Traits>& board, Color color)
+inline const typename Traits::Bitboard& bitboardForColor(const t_BWBoard<Traits>& board, const Color color)
 {
 	return (color == Color::Black) ? board.black : board.white;
 }
@@ -230,7 +223,7 @@ t_BWBoard<Traits> GameBoard_to_bitboard(const GameBoard &board)
 }
 
 template<typename Traits>
-bool detect_captures(const t_BWBoard<Traits>& board, int col, int row, Color attackerColor, typename Traits::Bitboard& capturedMask)
+bool detect_captures(const t_BWBoard<Traits>& board, int col, int row, const Color attackerColor, typename Traits::Bitboard& capturedMask)
 {
 	const typename Traits::Bitboard& attacker = bitboardForColor(board, attackerColor);
 	const Color victimColor = (attackerColor == Color::Black) ? Color::White : Color::Black;
@@ -267,7 +260,7 @@ bool detect_captures(const t_BWBoard<Traits>& board, int col, int row, Color att
 }
 
 template<typename Traits>
-void apply_captures(t_BWBoard<Traits>& board, const typename Traits::Bitboard captured, Color attacker)
+void apply_captures(t_BWBoard<Traits>& board, const typename Traits::Bitboard captured, const Color attacker)
 {
 	const Color victimColor = (attacker == Color::Black) ? Color::White : Color::Black;
 	typename Traits::Bitboard& victimBitboard = bitboardForColor(board, victimColor);

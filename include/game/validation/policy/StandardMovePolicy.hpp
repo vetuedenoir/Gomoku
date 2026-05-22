@@ -2,8 +2,7 @@
 # define STANDARDMOVEPOLICY_HPP
 
 #include "game/GameState.hpp"
-#include "game/contracts/Move.hpp"
-#include "game/contracts/Color.hpp"
+#include "game/contracts/contracts.hpp"
 #include "game/validation/rules/StandardRules.hpp"
 #include "ai/MoveGenerator.hpp"
 #include "bitboard/bitboard.hpp"
@@ -14,12 +13,12 @@ template<typename Traits>
 class StandardMovePolicy
 {
 public:
-    bool isLegal(const GameState& state, int col, int row, Color color) const
+    bool isLegal(const GameState& state, int col, int row, const Color color) const
     {
         return _rules.isLegal(boardFrom(state), col, row, color);
     }
 
-    std::vector<Move> legalMoves(const GameState& state, Color color) const
+    std::vector<Move> legalMoves(const GameState& state, const Color color) const
     {
         std::vector<Move>           moves;
         const t_BWBoard<Traits>     bb   = boardFrom(state);
