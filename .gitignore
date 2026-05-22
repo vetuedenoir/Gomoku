@@ -7,3 +7,4 @@ external
 .DS_Store
 .env
 docs/
+.cursor/

@@ -1,43 +1,59 @@
 #pragma once
 
-#include "bitboard/pattern.hpp"
+#include "bitboard/BitboardTool.hpp"
+#include "bitboard/PatternTypes.hpp"
 #include "bitboard/bitboard.hpp"
 
-#include <string.h>
+using TestTraits = BoardTraits<19>;
 
-// ─── Shared lookup tables, built once for the entire test run ────────────────
-//
-// All six lookup tables total ~2.7 MB. Using a function-local static (C++11
-// magic-static) ensures they are initialised exactly once regardless of how
-// many translation units include this header.
+inline BitboardTool19& patternTool()
+{
+	return BitboardTool19::instance();
+}
 
-struct PatternTables {
-    t_PatternList5        lt5[361][4];
-    t_PatternList4        lt4[361][4];
-    t_PatternList_Groupe4 ltg4[361][4];
-    t_PatternList_Groupe3 lt3[361][4];
-    t_PatternList_super4  lts4[361][4];
-    t_PatternList_Cross   ltcross[361];
+inline t_BWBoard19 empty_bb() { return t_BWBoard19{}; }
 
-    PatternTables() {
-        memset(lt5,     0, sizeof(lt5));
-        memset(lt4,     0, sizeof(lt4));
-        memset(ltg4,    0, sizeof(ltg4));
-        memset(lt3,     0, sizeof(lt3));
-        memset(lts4,    0, sizeof(lts4));
-        memset(ltcross, 0, sizeof(ltcross));
-        build_lookup_table5(lt5);
-        build_lookup_table4(lt4);
-        build_lookup_table_groupe4(ltg4);
-        build_lookup_table3(lt3);
-        build_lookup_table_super4(lts4);
-        build_lookup_table_cross(ltcross);
-    }
+inline void set_bb19(typename TestTraits::Bitboard& bb, int x, int y) {
+    set_bb_generic<TestTraits>(bb, x, y);
+}
 
-    static PatternTables& get() {
-        static PatternTables instance;
-        return instance;
-    }
-};
+inline int index_bb19(int x, int y) {
+    return index_bb_generic<TestTraits>(x, y);
+}
 
-inline t_BWBoard19 empty_bb() { t_BWBoard19 b = {}; return b; }
+inline bool get_bb19(const typename TestTraits::Bitboard& bb, int idx) {
+    return get_bb_flate<TestTraits>(bb, idx);
+}
+
+inline int popcount_bb(const typename TestTraits::Bitboard& bb) {
+    return popcount_bb_generic<TestTraits>(bb);
+}
+
+inline bool isWin_ultra_19(const typename TestTraits::Bitboard& board, int x, int y) {
+    return patternTool().is_five_in_a_row(board, x, y);
+}
+
+inline int is_Open_4_19(const typename TestTraits::Bitboard& boardA,
+                        const typename TestTraits::Bitboard& boardB, int x, int y) {
+    return patternTool().check_open_four(boardA, boardB, x, y);
+}
+
+inline int check_four_align_19(const typename TestTraits::Bitboard& boardA,
+                               const typename TestTraits::Bitboard& boardB, int x, int y) {
+    return patternTool().check_broken_four(boardA, boardB, x, y);
+}
+
+inline int check_three_align_19(const typename TestTraits::Bitboard& boardA,
+                                const typename TestTraits::Bitboard& boardB, int x, int y) {
+    return patternTool().check_open_three(boardA, boardB, x, y);
+}
+
+inline int check_super4_19(const typename TestTraits::Bitboard& boardA,
+                           const typename TestTraits::Bitboard& boardB, int x, int y) {
+    return patternTool().check_super_four(boardA, boardB, x, y);
+}
+
+inline int check_cross_19(const typename TestTraits::Bitboard& boardA,
+                          const typename TestTraits::Bitboard& boardB, int x, int y) {
+    return patternTool().check_cross(boardA, boardB, x, y);
+}

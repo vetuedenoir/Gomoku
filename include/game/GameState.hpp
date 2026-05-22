@@ -1,13 +1,10 @@
 #ifndef GAMESTATE_HPP
 # define GAMESTATE_HPP
 
-#include "game/contracts/GameConfig.hpp"
-#include "game/contracts/GamePhase.hpp"
-# include "game/GameBoard.hpp"
-#include <memory>
-#include "game/OpeningScript.hpp"
-#include "game/Seat.hpp"
-#include <optional>
+#include "game/contracts/contracts.hpp"
+# include "game/board/GameBoard.hpp"
+#include "game/validation/rules/OpeningRules.hpp"
+#include "game/board/Seat.hpp"
 #include <vector>
 
 struct PlacedStone
@@ -21,9 +18,9 @@ struct GameState
 {
     std::unique_ptr<GameBoard> board;
     GamePhase   phase;
-    OpeningRule openingRule;
+    OpeningProtocol openingProtocol;
 
-    std::vector<OpeningStep> openingScript;
+    std::vector<OpeningStep> openingSteps;
     int                      stepIdx;
     int                      subIdx;
 
@@ -35,7 +32,7 @@ struct GameState
     std::optional<Seat> blackSeat;
     std::optional<Seat> whiteSeat;
 
-    GameState(int boardSize, OpeningRule rule, StoneColor firstPlayer);
+    GameState(int boardSize, OpeningProtocol openingProtocol, const Color playerColor);
 
     // Call when currentActor has made their colour selection.
     //   swapped = false → actor keeps the "default" colour

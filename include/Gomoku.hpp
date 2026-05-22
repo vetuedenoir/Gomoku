@@ -4,45 +4,35 @@
 #include <SFML/Graphics.hpp>
 #include <stack>
 #include <memory>
-#include <iostream>
 
+#include "game/contracts/contracts.hpp"
 #include "ui/MenuPage.hpp"
 #include "ui/Board.hpp"
-#include "game/GameBoard.hpp"
-#include "game/contracts/GameConfig.hpp"
-#include "game/GameState.hpp"
-
-#include "bitboard/bitboard.hpp"
-#include "bitboard/pattern.hpp"
-#include "bitboard/BitboardTool.hpp"
-#include "bitboard/BitboardTool19.hpp"
-#include "bitboard/BitboardTool15.hpp"
-#include "ai/ActiveZone.hpp"
+#include "ui/UIRenderer.hpp"
+#include "game/controller/IGameController.hpp"
 
 
-enum class AppState { MainMenu, BoardSize, StoneColor, Opening, Game };
+enum class AppState { MainMenu, BoardSize, StoneColor, Opening, Game, GameOver };
 
 class Gomoku
 {
     private:
         sf::RenderWindow     _window;
         sf::Font             _font;
+        UIRenderer           _renderer;
 
         std::stack<AppState> _states;
         GameConfig           _config;
-
 
         MenuPage _mainMenu;
         MenuPage _boardSize;
         MenuPage _stoneColor;
         MenuPage _opening;
         MenuPage _colorChoice;
+        MenuPage _winScreen;
 
-        std::unique_ptr<Board>      _board;
-        std::unique_ptr<GameState>  _gameState;
-        std::unique_ptr<IBitboardTool> _bitboardTool;
-        // std::unique_ptr<ActiveZone19> _activeZone;
-
+        std::unique_ptr<Board>          _board;
+        std::unique_ptr<IGameController> _controller;
 
         MenuPage &currentPage();
         void      navigateTo(AppState s);
@@ -55,15 +45,18 @@ class Gomoku
         void buildStoneColorPage();
         void buildOpeningPage();
         void buildColorChoicePage();
+        void buildWinScreenPage(const Color winner, int capturesBlack, int capturesWhite);
+
+        void onBoardSizeSelected(int size);
+        void onStoneColorSelected(const Color color);
+        void onOpeningProtocolSelected(OpeningProtocol openingProtocol);
 
         void logConfig() const;
+        void resetToMainMenu();
 
         CellStatus computeGhostColor() const;
 
         void handleEvent(const sf::Event &event, sf::Vector2f mouse);
-    
-        void renderGame();
-        void renderColorChoicePage();
         void render();
 
     public:

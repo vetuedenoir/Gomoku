@@ -4,7 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <random>
-#include "game/contracts/Color.hpp"
+#include "game/contracts/contracts.hpp"
 #include "bitboard/bitboard.hpp"
 
 // Static Zobrist lookup table, parameterized on board traits.
@@ -64,7 +64,7 @@ public:
         return h;
     }
 
-    uint64_t key(int x, int y, Color color) const
+    uint64_t key(int x, int y, const Color color) const
     {
         return _table[y * Traits::STRIDE + x][static_cast<int>(color)];
     }

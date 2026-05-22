@@ -3,7 +3,7 @@
 
 #include <SFML/Graphics.hpp>
 #include <vector>
-#include "game/GameBoard.hpp"
+#include "game/board/GameBoard.hpp"
 #include <iostream>
 
 static const int GRID_MAX = 19;
