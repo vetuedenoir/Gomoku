@@ -543,7 +543,9 @@ void BitboardTool<Traits>::add_pattern_super4(t_super4<Traits>* pattern, int sta
 {
 	for (int i = 0; i < 7; i++)
 	{
-		int case_x, case_y;
+		int case_x = 0;
+		int case_y = 0;
+
 		switch (dir)
 		{
 			case DIR_HORIZ:

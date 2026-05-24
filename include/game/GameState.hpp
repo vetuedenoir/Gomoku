@@ -6,6 +6,7 @@
 #include "game/validation/rules/OpeningRules.hpp"
 #include "game/board/Seat.hpp"
 #include <vector>
+#include <optional>
 
 struct PlacedStone
 {
