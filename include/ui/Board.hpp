@@ -5,6 +5,7 @@
 #include <vector>
 #include "game/board/GameBoard.hpp"
 #include <iostream>
+#include <math.h>
 
 static const int GRID_MAX = 19;
 
