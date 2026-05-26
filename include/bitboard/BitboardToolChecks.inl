@@ -133,7 +133,7 @@ int BitboardTool<Traits>::check_open_three(const typename Traits::Bitboard& ston
 			if (score > 256)
 				continue;
 
-			if (pattern.stone_pos[3] == -1)
+			if (pattern.stone_pos[3] == -1) // regarde si il y a un three Hole
 				continue;
 
 			if (!get_bb_flate<Traits>(opponent, pattern.hole_pos[0])
@@ -259,13 +259,13 @@ bool BitboardTool<Traits>::isDoubleThreeScore(int score)
 {
 	if (score <= 0)
 		return false;
-	if (score == SCORE_3_FULL || score == SCORE_3_HOLE || score >= SCORE_FULL_EXTERN)
-		return false;
 	if (score < SCORE_3_FULL)
 		return true;
 	if (score >= SCORE_DOUBLE_FULL_FULL_EXTERN
-	    && score <= SCORE_DOUBLE_HOLE_HOLE_INTERN2)
+	    && score <= SCORE_DOUBLE_HOLE_HOLE_EXTERN)
 		return true;
+	// if (score == SCORE_3_FULL || score == SCORE_3_HOLE || score >= SCORE_FULL_EXTERN)
+	// 	return false;
 	return false;
 }
 

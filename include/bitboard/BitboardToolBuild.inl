@@ -247,7 +247,9 @@ void BitboardTool<Traits>::add_pattern_group4(t_PatternGroup4<Traits>* group, in
 {
     for (int i = 0; i < 5; i++)
 	{
-        int case_x, case_y;
+        int case_x = 0;
+		int case_y = 0;
+
         switch (dir)
 		{
             case DIR_HORIZ:
