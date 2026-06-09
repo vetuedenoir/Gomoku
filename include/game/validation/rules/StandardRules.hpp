@@ -23,13 +23,13 @@ bool StandardRules<Traits>::isLegal(const t_BWBoard<Traits>& board, int col, int
         get_bb_generic<Traits>(board.white, col, row))
         return false;
 
-    t_BWBoard<Traits> temp = board;
-    typename Traits::Bitboard& moverPlane =
-        (color == Color::Black) ? temp.black : temp.white;
-    typename Traits::Bitboard& oppPlane =
-        (color == Color::Black) ? temp.white : temp.black;
+    /*Create a copy of the board to simulate the move*/
+    t_BWBoard<Traits> simulatedBoard = board;
+    typename Traits::Bitboard& moverPlane = (color == Color::Black) ? simulatedBoard.black : simulatedBoard.white;
+    typename Traits::Bitboard& oppPlane = (color == Color::Black) ? simulatedBoard.white : simulatedBoard.black;
+    
+    /*Simulate the move*/
     set_bb_generic<Traits>(moverPlane, col, row);
-
 
     // on est oblige de faire les checks dans cet ordre pour detecter les double three, 
     // sinon is double three buggerait en detectant un simple three avant de detecter le double three
@@ -40,7 +40,7 @@ bool StandardRules<Traits>::isLegal(const t_BWBoard<Traits>& board, int col, int
     if (BitboardTool<Traits>::instance().is_double_three_at(moverPlane, oppPlane, col, row))
     {
         typename Traits::Bitboard captureMask = {};
-        if (!detect_captures<Traits>(temp, col, row, color, captureMask))
+        if (!detect_captures<Traits>(simulatedBoard, col, row, color, captureMask))
             return false;
     }
 
