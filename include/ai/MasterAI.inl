@@ -1,5 +1,6 @@
 #include "ai/MasterAI.hpp"
-#include "WinDetector.hpp"
+#include "game/turn/WinDetector.hpp"
+#include "logger/Logger.hpp"
 
 template <typename Traits>
 MasterAI<Traits>::MasterAI(int depth, int activeZoneRadius)

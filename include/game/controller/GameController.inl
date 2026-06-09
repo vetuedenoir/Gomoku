@@ -1,16 +1,7 @@
 #include "game/validation/rules/OpeningRules.hpp"
 #include "logger/Logger.hpp"
+#include <random>
 #include <string>
-
-namespace
-{
-
-CellStatus colorToCell(const Color c)
-{
-    return (c == Color::Black) ? CellStatus::Black : CellStatus::White;
-}
-
-} // namespace
 
 template<typename Traits>
 GameController<Traits>::GameController(const GameConfig& config)
@@ -107,36 +98,53 @@ std::optional<Move> GameController<Traits>::requestAIMove()
 
     if (_state.phase == GamePhase::ColorChoice)
     {
-        Logger::info("AI", "requestAIMove — ColorChoice, no move");
+        static std::mt19937 rng{std::random_device{}()};
+        bool swapped = std::uniform_int_distribution<int>(0, 1)(rng);
+        Logger::info("AI", std::string("requestAIMove — ColorChoice, swapped=")
+                           + (swapped ? "true" : "false"));
+        resolveColorChoice(swapped);
         return std::nullopt;
     }
 
     Logger::info("AI", "requestAIMove — in progress");
 
-    // const std::vector<Move> candidates = _validator.getLegalMoves(_state);
+    if (_state.phase == GamePhase::Opening)
+    {
+        const std::vector<Move> candidates = getLegalOpeningMoves(_state);
+        if (candidates.empty())
+        {
+            Logger::warn("AI", "requestAIMove — no legal opening moves");
+            return std::nullopt;
+        }
+        Logger::debug("AI", "[requestAIMove/Opening] candidates: " + std::to_string(candidates.size()));
+        
+        std::string candidatesStr = "";
+        for (const auto& c : candidates)
+            candidatesStr += "  (" + std::to_string(c.col) + ", " + std::to_string(c.row) + "), ";
 
-    // if (_state.phase == GamePhase::Opening)
-    // {
-    //     for (const Move& m : candidates)
-    //     {
-    //         if (handleOpeningClick(m.col, m.row))
-    //             return m;
-    //     }
-    //     Logger::warn("AI", "requestAIMove — no opening move committed");
-    //     return std::nullopt;
-    // }
+        Logger::debug("AI", "[requestAIMove/Opening] candidates: " + candidatesStr);
+        const Move& m = candidates.front();
+        if (!handleOpeningClick(m.col, m.row))
+        {
+            Logger::warn("AI", "requestAIMove — opening click rejected");
+            return std::nullopt;
+        }
+        return m;
+    }
 
-    // if (_state.phase == GamePhase::Standard)
-    // {
-    //     for (const Move& m : candidates)
-    //     {
-    //         const MoveResult r = submitMove(m.col, m.row);
-    //         if (r == MoveResult::Ok || r == MoveResult::Win)
-    //             return m;
-    //     }
-    //     Logger::warn("AI", "requestAIMove — no standard move committed");
-    //     return std::nullopt;
-    // }
+    if (_state.phase == GamePhase::Standard)
+    {
+        SearchPosition<Traits> pos = SearchPosition<Traits>::fromBoard(*_state.board);
+        auto [col, row] = _masterAI.findBestMove(pos, currentColor());
+        if (col == -1)
+        {
+            Logger::warn("AI", "requestAIMove — no standard move found");
+            return std::nullopt;
+        }
+        const Move m{ col, row, colorToCell(currentColor()) };
+        submitMove(col, row);
+        return m;
+    }
 
     return std::nullopt;
 }
