@@ -8,11 +8,29 @@ MasterAI<Traits>::MasterAI(int depth, int activeZoneRadius)
 }
 
 template <typename Traits>
-std::pair<int, int>	MasterAI<Traits>::findBestMove(
+t_cell	MasterAI<Traits>::findBestMove(
 	const SearchPosition<Traits>& position, Color color)
 {
-	int bestScore = std::numeric_limits<int>::min();
-	std::pair<int, int> bestMove = {-1, -1};
+	bestescore = std::numeric_limits<int>::min();
+	t_cell bestMove = {-1, -1};
+	const std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
+	if (moves.empty())
+		return bestMove;
+	
+	// order moves by heuristic evaluation to improve alpha-beta pruning efficiency
+
+	for (const t_cell& move : moves)
+	{
+		SearchPosition<Traits> newPosition = position;
+		newPosition.makeMove(move.x, move.y, colorToCell(position.sideToMove()));
+		int score = minimax(newPosition, move, _maxDepth - 1, std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), false);
+		if (score > bestescore)
+		{
+			bestescore = score;
+			bestMove = move;
+		}
+	}
+	return bestMove;
 }
 
 template <typename Traits>
@@ -34,12 +52,12 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 {
 	// ne verifie pas les captures gagnantes, seulement les alignements de 5
 	if (isWinAfterMove<Traits>(position.board(), position.sideToMove(), 0, 0))
-		return isMaximizing ? -100000 : 100000;
+		return isMaximizing ? -1000000 : 1000000;
 	
 	if (depth == 0)
 		return evaluatePosition(position, cell);
 	
-	std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
+	const std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
 	if (moves.empty())
 		return evaluatePosition(position, cell);
 	
@@ -91,88 +109,101 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 
 
 
-
-static int	cross_score(int crossResult)
+static int cross_score(int crossResult)
 {
-	if (crossResult == CROSS_FULL) // pareil a un double open three.
-		return 90000;
-	else if (crossResult == CROSS_DEMI_NO_MID) // 
-		return 2000;
-	else if (crossResult == CROSS_DEMI_MID)
-		return 1500;
-	else if (crossResult ==  CROSS_FULL_OPP_EXTERN)
-		return 90000;
-	else if (crossResult == CROSS_FULL_OPP_INTERN)
-		return 9000;
-	
-	else if (crossResult == CROSS_DEMI_NO_OPP_EXTERN)
-		return 300;
-	else if (crossResult == CROSS_DEMI_NO_OPP_INTERN)
-		return 150;
-	
-	else if (crossResult == CROSS_DEMI_MID_OPP_EXTERN)
-		return 350;
-	else if (crossResult = CROSS_DEMI_MID_OPP_INTERN)
-		return 175;
+    switch (crossResult)
+    {
+        case CROSS_FULL:
+        case CROSS_FULL_OPP_EXTERN:
+            return 90000;
 
-	return 0;
+        case CROSS_DEMI_NO_MID:
+            return 2000;
+
+        case CROSS_DEMI_MID:
+            return 1500;
+
+        case CROSS_FULL_OPP_INTERN:
+            return 9000;
+
+        case CROSS_DEMI_NO_OPP_EXTERN:
+            return 300;
+
+        case CROSS_DEMI_MID_OPP_EXTERN:
+            return 350;
+
+        case CROSS_DEMI_NO_OPP_INTERN:
+            return 150;
+
+        case CROSS_DEMI_MID_OPP_INTERN:
+            return 175;
+
+        default:
+            return 0;
+    }
 }
 
+// Reflechir a enleve les verifications doublons CROSS_FULL et CROSS_FULL_OPP_EXTERN INTERN
+// qui sont pareil que les double three SCORE_DOUBLE_FULL_FULL
 
-static int	score_open_three(int threeResult)
+static int score_open_three(int threeResult)
 {
-	if (threeResult == SCORE_3_FULL)
-		return 800;
-	else if (threeResult == SCORE_3_HOLE)
-		return 700;
-	else if (threeResult == SCORE_FULL_EXTERN)
-		return 500;
-	else if (threeResult == SCORE_HOLE_EXTERN)
-		return 450;
-	else if (threeResult == SCORE_FULL_INTERN)
-		return 400;
-	// peut etre meme en dessous de 100, car peut permettre une capture
-	else if (threeResult == SCORE_HOLE_INTERN)
-		return 350;
-	
-	else if (threeResult == SCORE_DOUBLE_FULL_FULL)
-		return 90000;
-	else if (threeResult == SCORE_DOUBLE_HOLE_FULL)
-		return 85000;
-	else if (threeResult == SCORE_DOUBLE_HOLE_HOLE)
-		return 80000;
-	
-	else if (threeResult == SCORE_DOUBLE_FULL_FULL_EXTERN)
-		return 90000;
-	else if (threeResult == SCORE_DOUBLE_HOLE_FULL_EXTERN)
-		return 85000;
-	else if (threeResult == SCORE_DOUBLE_HOLE_HOLE_EXTERN)
-		return 80000;
+    switch (threeResult)
+    {
+        case SCORE_3_FULL:  return 800;
+        case SCORE_3_HOLE:  return 700;
 
-	// Necessite une defense en 3 coups pour etre pare, pas d'erreur possible
-	else if (threeResult == SCORE_DOUBLE_FULL_FULL_INTERN)
-		return 9000;
-	else if (threeResult == SCORE_DOUBLE_HOLE_FULL_INTERN)
-		return 8500;
-	else if (threeResult == SCORE_DOUBLE_HOLE_HOLE_INTERN)
-		return 8000;
+        case SCORE_FULL_EXTERN: return 500;
+        case SCORE_HOLE_EXTERN: return 450;
 
-	else if (threeResult == SCORE_DOUBLE_FULL_FULL_MIXED)
-		return 9000;
-	else if (threeResult == SCORE_DOUBLE_HOLE_FULL_MIXED)
-		return 8500;
-	else if (threeResult == SCORE_DOUBLE_HOLE_HOLE_MIXED)
-		return 8000;
+        case SCORE_FULL_INTERN: return 40;
+		// peut etre meme en dessous de 100, car peut permettre une capture
+        case SCORE_HOLE_INTERN: return 35;
 
+        case SCORE_DOUBLE_FULL_FULL:
+        case SCORE_DOUBLE_FULL_FULL_EXTERN:
+            return 90000;
+
+        case SCORE_DOUBLE_HOLE_FULL:
+        case SCORE_DOUBLE_HOLE_FULL_EXTERN:
+            return 85000;
+
+        case SCORE_DOUBLE_HOLE_HOLE:
+        case SCORE_DOUBLE_HOLE_HOLE_EXTERN:
+            return 80000;
+
+		// Necessite une defense en 3 coups pour etre pare, pas d'erreur possible
+        case SCORE_DOUBLE_FULL_FULL_INTERN:
+            return 9000;
+        case SCORE_DOUBLE_HOLE_FULL_INTERN:
+            return 8500;
+        case SCORE_DOUBLE_HOLE_HOLE_INTERN:
+            return 8000;
+
+		// Necessite une defense en 2 coups pour etre pare, pas d'erreur possible
+        case SCORE_DOUBLE_FULL_FULL_MIXED:
+            return 7500;
+        case SCORE_DOUBLE_HOLE_FULL_MIXED:
+            return 7000;
+        case SCORE_DOUBLE_HOLE_HOLE_MIXED:
+            return 6500;
+
+        case SCORE_DOUBLE_FULL_FULL_INTERN2:
+            return 90;
+        case SCORE_DOUBLE_HOLE_FULL_INTERN2:
+            return 85;
+        case SCORE_DOUBLE_HOLE_HOLE_INTERN2:
+            return 80;
+
+        default:
+            return 0;
+    }
 }
-
 
 template <typename Traits>
 int	MasterAI<Traits>::evaluatePosition(const SearchPosition<Traits>& position, t_cell cell)
 {
-	int score = 0;
 	int	result = 0;
-
 	BitboardTool<Traits>& bitboardTool = BitboardTool<Traits>::instance();
 	t_BWBoard<Traits> board = position.board();
 	Color side = position.sideToMove();
@@ -219,4 +250,5 @@ int	MasterAI<Traits>::evaluatePosition(const SearchPosition<Traits>& position, t
 	if (result)
 		return score_open_three(result);
 
+	return 0;
 }

@@ -28,7 +28,7 @@ class MasterAI
 		explicit MasterAI(int depth = 6, int activeZoneRadius = 2);
 		
 		// Trouve le meilleur coup via minimax
-		std::pair<int, int> findBestMove(
+		t_cell findBestMove(
 			const SearchPosition<Traits>& position,
 			Color color
 		);
