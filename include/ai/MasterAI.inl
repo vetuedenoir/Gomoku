@@ -3,10 +3,60 @@
 #include "logger/Logger.hpp"
 
 template <typename Traits>
-MasterAI<Traits>::MasterAI(int depth, int activeZoneRadius)
-	: _moveGenerator(activeZoneRadius), _maxDepth(depth)
+MasterAI<Traits>::MasterAI(int depth, int activeZoneRadius, Color aiColor)
+	: _moveGenerator(activeZoneRadius), _maxDepth(depth), _aiColor(aiColor)
 {
+	_stoneCapturedByAI = 0;
+	_stoneCapturedByOPP = 0;
 }
+
+void MasterAI<BoardTraits<19>>::setSearchDepth(int depth) noexcept
+{
+	_maxDepth = depth;
+}
+
+int MasterAI<BoardTraits<19>>::getSearchDepth() const noexcept
+{
+	return _maxDepth;
+}
+
+void MasterAI<BoardTraits<19>>::setAIColor(Color color) noexcept
+{
+	_aiColor = color;
+}
+
+Color MasterAI<BoardTraits<19>>::getAIColor() const noexcept
+{
+	return _aiColor;
+}
+
+
+void MasterAI<BoardTraits<19>>::setStonesCapturedByAI(int count) noexcept
+{
+	_stoneCapturedByAI = count;
+}
+
+int MasterAI<BoardTraits<19>>::getStonesCapturedByAI() const noexcept
+{
+	return _stoneCapturedByAI;
+}
+
+int MasterAI<BoardTraits<19>>::getStonesCapturedByOPP() const noexcept
+{
+	return _stoneCapturedByOPP;
+}
+
+void MasterAI<BoardTraits<19>>::setStonesCapturedByOPP(int count) noexcept
+{
+	_stoneCapturedByOPP = count;
+}
+
+void MasterAI<BoardTraits<19>>::setTimeLimit(int milliseconds) noexcept
+{
+	_timeLimitMs = milliseconds;
+}
+
+
 
 template <typename Traits>
 t_cell	MasterAI<Traits>::findBestMove(
@@ -110,19 +160,19 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 {
 	++_stats.nodesVisited;
 
-	// if (!_timeExceeded)
-	// {
-	// 	const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-	// 	    Clock::now() - _searchStart).count();
-	// 	if (elapsed >= _timeLimitMs)
-	// 	{
-	// 		_timeExceeded = true;
-	// 		Logger::debug("AI", "[minimax] time limit hit at "
-	// 		    + std::to_string(elapsed) + "ms  nodes=" + std::to_string(_stats.nodesVisited));
-	// 	}
-	// }
-	// if (_timeExceeded)
-	// 	return 0;
+	if (!_timeExceeded)
+	{
+		const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+		    Clock::now() - _searchStart).count();
+		if (elapsed >= _timeLimitMs)
+		{
+			_timeExceeded = true;
+			Logger::debug("AI", "[minimax] time limit hit at "
+			    + std::to_string(elapsed) + "ms  nodes=" + std::to_string(_stats.nodesVisited));
+		}
+	}
+	if (_timeExceeded)
+		return 0;
 
 	const int currentDepth = _maxDepth - depth;
 	if (currentDepth > _stats.maxDepthSeen)
@@ -143,7 +193,10 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 	{
 		pv.clear();
 		++_stats.nodesEvaluated;
-		return evaluatePosition(position, cell);
+		if (lastPlayed == Color::Black)
+			return evaluateBlackPosition(position, cell);
+		return evaluateWhitePosition(position, cell);
+		// return evaluatePosition(position, cell);
 	}
 
 	const std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
@@ -151,7 +204,10 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 	{
 		pv.clear();
 		++_stats.nodesEvaluated;
-		return evaluatePosition(position, cell);
+		if (lastPlayed == Color::Black)
+			return evaluateBlackPosition(position, cell);
+		return evaluateWhitePosition(position, cell);
+		// return evaluatePosition(position, cell);
 	}
 
 	std::vector<t_cell> childPV;
@@ -376,6 +432,75 @@ int	MasterAI<Traits>::evaluatePosition(const SearchPosition<Traits>& position, t
 		result = bitboardTool.check_open_three(board.white, board.black, cell.x, cell.y);
 	if (result)
 		return signedFromAi(side, score_open_three(result));
+
+	return 0;
+}
+
+template <typename Traits>
+int MasterAI<Traits>::evaluateBlackPosition(
+	const SearchPosition<Traits>& position,
+	t_cell cell)
+{
+	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
+	auto board = position.board();
+
+	if (isWinAfterMove<Traits>(board, Color::Black, cell.x, cell.y))
+		return signedFromAi(Color::Black, 1000000);
+
+	int result = tool.check_open_four(board.black, board.white, cell.x, cell.y);
+	if (result == 2)
+		return signedFromAi(Color::Black, 500000);
+	if (result == 1)
+		return signedFromAi(Color::Black, 5000);
+
+	if (tool.check_super_four(board.black, board.white, cell.x, cell.y))
+		return signedFromAi(Color::Black, 60000);
+
+	if (tool.check_broken_four(board.black, board.white, cell.x, cell.y))
+		return signedFromAi(Color::Black, 6000);
+
+	result = tool.check_cross(board.black, board.white, cell.x, cell.y);
+	if (result)
+		return signedFromAi(Color::Black, cross_score(result));
+
+	result = tool.check_open_three(board.black, board.white, cell.x, cell.y);
+	if (result)
+		return signedFromAi(Color::Black, score_open_three(result));
+
+	return 0;
+}
+
+
+template <typename Traits>
+int MasterAI<Traits>::evaluateWhitePosition(
+	const SearchPosition<Traits>& position,
+	t_cell cell)
+{
+	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
+	auto board = position.board();
+
+	if (isWinAfterMove<Traits>(board, Color::White, cell.x, cell.y))
+		return signedFromAi(Color::White, 1000000);
+
+	int result = tool.check_open_four(board.black, board.white, cell.x, cell.y);
+	if (result == 2)
+		return signedFromAi(Color::White, 500000);
+	if (result == 1)
+		return signedFromAi(Color::White, 5000);
+
+	if (tool.check_super_four(board.white, board.black, cell.x, cell.y))
+		return signedFromAi(Color::White, 60000);
+
+	if (tool.check_broken_four(board.white, board.black, cell.x, cell.y))
+		return signedFromAi(Color::White, 6000);
+
+	result = tool.check_cross(board.white, board.black, cell.x, cell.y);
+	if (result)
+		return signedFromAi(Color::White, cross_score(result));
+
+	result = tool.check_open_three(board.white, board.black, cell.x, cell.y);
+	if (result)
+		return signedFromAi(Color::White, score_open_three(result));
 
 	return 0;
 }

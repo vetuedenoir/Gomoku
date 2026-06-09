@@ -32,7 +32,7 @@ template<typename Traits>
 class MasterAI
 {
 	public:
-		explicit MasterAI(int depth = 4, int activeZoneRadius = 1);
+		explicit MasterAI(int depth = 5, int activeZoneRadius = 1, Color aiColor = Color::Black);
 		
 		// Trouve le meilleur coup via minimax
 		t_cell findBestMove(
@@ -43,21 +43,33 @@ class MasterAI
 		void setSearchDepth(int depth) noexcept;
 		int  getSearchDepth() const noexcept;
 
+		int  getStonesCapturedByAI() const noexcept { return _stoneCapturedByAI; }
+		void setStonesCapturedByAI(int count) noexcept { _stoneCapturedByAI = count; }
+
+		int  getStonesCapturedByOPP() const noexcept { return _stoneCapturedByOPP;}
+		void setStonesCapturedByOPP(int count) noexcept { _stoneCapturedByOPP = count; }
+
+		Color getAIColor() const noexcept { return _aiColor; }
+		void setAIColor(Color color) noexcept { _aiColor = color; }
+
 		void setTimeLimit(int milliseconds) noexcept;
 
 		const SearchStats& lastSearchStats() const noexcept { return _stats; }
 
 	private:
+		int                     _maxDepth;
+		int					 	_stoneCapturedByAI = 0;
+		int					 	_stoneCapturedByOPP = 0;
+		Color                   _aiColor      = Color::Black;
+		MoveGenerator<Traits>   _moveGenerator;
+		
 		using Clock     = std::chrono::steady_clock;
 		using TimePoint = std::chrono::time_point<Clock>;
 
-		MoveGenerator<Traits>   _moveGenerator;
-		int                     _maxDepth;
 		SearchStats             _stats;
 		int                     _timeLimitMs  = 1000;
 		bool                    _timeExceeded = false;
 		TimePoint               _searchStart  = {};
-		Color                   _aiColor      = Color::Black;
 
 		int signedFromAi(Color side, int raw) const;
 
@@ -67,6 +79,9 @@ class MasterAI
 			std::vector<t_cell>& pv);
 		
 		int evaluatePosition(const SearchPosition<Traits>& position, t_cell cell);
+
+		int evaluateBlackPosition(const SearchPosition<Traits>& position, t_cell cell);
+		int evaluateWhitePosition(const SearchPosition<Traits>& position, t_cell cell);
 };
 
 using MasterAI19 = MasterAI<BoardTraits<19>>;
