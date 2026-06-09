@@ -64,6 +64,9 @@ const ZobristHasher<Traits>& SearchPosition<Traits>::hasher()
     return ZobristHasher<Traits>::instance();
 }
 
+
+
+// TODO: why affects _sideToMove in this function?
 template<typename Traits>
 void SearchPosition<Traits>::makeMove(int col, int row, CellStatus color)
 {
