@@ -11,7 +11,9 @@
 
 #define BLACK_STONE "\033[1;30m"   // bright black (gray)
 #define WHITE_STONE "\033[1;37m"   // bright white
+#define LEGAL_MOVE  "\033[1;32m"   // bright green
 #define EMPTY_CELL  "\033[2;37m"   // dim white
+#define TITLE_LINE "\033[1;34m"   // bright blue
 #define RESET   "\033[0m"
 
 // template<int SIZE>
@@ -178,11 +180,47 @@ void print_bb_19(t_BWBoard<Traits> &bw)
 }
 
 template<typename Traits>
-void print_bb_19_colored(t_BWBoard<Traits> &bw)
+void print_bb_colored(typename Traits::Bitboard& bb)
 {
 	std::string str;
 
-	str += "\n - - - - - - - - - - - - - - - - - - -\n";
+	str += "\n";
+	for (int i = 0; i < Traits::BOARD_SIZE + 1; i++) {
+		str += "--";
+	}
+	str += "\n";
+
+	for (uint64_t y = 0; y < Traits::BOARD_SIZE; y++)
+	{
+		str += '|';
+		for (uint64_t x = 0; x < Traits::BOARD_SIZE; x++)
+		{
+			if (get_bb_generic<Traits>(bb, x, y))
+				str += LEGAL_MOVE "* " RESET;
+			else
+				str += EMPTY_CELL ". " RESET;
+		}
+		str += "|\n";
+	}
+
+	for (int i = 0; i < Traits::BOARD_SIZE + 1; i++) {
+		str += "--";
+	}
+	str += "\n";
+
+	std::cout << str << std::endl;
+}
+
+template<typename Traits>
+void print_bb_overlay(t_BWBoard<Traits>& bw, typename Traits::Bitboard& legalMoves)
+{
+	std::string str;
+
+	str += "\n";
+	for (int i = 0; i < Traits::BOARD_SIZE + 1; i++)
+		str += "--";
+	str += "\n";
+
 	for (uint64_t y = 0; y < Traits::BOARD_SIZE; y++)
 	{
 		str += '|';
@@ -192,12 +230,17 @@ void print_bb_19_colored(t_BWBoard<Traits> &bw)
 				str += BLACK_STONE "B " RESET;
 			else if (get_bb_generic<Traits>(bw.white, x, y))
 				str += WHITE_STONE "W " RESET;
+			else if (get_bb_generic<Traits>(legalMoves, x, y))
+				str += LEGAL_MOVE "* " RESET;
 			else
 				str += EMPTY_CELL ". " RESET;
 		}
 		str += "|\n";
 	}
-	str += " - - - - - - - - - - - - - - - - - - -\n";
+
+	for (int i = 0; i < Traits::BOARD_SIZE + 1; i++)
+		str += "--";
+	str += "\n";
 
 	std::cout << str << std::endl;
 }

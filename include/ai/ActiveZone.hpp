@@ -4,10 +4,15 @@
 #include "bitboard/bitboard.hpp"
 #include <vector>
 
-typedef struct t_cell
+typedef struct s_cell
 {
 	int x;
 	int y;
+
+	bool operator==(const s_cell& other) const
+    {
+        return x == other.x && y == other.y;
+    }
 }	t_cell;
 
 template<typename Traits>
