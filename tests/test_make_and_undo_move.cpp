@@ -7,7 +7,7 @@
 static SearchPosition19 emptyPos()
 {
     GameBoard board(19, Seat::First);
-    return SearchPosition19::fromBoard(board);
+    return SearchPosition19::fromGameBoard(board);
 }
 
 TEST_CASE("make/undo single move restores hash")
@@ -72,12 +72,12 @@ TEST_CASE("incremental hash matches full recompute")
 TEST_CASE("different stone placements produce different hashes")
 {
     GameBoard boardA(19, Seat::First);
-    SearchPosition19 posA = SearchPosition19::fromBoard(boardA);
+    SearchPosition19 posA = SearchPosition19::fromGameBoard(boardA);
     posA.makeMove(5, 5, CellStatus::Black);
     posA.makeMove(6, 6, CellStatus::White);
 
     GameBoard boardB(19, Seat::First);
-    SearchPosition19 posB = SearchPosition19::fromBoard(boardB);
+    SearchPosition19 posB = SearchPosition19::fromGameBoard(boardB);
     posB.makeMove(6, 6, CellStatus::Black);
     posB.makeMove(5, 5, CellStatus::White);
 

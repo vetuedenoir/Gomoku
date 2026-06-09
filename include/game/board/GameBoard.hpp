@@ -42,8 +42,8 @@ class GameBoard : public IGameBoard
         Seat currentSeat() const override;
         int getSize() const override;
 
-        void setCurrentPlayer(Seat player) override;
-        void switchPlayer() override;
+        void setCurrentPlayer(Seat player) override; // To delete, move to GameController
+        void switchPlayer() override; // To delete
         void clearCell(int col, int row) override;
 
     private:

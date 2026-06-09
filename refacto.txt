@@ -1,0 +1,69 @@
+include
+├── ai
+│   ├── ActiveZone.hpp -> OK
+│   ├── MasterAI.hpp -> OK
+│   ├── MasterAI.inl -> OK
+│   ├── MoveGenerator.hpp -> OK
+│   └── SearchPosition.hpp -> KO
+├── bitboard
+│   ├── bitboard.hpp -> OK
+│   ├── BitboardToolBuild.inl -> OK
+│   ├── BitboardToolChecks.inl -> KO -> Move to test ? 
+│   ├── BitboardTool.hpp -> OK
+│   └── PatternTypes.hpp -> OK
+├── direction.hpp
+├── game
+│   ├── board
+│   │   ├── DebugBoard.hpp -> KO -> To delete
+│   │   ├── GameBoard15.hpp -> 
+│   │   ├── GameBoard19.hpp
+│   │   ├── GameBoard.hpp   -> 
+│   │   └── Seat.hpp
+│   ├── contracts
+│   │   └── contracts.hpp
+│   ├── controller
+│   │   ├── GameController.hpp
+│   │   ├── GameController.inl
+│   │   └── IGameController.hpp
+│   ├── GameState.hpp
+│   ├── turn
+│   │   ├── TurnController.hpp  -> To delete
+│   │   └── WinDetector.hpp     -> To delete
+│   └── validation
+│       ├── MoveValidator.hpp
+│       ├── policy
+│       │   ├── OpeningMovePolicy.hpp
+│       │   └── StandardMovePolicy.hpp
+│       ├── rules
+│       │   ├── OpeningRules.hpp
+│       │   └── StandardRules.hpp
+│       └── RULES.md
+├── Gomoku.hpp
+├── interface.hpp
+├── logger
+│   └── Logger.hpp
+├── optimization
+│   ├── TranspositionTable.hpp
+│   └── ZobristHasher.hpp
+├── ui
+│   ├── Board.hpp
+│   ├── MenuPage.hpp
+│   └── UIRenderer.hpp
+
+15 directories, 38 files
+
+
+// In GameBoard -> Switch color
+void setCurrentPlayer(Seat player) -> to GameController
+void switchPlayer()                -> to GameController
+
+// Seat -> OK
+// Actor -> To delete comments for avoid confusion
+// Player = User | AI -> To introduce 
+
+
+
+// Stone -> graphique
+// Move  -> x, y, color
+// Cell  -> x, y
+// CellStatus -> Empty, White, Black 
