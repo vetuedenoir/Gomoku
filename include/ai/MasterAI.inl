@@ -1,35 +1,88 @@
 #include "ai/MasterAI.hpp"
-#include "WinDetector.hpp"
+#include "game/turn/WinDetector.hpp"
+#include "logger/Logger.hpp"
 
 template <typename Traits>
-MasterAI<Traits>::MasterAI(int depth, int activeZoneRadius)
-	: _moveGenerator(activeZoneRadius), _maxDepth(depth)
+MasterAI<Traits>::MasterAI(int depth, int activeZoneRadius, Color aiColor)
+	: _maxDepth(depth), _aiColor(aiColor), _moveGenerator(activeZoneRadius)
 {
+	_stoneCapturedByAI = 0;
+	_stoneCapturedByOPP = 0;
 }
 
 template <typename Traits>
 t_cell	MasterAI<Traits>::findBestMove(
 	const SearchPosition<Traits>& position, Color color)
 {
-	bestescore = std::numeric_limits<int>::min();
-	t_cell bestMove = {-1, -1};
+	_aiColor = color;
+
+	_stats        = SearchStats{};
+	_timeExceeded = false;
+	_searchStart  = Clock::now();
+
 	const std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
+
+	Logger::debug("AI", "[findBestMove] depth=" + std::to_string(_maxDepth)
+	              + "  root candidates=" + std::to_string(moves.size()));
+
 	if (moves.empty())
-		return bestMove;
-	
-	// order moves by heuristic evaluation to improve alpha-beta pruning efficiency
+		return {-1, -1};
+
+	int bestScore = std::numeric_limits<int>::min();
+	t_cell bestMove = {-1, -1};
+	std::vector<t_cell> bestPV;
 
 	for (const t_cell& move : moves)
 	{
 		SearchPosition<Traits> newPosition = position;
 		newPosition.makeMove(move.x, move.y, colorToCell(position.sideToMove()));
-		int score = minimax(newPosition, move, _maxDepth - 1, std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), false);
-		if (score > bestescore)
+
+		std::vector<t_cell> pv;
+		int score = minimax(newPosition, move, _maxDepth - 1,
+		                    std::numeric_limits<int>::min(),
+		                    std::numeric_limits<int>::max(), false, pv);
+
+		const std::string marker = (score > bestScore) ? " ← best" : "";
+		Logger::debug("AI", "  root (" + std::to_string(move.x) + ","
+		              + std::to_string(move.y) + ")  score=" + std::to_string(score) + marker);
+
+		if (score > bestScore)
 		{
-			bestescore = score;
-			bestMove = move;
+			bestScore = score;
+			bestMove  = move;
+			bestPV    = pv;
+			bestPV.insert(bestPV.begin(), move);
+		}
+
+		if (_timeExceeded)
+		{
+			Logger::debug("AI", "[findBestMove] time limit reached — returning best so far");
+			break;
 		}
 	}
+
+	_stats.bestScore = bestScore;
+	_stats.bestMove  = bestMove;
+	_stats.principalVariation = bestPV;
+
+	if (Logger::level() <= LogLevel::Debug && Logger::isEnabled())
+	{
+		const int pruningPct = _stats.nodesVisited > 0
+		    ? (_stats.nodesPruned * 100 / _stats.nodesVisited) : 0;
+
+		Logger::debug("AI", "[findBestMove] stats:"
+		    "  visited="   + std::to_string(_stats.nodesVisited)
+		    + "  evaluated=" + std::to_string(_stats.nodesEvaluated)
+		    + "  pruned="    + std::to_string(_stats.nodesPruned)
+		    + " (" + std::to_string(pruningPct) + "%)"
+		    + "  maxDepth="  + std::to_string(_stats.maxDepthSeen));
+
+		std::string pvStr = "PV:";
+		for (const t_cell& c : _stats.principalVariation)
+			pvStr += " (" + std::to_string(c.x) + "," + std::to_string(c.y) + ")";
+		Logger::debug("AI", pvStr + "  score=" + std::to_string(bestScore));
+	}
+
 	return bestMove;
 }
 
@@ -37,6 +90,12 @@ template <typename Traits>
 void	MasterAI<Traits>::setSearchDepth(int depth) noexcept
 {
 	_maxDepth = depth;
+}
+
+template <typename Traits>
+void	MasterAI<Traits>::setTimeLimit(int milliseconds) noexcept
+{
+	_timeLimitMs = milliseconds;
 }
 
 template <typename Traits>
@@ -48,31 +107,86 @@ int	MasterAI<Traits>::getSearchDepth() const noexcept
 
 template <typename Traits>
 int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
-			int depth, int alpha, int beta, bool isMaximizing)
+			int depth, int alpha, int beta, bool isMaximizing,
+			std::vector<t_cell>& pv)
 {
+	++_stats.nodesVisited;
+
+	if (!_timeExceeded)
+	{
+		const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+		    Clock::now() - _searchStart).count();
+		if (elapsed >= _timeLimitMs)
+		{
+			_timeExceeded = true;
+			Logger::debug("AI", "[minimax] time limit hit at "
+			    + std::to_string(elapsed) + "ms  nodes=" + std::to_string(_stats.nodesVisited));
+		}
+	}
+	if (_timeExceeded)
+		return 0;
+
+	const int currentDepth = _maxDepth - depth;
+	if (currentDepth > _stats.maxDepthSeen)
+		_stats.maxDepthSeen = currentDepth;
+
+	// The side that just played is the opponent of sideToMove() (makeMove flipped it).
+	const Color lastPlayed = (position.sideToMove() == Color::Black) ? Color::White : Color::Black;
+
 	// ne verifie pas les captures gagnantes, seulement les alignements de 5
-	if (isWinAfterMove<Traits>(position.board(), position.sideToMove(), 0, 0))
-		return isMaximizing ? -1000000 : 1000000;
-	
+	if (isWinAfterMove<Traits>(position.board(), lastPlayed, cell.x, cell.y))
+	{
+		pv.clear();
+		++_stats.nodesEvaluated;
+		return (lastPlayed == _aiColor) ? 1000000 : -1000000;
+	}
+
 	if (depth == 0)
-		return evaluatePosition(position, cell);
-	
+	{
+		pv.clear();
+		++_stats.nodesEvaluated;
+		if (lastPlayed == Color::Black)
+			return evaluateBlackPosition(position, cell);
+		return evaluateWhitePosition(position, cell);
+		// return evaluatePosition(position, cell);
+	}
+
 	const std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
 	if (moves.empty())
-		return evaluatePosition(position, cell);
-	
+	{
+		pv.clear();
+		++_stats.nodesEvaluated;
+		if (lastPlayed == Color::Black)
+			return evaluateBlackPosition(position, cell);
+		return evaluateWhitePosition(position, cell);
+		// return evaluatePosition(position, cell);
+	}
+
+	std::vector<t_cell> childPV;
+
 	if (isMaximizing)
 	{
 		int maxEval = std::numeric_limits<int>::min();
 		for (const t_cell& move : moves)
 		{
-			position.makeMove(move.x, move.y, colorToCell(position.sideToMove()));
-			int eval = minimax(position, cell, depth - 1, alpha, beta, false);
-			position.undoMove(move.x, move.y, colorToCell(position.sideToMove()));
-			maxEval = std::max(maxEval, eval);
+			const CellStatus stone = colorToCell(position.sideToMove());
+			position.makeMove(move.x, move.y, stone);
+			int eval = minimax(position, move, depth - 1, alpha, beta, false, childPV);
+			position.undoMove(move.x, move.y, stone);
+
+			if (eval > maxEval)
+			{
+				maxEval = eval;
+				pv.clear();
+				pv.push_back(move);
+				pv.insert(pv.end(), childPV.begin(), childPV.end());
+			}
 			alpha = std::max(alpha, eval);
 			if (beta <= alpha)
+			{
+				++_stats.nodesPruned;
 				break;
+			}
 		}
 		return maxEval;
 	}
@@ -81,13 +195,24 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 		int minEval = std::numeric_limits<int>::max();
 		for (const t_cell& move : moves)
 		{
-			position.makeMove(move.x, move.y, colorToCell(position.sideToMove()));
-			int eval = minimax(position, cell, depth - 1, alpha, beta, true);
-			position.undoMove(move.x, move.y, colorToCell(position.sideToMove()));
-			minEval = std::min(minEval, eval);
+			const CellStatus stone = colorToCell(position.sideToMove());
+			position.makeMove(move.x, move.y, stone);
+			int eval = minimax(position, move, depth - 1, alpha, beta, true, childPV);
+			position.undoMove(move.x, move.y, stone);
+
+			if (eval < minEval)
+			{
+				minEval = eval;
+				pv.clear();
+				pv.push_back(move);
+				pv.insert(pv.end(), childPV.begin(), childPV.end());
+			}
 			beta = std::min(beta, eval);
 			if (beta <= alpha)
+			{
+				++_stats.nodesPruned;
 				break;
+			}
 		}
 		return minEval;
 	}
@@ -148,7 +273,9 @@ static int cross_score(int crossResult)
 
 static int score_open_three(int threeResult)
 {
-    switch (threeResult)
+	// Logger::debug("AI", "[score_open_three] threeResult=" + std::to_string(threeResult));
+    
+	switch (threeResult)
     {
         case SCORE_3_FULL:  return 800;
         case SCORE_3_HOLE:  return 700;
@@ -201,54 +328,131 @@ static int score_open_three(int threeResult)
 }
 
 template <typename Traits>
+int	MasterAI<Traits>::signedFromAi(Color side, int raw) const
+{
+	return (side == _aiColor) ? raw : -raw;
+}
+
+template <typename Traits>
 int	MasterAI<Traits>::evaluatePosition(const SearchPosition<Traits>& position, t_cell cell)
 {
 	int	result = 0;
 	BitboardTool<Traits>& bitboardTool = BitboardTool<Traits>::instance();
 	t_BWBoard<Traits> board = position.board();
-	Color side = position.sideToMove();
+
+	// makeMove already flipped sideToMove — the player who just placed at cell
+	// is the OPPONENT of sideToMove().
+	const Color side = (position.sideToMove() == Color::Black) ? Color::White : Color::Black;
 
 	// ne verifie pas les captures gagnantes, seulement les alignements de 5
 	if (isWinAfterMove<Traits>(board, side, cell.x, cell.y))
-		return 1000000;
+		return signedFromAi(side, 1000000);
 
 	if (side == Color::Black)
 		result = bitboardTool.check_open_four(board.black, board.white, cell.x, cell.y);
 	else
 		result = bitboardTool.check_open_four(board.white, board.black, cell.x, cell.y);
 	if (result == 2) // open four
-		return 500000;
+		return signedFromAi(side, 500000);
 	else if (result == 1) // half-open four
-		return 5000;
+		return signedFromAi(side, 5000);
 
 	if (side == Color::Black)
 		result = bitboardTool.check_super_four(board.black, board.white, cell.x, cell.y);
 	else
 		result = bitboardTool.check_super_four(board.white, board.black, cell.x, cell.y);
 	if (result)
-		return 60000;
+		return signedFromAi(side, 60000);
 
 	if (side == Color::Black)
 		result = bitboardTool.check_broken_four(board.black, board.white, cell.x, cell.y);
 	else
-		result = bitboardTool.check_broken_four(board.white, board.black, cell.x, cell.y);	
+		result = bitboardTool.check_broken_four(board.white, board.black, cell.x, cell.y);
 	if (result)
-		return 6000;
+		return signedFromAi(side, 6000);
 
 	if (side == Color::Black)
 		result = bitboardTool.check_cross(board.black, board.white, cell.x, cell.y);
 	else
 		result = bitboardTool.check_cross(board.white, board.black, cell.x, cell.y);
 	if (result)
-		return (cross_score(result));
+		return signedFromAi(side, cross_score(result));
 
-	
 	if (side == Color::Black)
 		result = bitboardTool.check_open_three(board.black, board.white, cell.x, cell.y);
 	else
 		result = bitboardTool.check_open_three(board.white, board.black, cell.x, cell.y);
 	if (result)
-		return score_open_three(result);
+		return signedFromAi(side, score_open_three(result));
+
+	return 0;
+}
+
+template <typename Traits>
+int MasterAI<Traits>::evaluateBlackPosition(
+	const SearchPosition<Traits>& position,
+	t_cell cell)
+{
+	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
+	auto board = position.board();
+
+	if (isWinAfterMove<Traits>(board, Color::Black, cell.x, cell.y))
+		return signedFromAi(Color::Black, 1000000);
+
+	int result = tool.check_open_four(board.black, board.white, cell.x, cell.y);
+	if (result == 2)
+		return signedFromAi(Color::Black, 500000);
+	if (result == 1)
+		return signedFromAi(Color::Black, 5000);
+
+	if (tool.check_super_four(board.black, board.white, cell.x, cell.y))
+		return signedFromAi(Color::Black, 60000);
+
+	if (tool.check_broken_four(board.black, board.white, cell.x, cell.y))
+		return signedFromAi(Color::Black, 6000);
+
+	result = tool.check_cross(board.black, board.white, cell.x, cell.y);
+	if (result)
+		return signedFromAi(Color::Black, cross_score(result));
+
+	result = tool.check_open_three(board.black, board.white, cell.x, cell.y);
+	if (result)
+		return signedFromAi(Color::Black, score_open_three(result));
+
+	return 0;
+}
+
+
+template <typename Traits>
+int MasterAI<Traits>::evaluateWhitePosition(
+	const SearchPosition<Traits>& position,
+	t_cell cell)
+{
+	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
+	auto board = position.board();
+
+	if (isWinAfterMove<Traits>(board, Color::White, cell.x, cell.y))
+		return signedFromAi(Color::White, 1000000);
+
+	int result = tool.check_open_four(board.black, board.white, cell.x, cell.y);
+	if (result == 2)
+		return signedFromAi(Color::White, 500000);
+	if (result == 1)
+		return signedFromAi(Color::White, 5000);
+
+	if (tool.check_super_four(board.white, board.black, cell.x, cell.y))
+		return signedFromAi(Color::White, 60000);
+
+	if (tool.check_broken_four(board.white, board.black, cell.x, cell.y))
+		return signedFromAi(Color::White, 6000);
+
+	result = tool.check_cross(board.white, board.black, cell.x, cell.y);
+	if (result)
+		return signedFromAi(Color::White, cross_score(result));
+
+	result = tool.check_open_three(board.white, board.black, cell.x, cell.y);
+	if (result)
+		return signedFromAi(Color::White, score_open_three(result));
 
 	return 0;
 }

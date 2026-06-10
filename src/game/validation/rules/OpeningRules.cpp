@@ -293,6 +293,12 @@ bool commitOpeningMove(GameState& state, const Move& move)
             std::string(phaseStr(prev)) + " → " + phaseStr(state.phase)
             + "  chooser=" + seatStr(state.currentActor));
     }
+    else if (state.stepIdx < (int)state.openingSteps.size())
+    {
+        state.currentActor = toSeat(state.openingSteps[state.stepIdx].actor);
+        Logger::debug("OPENING",
+            "next step actor → " + seatStr(state.currentActor));
+    }
     else if (state.stepIdx >= (int)state.openingSteps.size())
     {
         const GamePhase prev = state.phase;
@@ -312,6 +318,7 @@ bool commitOpeningMove(GameState& state, const Move& move)
 std::vector<Move> getLegalOpeningMoves(const GameState& state)
 {
     std::vector<Move> moves;
+    // why this function is called if the opening is complete?
     if (isOpeningComplete(state))
         return moves;
 

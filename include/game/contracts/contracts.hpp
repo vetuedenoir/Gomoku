@@ -9,13 +9,19 @@ enum class OpeningProtocol { Standard, Pro, LongPro, Swap, Swap2 };
 
 struct GameConfig
 {
-    int             boardSize   = 19;
-    Color           playerColor = Color::Black;
+    int             boardSize       = 19;
+    Color           playerColor     = Color::Black;
     OpeningProtocol openingProtocol = OpeningProtocol::Standard;
+    bool            aiOpponent      = true;
 };
 
 
 enum class CellStatus { Empty, Black, White, Neighbor };
+
+inline CellStatus colorToCell(Color c) noexcept
+{
+    return (c == Color::Black) ? CellStatus::Black : CellStatus::White;
+}
 
 // A move in the game.
 // During Opening, forcedColor is set by the opening script;

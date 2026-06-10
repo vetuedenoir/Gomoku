@@ -5,6 +5,7 @@
 #include "game/GameState.hpp"
 #include "game/validation/MoveValidator.hpp"
 #include "game/turn/TurnController.hpp"
+#include "ai/MasterAI.hpp"
 
 template<typename Traits>
 class GameController : public IGameController
@@ -36,6 +37,7 @@ class GameController : public IGameController
         GameState              _state;
         MoveValidator<Traits>  _validator;
         TurnController<Traits> _turnController;
+        MasterAI<Traits>       _masterAI;
         std::optional<Color>   _winner;
         int                    _capturesBlack = 0;
         int                    _capturesWhite = 0;

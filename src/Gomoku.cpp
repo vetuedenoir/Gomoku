@@ -134,6 +134,25 @@ CellStatus Gomoku::computeGhostColor() const
 }
 
 
+bool Gomoku::isAITurn() const
+{
+    if (!_controller) return false;
+    const Seat humanSeat = (_config.playerColor == Color::Black)
+                           ? Seat::First : Seat::Second;
+    const Seat aiSeat    = (humanSeat == Seat::First)
+                           ? Seat::Second : Seat::First;
+
+    switch (_controller->phase())
+    {
+        case GamePhase::Opening:
+        case GamePhase::ColorChoice:
+            return _controller->currentActor() == aiSeat;
+        case GamePhase::Standard:
+            return _controller->currentColor() != _config.playerColor;
+    }
+    return false;
+}
+
 void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
 {
     if (event.type == sf::Event::Closed)
@@ -211,6 +230,22 @@ void Gomoku::update(sf::Vector2f mouse)
     else
     {
         currentPage().updateHover(mouse);
+    }
+
+    if (_config.aiOpponent && _states.top() == AppState::Game && isAITurn())
+    {
+        _controller->requestAIMove();
+
+        if (_controller->phase() == GamePhase::ColorChoice)
+            buildColorChoicePage();
+
+        if (_controller->winner().has_value())
+        {
+            buildWinScreenPage(_controller->winner().value(),
+                               _controller->captureCount(Color::Black),
+                               _controller->captureCount(Color::White));
+            navigateTo(AppState::GameOver);
+        }
     }
 }
 
