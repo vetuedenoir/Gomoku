@@ -1,8 +1,8 @@
 #include "game/board/GameBoard19.hpp"
 #include <algorithm>
 
-GameBoard19::GameBoard19(int size, Seat firstPlayer)
-    : _currentPlayer(firstPlayer), _size(size)
+GameBoard19::GameBoard19(int size, Color currentColor)
+    : _currentColor(currentColor), _size(size)
 {
     std::memset(_board, 0, sizeof(_board));
 }
@@ -17,41 +17,24 @@ bool GameBoard19::isInside(int col, int row) const
     return (col >= 0 && row >= 0 && col < _size && row < _size);
 }
 
-CellStatus GameBoard19::getCell(int col, int row) const
-{
-    return _board[row][col];
-}
-
 int GameBoard19::getSize() const
 {
     return _size;
 }
 
-Seat GameBoard19::currentSeat() const
+Color GameBoard19::currentColor() const
 {
-    return _currentPlayer;
+    return _currentColor;
 }
 
-void GameBoard19::setCurrentPlayer(Seat player)
+void GameBoard19::setCurrentColor(Color color)
 {
-    _currentPlayer = player;
+    _currentColor = color;
 }
 
-void GameBoard19::switchPlayer()
+CellStatus GameBoard19::getCell(int col, int row) const
 {
-    _currentPlayer = otherSeat(_currentPlayer);
-}
-
-bool GameBoard19::placeStone(int col, int row)
-{
-    if (!isInside(col, row))
-        return false;
-    if (!isFree(col, row))
-        return false;
-
-    _board[row][col] = (_currentPlayer == Seat::First) ? CellStatus::Black : CellStatus::White;
-    switchPlayer();
-    return true;
+    return _board[row][col];
 }
 
 void GameBoard19::clearCell(int col, int row)

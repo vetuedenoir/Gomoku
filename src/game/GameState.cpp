@@ -1,18 +1,14 @@
 #include "game/GameState.hpp"
-#include "game/board/GameBoard15.hpp"
-#include "game/board/GameBoard19.hpp"
 #include "logger/Logger.hpp"
 #include <string>
-
-// ── Logging helpers  ───────────────────────────────────────────────
 
 static const char* phaseStr(GamePhase p)
 {
     switch (p)
     {
-        case GamePhase::Opening: return "Opening";
-        case GamePhase::ColorChoice:      return "ColorChoice";
-        case GamePhase::Standard:       return "Standard";
+        case GamePhase::Opening:     return "Opening";
+        case GamePhase::ColorChoice: return "ColorChoice";
+        case GamePhase::Standard:    return "Standard";
     }
     return "Unknown";
 }
@@ -23,29 +19,25 @@ static const char* openingProtocolStr(OpeningProtocol openingProtocol)
     {
         case OpeningProtocol::Pro:     return "Pro";
         case OpeningProtocol::LongPro: return "LongPro";
-        case OpeningProtocol::Swap:    return "Swap";  
+        case OpeningProtocol::Swap:    return "Swap";
         case OpeningProtocol::Swap2:   return "Swap2";
-        default: return "Standard";
+        default:                       return "Standard";
     }
 }
 
-GameState::GameState(int boardSize, OpeningProtocol openingProtocol, const Color playerColor)
+GameState::GameState(int boardSize, OpeningProtocol openingProtocol)
     : phase(GamePhase::Opening),
       openingProtocol(openingProtocol),
       stepIdx(0),
       subIdx(0),
       currentActor(Seat::First)
 {
-    // instantiate the board wrapper which will create the correct sized implementation
-    board = std::make_unique<GameBoard>(boardSize, (playerColor == Color::Black) ? Seat::First : Seat::Second);
+    board = std::make_unique<GameBoard>(boardSize, Color::Black);
     openingSteps = buildOpeningSteps(openingProtocol);
 
+    // todo: why to check ? 
     if (openingSteps.empty())
-    {
-        phase     = GamePhase::Standard;
-        blackSeat = (playerColor == Color::Black) ? Seat::First : Seat::Second;
-        whiteSeat = (playerColor == Color::Black) ? Seat::Second : Seat::First;
-    }
+        phase = GamePhase::Standard;
 
     Logger::info("GAMESTATE",
         std::string("openingProtocol=") + openingProtocolStr(openingProtocol)
@@ -54,7 +46,6 @@ GameState::GameState(int boardSize, OpeningProtocol openingProtocol, const Color
         + "  steps=" + std::to_string(openingSteps.size()));
 }
 
-
 void GameState::resolveColorChoice(bool swapped)
 {
     Logger::info("CHOICE",
@@ -62,30 +53,12 @@ void GameState::resolveColorChoice(bool swapped)
         + (swapped ? " swapped → takes opposite colour"
                    : " keeps default colour"));
 
-    // Default: Seat::First → Black, Seat::Second → White.
-    if (!swapped)
-    {
-        blackSeat = Seat::First;
-        whiteSeat = Seat::Second;
-    }
-    else
-    {
-        blackSeat = Seat::Second;
-        whiteSeat = Seat::First;
-    }
-
-    Logger::info("RESOLVE",
-        "Black → " + seatStr(*blackSeat)
-        + "  |  White → " + seatStr(*whiteSeat));
-
     const GamePhase prev = phase;
     phase = GamePhase::Standard;
 
     Logger::info("PHASE",
         std::string(phaseStr(prev)) + " → " + phaseStr(phase));
 }
-
-// ── Swap2 option 3 ────────────────────────────────────────────────────────────
 
 void GameState::continueOpeningPlacement()
 {

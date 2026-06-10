@@ -54,7 +54,7 @@ SearchPosition<Traits> SearchPosition<Traits>::fromBoard(const GameBoard& src)
     const ZobristHasher<Traits>& h = SearchPosition<Traits>::hasher();
     t_BWBoard<Traits> bb   = GameBoard_to_bitboard<Traits>(src);
     uint64_t          hash = h.compute(bb);
-    Color             side = (src.currentSeat() == Seat::First) ? Color::Black : Color::White;
+    Color             side = src.currentColor();
     return SearchPosition<Traits>(bb, hash, side, h);
 }
 

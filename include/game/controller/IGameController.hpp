@@ -3,7 +3,6 @@
 
 #include "game/contracts/contracts.hpp"
 #include "game/board/GameBoard.hpp"
-#include "game/board/Seat.hpp"
 #include <memory>
 #include <optional>
 
@@ -25,12 +24,12 @@ class IGameController
 
         virtual const GameBoard&     visualBoard()      const = 0;
         virtual GamePhase            phase()            const = 0;
-        virtual Seat                 currentActor()     const = 0;
+        virtual Actor                currentActor()     const = 0;
         virtual CellStatus           nextOpeningColor() const = 0;
         virtual Color                currentColor()     const = 0;
         virtual OpeningProtocol      openingProtocol()  const = 0;
         virtual int                  stepIdx()          const = 0;
-        virtual std::optional<Color> winner()           const = 0;
+        virtual std::optional<Color> getColorFromWinningActor()           const = 0;
         virtual int                  captureCount(const Color c) const = 0;
 };
 

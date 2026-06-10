@@ -6,7 +6,7 @@
 
 static GameBoard empty_board()
 {
-    return GameBoard(19, Seat::First);
+    return GameBoard(19, Color::Black);
 }
 
 static void place(GameBoard& b, int col, int row, CellStatus color)

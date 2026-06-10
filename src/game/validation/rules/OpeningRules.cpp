@@ -1,10 +1,9 @@
 #include "game/validation/rules/OpeningRules.hpp"
 #include "game/GameState.hpp"
-#include "game/board/Seat.hpp"
+#include "game/contracts/contracts.hpp"
 #include "logger/Logger.hpp"
 #include <cmath>
 #include <algorithm>
-#include <string>
 
 static const char* colorStr(CellStatus c)
 {
@@ -302,14 +301,11 @@ bool commitOpeningMove(GameState& state, const Move& move)
     else if (state.stepIdx >= (int)state.openingSteps.size())
     {
         const GamePhase prev = state.phase;
-        state.phase     = GamePhase::Standard;
-        state.blackSeat = Seat::First;
-        state.whiteSeat = Seat::Second;
+        state.phase = GamePhase::Standard;
 
         Logger::info("PHASE",
             std::string(phaseStr(prev)) + " → " + phaseStr(state.phase)
-            + "  (opening complete — Black=" + seatStr(Seat::First)
-            + ", White=" + seatStr(Seat::Second) + ")");
+            + "  (opening complete — colour assignment handled by GameController)");
     }
 
     return true;
