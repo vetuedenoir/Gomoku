@@ -203,13 +203,16 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
                 break;
 
             auto result = _controller->submitMove(col, row);
+            
             if (result == MoveResult::Win)
             {
-                buildWinScreenPage(_controller->winner().value(),
+                buildWinScreenPage(_controller->getColorFromWinningActor().value(),
                                    _controller->captureCount(Color::Black),
                                    _controller->captureCount(Color::White));
                 navigateTo(AppState::GameOver);
             }
+
+
             break;
         }
     }
@@ -287,7 +290,7 @@ void Gomoku::buildColorChoicePage()
     _colorChoice.clear();
 
     const OpeningProtocol openingProtocol  = _controller->openingProtocol();
-    const Seat        actor = _controller->currentActor();
+    const Seat        actor = _controller->currentActor().seat;
     const bool threeOptions = (openingProtocol == OpeningProtocol::Swap2
                                && actor == Seat::Second
                                && _controller->stepIdx() == 1);

@@ -23,16 +23,21 @@ class GameController : public IGameController
 
         const GameBoard&     visualBoard()      const override;
         GamePhase            phase()            const override;
-        Seat                 currentActor()     const override;
+        Actor                currentActor()     const override;
         CellStatus           nextOpeningColor() const override;
         Color                currentColor()     const override;
         OpeningProtocol      openingProtocol()  const override;
         int                  stepIdx()          const override;
-        std::optional<Color> winner()           const override;
+        std::optional<Color> getColorFromWinningActor() const override;
         int                  captureCount(const Color c) const override;
 
     private:
+        void assignDefaultColors();
+        void assignColorsAfterChoice(bool swapped);
+        Color colorForSeat(Seat seat) const;
+        void syncBoardCurrentColor();
         void beginNormalPlay();
+        void switchActor();
 
         GameState              _state;
         MoveValidator<Traits>  _validator;
@@ -41,6 +46,10 @@ class GameController : public IGameController
         std::optional<Color>   _winner;
         int                    _capturesBlack = 0;
         int                    _capturesWhite = 0;
+
+        Actor _blackActor{Seat::First, Color::Black};
+        Actor _whiteActor{Seat::Second, Color::White};
+        Actor _currentActor{Seat::First, Color::Black};
 };
 
 #include "game/controller/GameController.inl"

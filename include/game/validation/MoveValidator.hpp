@@ -48,10 +48,7 @@ public:
 private:
     static Color sideToMove(const GameState& state)
     {
-        const Seat seat = state.board->currentSeat();
-        if (state.blackSeat.has_value())
-            return (state.blackSeat.value() == seat) ? Color::Black : Color::White;
-        return (seat == Seat::First) ? Color::Black : Color::White;
+        return state.board->currentColor();
     }
 
     static bool logResult(const char* phase, const Move& move, bool ok)

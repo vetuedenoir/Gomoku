@@ -5,50 +5,96 @@
 
 template<typename Traits>
 GameController<Traits>::GameController(const GameConfig& config)
-    : _state(config.boardSize, config.openingProtocol, config.playerColor)
+    : _state(config.boardSize, config.openingProtocol)
 {
     if (_state.phase == GamePhase::Standard)
+    {
+        assignDefaultColors();
         beginNormalPlay();
+    }
+}
+
+template<typename Traits>
+void GameController<Traits>::assignDefaultColors()
+{
+    _blackActor  = {Seat::First, Color::Black};
+    _whiteActor  = {Seat::Second, Color::White};
+}
+
+template<typename Traits>
+void GameController<Traits>::assignColorsAfterChoice(bool swapped)
+{
+    if (!swapped)
+    {
+        _blackActor = {Seat::First, Color::Black};
+        _whiteActor = {Seat::Second, Color::White};
+    }
+    else
+    {
+        _blackActor = {Seat::Second, Color::Black};
+        _whiteActor = {Seat::First, Color::White};
+    }
+
+    Logger::info("RESOLVE",
+        "Black → " + seatStr(_blackActor.seat)
+        + "  |  White → " + seatStr(_whiteActor.seat));
+}
+
+template<typename Traits>
+Color GameController<Traits>::colorForSeat(Seat seat) const
+{
+    return (seat == _blackActor.seat) ? Color::Black : Color::White;
+}
+
+template<typename Traits>
+void GameController<Traits>::syncBoardCurrentColor()
+{
+    _state.board->setCurrentColor(_currentActor.color);
 }
 
 template<typename Traits>
 void GameController<Traits>::beginNormalPlay()
 {
-    const Seat blackSeat = _state.blackSeat.value_or(Seat::First);
-    _state.board->setCurrentPlayer(blackSeat);
+    // TODO: verify this on swap openings
+    _currentActor = _blackActor;
+    syncBoardCurrentColor();
 
     Logger::info("PHASE",
-        std::string("Standard — Black=") + seatStr(blackSeat)
-        + "  White=" + seatStr(_state.whiteSeat.value_or(Seat::Second))
-        + "  to move=" + seatStr(_state.board->currentSeat()));
+        std::string("Standard — Black=") + seatStr(_blackActor.seat)
+        + "  White=" + seatStr(_whiteActor.seat)
+        + "  to move=" + seatStr(_currentActor.seat)
+        + " (" + (_currentActor.color == Color::Black ? "Black" : "White") + ")");
+}
+
+template<typename Traits>
+void GameController<Traits>::switchActor()
+{
+    _currentActor = (_currentActor.seat == _blackActor.seat) ? _whiteActor : _blackActor;
+    syncBoardCurrentColor();
 }
 
 template<typename Traits>
 Color GameController<Traits>::currentColor() const
 {
-    const Seat seat = _state.board->currentSeat();
-    if (_state.blackSeat.has_value())
-        return (_state.blackSeat.value() == seat) ? Color::Black : Color::White;
-    return (seat == Seat::First) ? Color::Black : Color::White;
+    if (_state.phase == GamePhase::Standard)
+        return _currentActor.color;
+    return colorForSeat(_state.currentActor);
 }
 
 template<typename Traits>
 bool GameController<Traits>::handleOpeningClick(int col, int row)
 {
-    if (_state.phase != GamePhase::Opening)
-    {
-        Logger::warn("CONTROLLER", "handleOpeningClick rejected — not Opening");
-        return false;
-    }
-
     const GamePhase prevPhase = _state.phase;
-    const CellStatus forced     = _state.nextOpeningColor();
+    const CellStatus forced   = _state.nextOpeningColor();
     const Move       m{ col, row, forced };
     if (!commitOpeningMove(_state, m))
         return false;
 
     if (prevPhase != GamePhase::Standard && _state.phase == GamePhase::Standard)
+    {
+        assignDefaultColors();
         beginNormalPlay();
+    }
 
     return true;
 }
@@ -56,6 +102,8 @@ bool GameController<Traits>::handleOpeningClick(int col, int row)
 template<typename Traits>
 void GameController<Traits>::resolveColorChoice(bool swapped)
 {
+    assignColorsAfterChoice(swapped);
+    // TODO: rename this function
     _state.resolveColorChoice(swapped);
     beginNormalPlay();
 }
@@ -69,22 +117,19 @@ void GameController<Traits>::continueOpeningPlacement()
 template<typename Traits>
 MoveResult GameController<Traits>::submitMove(int col, int row)
 {
-    if (_winner.has_value())
-        return MoveResult::Illegal;
-
-    if (_state.phase != GamePhase::Standard)
-        return MoveResult::Illegal;
-
-    const Move move{ col, row, colorToCell(currentColor()) };
+    Move move{ col, row, colorToCell(currentColor()) };
 
     if (!_validator.isLegal(_state, move))
         return MoveResult::Illegal;
 
-    const PlayResult r = _turnController.play(_state, _capturesBlack, _capturesWhite, move);
-    if (r.winner)
-        _winner = r.winner;
+    const TurnOutcome outcome = _turnController.play(_state, _capturesBlack, _capturesWhite, move);
+    if (outcome.result == MoveResult::Win)
+        _winner = { outcome.winnerByColor.value(), outcome.capturesAdded };
 
-    return r.result;
+    _capturesBlack += outcome.capturesAdded;
+    _capturesWhite += outcome.capturesAdded;
+
+    return MoveResult::Illegal;
 }
 
 template<typename Traits>
@@ -162,9 +207,12 @@ GamePhase GameController<Traits>::phase() const
 }
 
 template<typename Traits>
-Seat GameController<Traits>::currentActor() const
+Actor GameController<Traits>::currentActor() const
 {
-    return _state.currentActor;
+    if (_state.phase == GamePhase::Standard)
+        return _currentActor;
+    // TODO: actor is suppose to be on game controller, not on state
+    return {_state.currentActor, colorForSeat(_state.currentActor)};
 }
 
 template<typename Traits>
@@ -186,9 +234,11 @@ int GameController<Traits>::stepIdx() const
 }
 
 template<typename Traits>
-std::optional<Color> GameController<Traits>::winner() const
+std::optional<Color> GameController<Traits>::getColorFromWinningActor() const
 {
-    return _winner;
+    if (!_winner.has_value())
+        return std::nullopt;
+    return _winner->color;
 }
 
 template<typename Traits>

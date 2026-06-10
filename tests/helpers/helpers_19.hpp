@@ -7,7 +7,7 @@ using bitboard19 = typename BoardTraits<19>::Bitboard;
 
 static GameBoard empty_board()
 {
-    return GameBoard(19, Seat::First);
+    return GameBoard(19, Color::Black);
 }
 
 static t_BWBoard19 to_bb(const GameBoard& b)

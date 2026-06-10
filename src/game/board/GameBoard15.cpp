@@ -1,8 +1,8 @@
 #include "game/board/GameBoard15.hpp"
 #include <algorithm>
 
-GameBoard15::GameBoard15(int size, Seat firstPlayer)
-    : _currentPlayer(firstPlayer), _size(size)
+GameBoard15::GameBoard15(int size, Color currentColor)
+    : _currentColor(currentColor), _size(size)
 {
     std::memset(_board, 0, sizeof(_board));
 }
@@ -27,19 +27,14 @@ int GameBoard15::getSize() const
     return _size;
 }
 
-Seat GameBoard15::currentSeat() const
+Color GameBoard15::currentColor() const
 {
-    return _currentPlayer;
+    return _currentColor;
 }
 
-void GameBoard15::setCurrentPlayer(Seat player)
+void GameBoard15::setCurrentColor(Color color)
 {
-    _currentPlayer = player;
-}
-
-void GameBoard15::switchPlayer()
-{
-    _currentPlayer = otherSeat(_currentPlayer);
+    _currentColor = color;
 }
 
 void GameBoard15::clearCell(int col, int row)

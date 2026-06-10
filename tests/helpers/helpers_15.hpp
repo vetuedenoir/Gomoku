@@ -6,7 +6,7 @@ using bitboard15 = typename BoardTraits<15>::Bitboard;
 
 static GameBoard empty_board()
 {
-    return GameBoard(15, Seat::First);
+    return GameBoard(15, Color::Black);
 }
 
 static t_BWBoard15 to_bb(const GameBoard& b)

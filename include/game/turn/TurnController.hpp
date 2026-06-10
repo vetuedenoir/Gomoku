@@ -10,31 +10,17 @@
 #include <optional>
 #include <string>
 
-struct PlayResult
-{
-    MoveResult           result;
-    std::optional<Color> winner;
-};
-
-template<typename Traits>
-struct CaptureResult
-{
-    typename Traits::Bitboard mask{};
-    int                       count = 0;
-};
-
 template<typename Traits>
 class TurnController
 {
 public:
-    PlayResult play(GameState& state, int& capturesBlack, int& capturesWhite, const Move& move);
+    TurnOutcome play(GameState& state, int& capturesBlack, int& capturesWhite, const Move& move);
 
 private:
     static Color colorFromCell(CellStatus cell);
     static const char* colorLabel(const Color color);
 
-    CaptureResult<Traits> resolveCaptures(t_BWBoard<Traits>& bb, int col, int row, const Color color,
-                                          int& capturesBlack, int& capturesWhite) const;
+    CaptureResult<Traits> resolveCaptures(t_BWBoard<Traits>& bb, int col, int row, const Color color) const;
 
     void commitMove(GameState& state, t_BWBoard<Traits>& bb, const Move& move,
                     const typename Traits::Bitboard& capturedMask) const;
@@ -42,7 +28,6 @@ private:
     std::optional<Color> checkWin(const t_BWBoard<Traits>& bb, const Color color, int col, int row,
                                   int capturesBlack, int capturesWhite) const;
 
-    void finishTurn(GameState& state) const;
     void logMove(const Color color, const Move& move, int newCaptures) const;
 };
 
@@ -60,18 +45,13 @@ const char* TurnController<Traits>::colorLabel(const Color color)
 
 template<typename Traits>
 CaptureResult<Traits> TurnController<Traits>::resolveCaptures(t_BWBoard<Traits>& bb, int col,
-                                                              int row, const Color color,
-                                                              int& capturesBlack,
-                                                              int& capturesWhite) const
+                                                              int row, const Color color) const
 {
     typename Traits::Bitboard capturedMask = {};
+    
     detect_captures<Traits>(bb, col, row, color, capturedMask);
 
     const int newCaptures = popcount_bb_generic<Traits>(capturedMask);
-    if (color == Color::Black)
-        capturesBlack += newCaptures;
-    else
-        capturesWhite += newCaptures;
 
     return { capturedMask, newCaptures };
 }
@@ -116,12 +96,6 @@ std::optional<Color> TurnController<Traits>::checkWin(const t_BWBoard<Traits>& b
 }
 
 template<typename Traits>
-void TurnController<Traits>::finishTurn(GameState& state) const
-{
-    state.board->switchPlayer();
-}
-
-template<typename Traits>
 void TurnController<Traits>::logMove(const Color color, const Move& move, int newCaptures) const
 {
     Logger::debug("TURN",
@@ -131,25 +105,26 @@ void TurnController<Traits>::logMove(const Color color, const Move& move, int ne
 }
 
 template<typename Traits>
-PlayResult TurnController<Traits>::play(GameState& state, int& capturesBlack, int& capturesWhite,
+TurnOutcome TurnController<Traits>::play(GameState& state, int& capturesBlack, int& capturesWhite,
                                         const Move& move)
 {
     const Color color = colorFromCell(move.forcedColor);
     t_BWBoard<Traits> bb = GameBoard_to_bitboard<Traits>(*state.board);
 
-    const CaptureResult<Traits> caps = resolveCaptures(bb, move.col, move.row, color, capturesBlack, capturesWhite);
+    const CaptureResult<Traits> caps = resolveCaptures(bb, move.col, move.row, color);
+    
     commitMove(state, bb, move, caps.mask);
+    
     logMove(color, move, caps.count);
 
-    if (const std::optional<Color> winner =
-            checkWin(bb, color, move.col, move.row, capturesBlack, capturesWhite))
-    {
-        finishTurn(state);
-        return { MoveResult::Win, winner };
-    }
+    // Checkpoint:  une notion de winner
+    const std::optional<Color> winner =
+            checkWin(bb, color, move.col, move.row, capturesBlack, capturesWhite);
 
-    finishTurn(state);
-    return { MoveResult::Ok, std::nullopt };
+    if (winner.has_value())
+        return { MoveResult::Win, caps.count, winner.value() };
+
+    return { MoveResult::Ok, caps.count, std::nullopt };
 }
 
 using TurnController19 = TurnController<BoardTraits<19>>;

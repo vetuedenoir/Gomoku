@@ -1,11 +1,12 @@
 #include "doctest.h"
 #include "game/board/GameBoard.hpp"
-#include "game/board/Seat.hpp"
+#include "game/contracts/contracts.hpp"
 #include "ai/SearchPosition.hpp"
 #include "bitboard/bitboard.hpp"
 
 static SearchPosition19 emptyPos()
 {
+<<<<<<< Updated upstream
     GameBoard board(19, Seat::First);
     return SearchPosition19::fromGameBoard(board);
 }
@@ -71,11 +72,13 @@ TEST_CASE("incremental hash matches full recompute")
 
 TEST_CASE("different stone placements produce different hashes")
 {
+<<<<<<< Updated upstream
     GameBoard boardA(19, Seat::First);
     SearchPosition19 posA = SearchPosition19::fromGameBoard(boardA);
     posA.makeMove(5, 5, CellStatus::Black);
     posA.makeMove(6, 6, CellStatus::White);
 
+<<<<<<< Updated upstream
     GameBoard boardB(19, Seat::First);
     SearchPosition19 posB = SearchPosition19::fromGameBoard(boardB);
     posB.makeMove(6, 6, CellStatus::Black);
