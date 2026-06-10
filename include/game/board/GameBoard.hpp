@@ -13,7 +13,6 @@ class IGameBoard
 
         virtual bool isFree(int col, int row) const = 0;
         virtual bool isInside(int col, int row) const = 0;
-        virtual bool placeStone(int col, int row) = 0;
         virtual bool placeStoneOfColor(int col, int row, CellStatus color) = 0;
 
         virtual CellStatus getCell(int col, int row) const = 0;
@@ -35,7 +34,6 @@ class GameBoard : public IGameBoard
 
         bool isFree(int col, int row) const override;
         bool isInside(int col, int row) const override;
-        bool placeStone(int col, int row) override;
         bool placeStoneOfColor(int col, int row, CellStatus color) override;
 
         CellStatus getCell(int col, int row) const override;

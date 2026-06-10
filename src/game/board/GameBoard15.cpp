@@ -42,18 +42,6 @@ void GameBoard15::switchPlayer()
     _currentPlayer = otherSeat(_currentPlayer);
 }
 
-bool GameBoard15::placeStone(int col, int row)
-{
-    if (!isInside(col, row))
-        return false;
-    if (!isFree(col, row))
-        return false;
-
-    _board[row][col] = (_currentPlayer == Seat::First) ? CellStatus::Black : CellStatus::White;
-    switchPlayer();
-    return true;
-}
-
 void GameBoard15::clearCell(int col, int row)
 {
     if (!isInside(col, row))

@@ -16,7 +16,6 @@ class GameBoard15 : public IGameBoard
 
         bool       isFree(int col, int row) const override;
         bool       isInside(int col, int row) const override;
-        bool       placeStone(int col, int row) override;
         bool       placeStoneOfColor(int col, int row, CellStatus color) override;
 
         CellStatus getCell(int col, int row) const override;

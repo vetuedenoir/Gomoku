@@ -42,18 +42,6 @@ void GameBoard19::switchPlayer()
     _currentPlayer = otherSeat(_currentPlayer);
 }
 
-bool GameBoard19::placeStone(int col, int row)
-{
-    if (!isInside(col, row))
-        return false;
-    if (!isFree(col, row))
-        return false;
-
-    _board[row][col] = (_currentPlayer == Seat::First) ? CellStatus::Black : CellStatus::White;
-    switchPlayer();
-    return true;
-}
-
 void GameBoard19::clearCell(int col, int row)
 {
     if (!isInside(col, row))
