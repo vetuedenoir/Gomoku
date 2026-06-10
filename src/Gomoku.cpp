@@ -146,7 +146,7 @@ bool Gomoku::isAITurn() const
     {
         case GamePhase::Opening:
         case GamePhase::ColorChoice:
-            return _controller->currentActor() == aiSeat;
+            return _controller->currentActor().seat == aiSeat;
         case GamePhase::Standard:
             return _controller->currentColor() != _config.playerColor;
     }
@@ -242,9 +242,9 @@ void Gomoku::update(sf::Vector2f mouse)
         if (_controller->phase() == GamePhase::ColorChoice)
             buildColorChoicePage();
 
-        if (_controller->winner().has_value())
+        if (_controller->getColorFromWinningActor().has_value())
         {
-            buildWinScreenPage(_controller->winner().value(),
+            buildWinScreenPage(_controller->getColorFromWinningActor().value(),
                                _controller->captureCount(Color::Black),
                                _controller->captureCount(Color::White));
             navigateTo(AppState::GameOver);

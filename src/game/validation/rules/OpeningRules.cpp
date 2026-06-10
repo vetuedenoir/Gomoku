@@ -305,8 +305,7 @@ bool commitOpeningMove(GameState& state, const Move& move)
 
         Logger::info("PHASE",
             std::string(phaseStr(prev)) + " → " + phaseStr(state.phase)
-            + "  (opening complete — Black=" + seatStr(Seat::First)
-            + ", White=" + seatStr(Seat::Second) + ")");
+            + "  (opening complete — colour assignment handled by GameController)");
     }
 
     return true;

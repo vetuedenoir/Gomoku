@@ -1,4 +1,5 @@
 #include "game/validation/rules/OpeningRules.hpp"
+#include "bitboard/bitboard.hpp"
 #include "logger/Logger.hpp"
 #include <random>
 #include <string>
@@ -117,19 +118,39 @@ void GameController<Traits>::continueOpeningPlacement()
 template<typename Traits>
 MoveResult GameController<Traits>::submitMove(int col, int row)
 {
-    Move move{ col, row, colorToCell(currentColor()) };
+    if (_winner.has_value())
+        return MoveResult::Illegal;
+    if (_state.phase != GamePhase::Standard)
+        return MoveResult::Illegal;
+
+    const Color moverColor = currentColor();
+    const Move  move{ col, row, colorToCell(moverColor) };
 
     if (!_validator.isLegal(_state, move))
         return MoveResult::Illegal;
 
-    const TurnOutcome outcome = _turnController.play(_state, _capturesBlack, _capturesWhite, move);
+    t_BWBoard<Traits> bb = GameBoard_to_bitboard<Traits>(*_state.board);
+    const TurnOutcome<Traits> outcome =
+        _turnController.play(bb, move, _capturesBlack, _capturesWhite);
+
+    _state.board->placeStoneOfColor(move.col, move.row, move.forcedColor);
+    bb_for_each_bit<Traits>(outcome.capturedMask, [this](int x, int y) {
+        _state.board->clearCell(x, y);
+    });
+
+    if (moverColor == Color::Black)
+        _capturesBlack += outcome.capturesAdded;
+    else
+        _capturesWhite += outcome.capturesAdded;
+
+    if (outcome.result == MoveResult::Win && outcome.winnerByColor.has_value())
+        _winner = outcome.winnerByColor;
+
     if (outcome.result == MoveResult::Win)
-        _winner = { outcome.winnerByColor.value(), outcome.capturesAdded };
+        return MoveResult::Win;
 
-    _capturesBlack += outcome.capturesAdded;
-    _capturesWhite += outcome.capturesAdded;
-
-    return MoveResult::Illegal;
+    switchActor();
+    return MoveResult::Ok;
 }
 
 template<typename Traits>
@@ -161,13 +182,13 @@ std::optional<Move> GameController<Traits>::requestAIMove()
             Logger::warn("AI", "requestAIMove — no legal opening moves");
             return std::nullopt;
         }
-        Logger::debug("AI", "[requestAIMove/Opening] candidates: " + std::to_string(candidates.size()));
+        // Logger::debug("AI", "[requestAIMove/Opening] candidates: " + std::to_string(candidates.size()));
         
         std::string candidatesStr = "";
         for (const auto& c : candidates)
             candidatesStr += "  (" + std::to_string(c.col) + ", " + std::to_string(c.row) + "), ";
 
-        Logger::debug("AI", "[requestAIMove/Opening] candidates: " + candidatesStr);
+        // Logger::debug("AI", "[requestAIMove/Opening] candidates: " + candidatesStr);
         const Move& m = candidates.front();
         if (!handleOpeningClick(m.col, m.row))
         {
@@ -236,9 +257,7 @@ int GameController<Traits>::stepIdx() const
 template<typename Traits>
 std::optional<Color> GameController<Traits>::getColorFromWinningActor() const
 {
-    if (!_winner.has_value())
-        return std::nullopt;
-    return _winner->color;
+    return _winner;
 }
 
 template<typename Traits>

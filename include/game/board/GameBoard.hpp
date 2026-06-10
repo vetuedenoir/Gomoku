@@ -11,7 +11,7 @@ class IGameBoard
         virtual ~IGameBoard() = default;
 
         virtual int getSize() const = 0;
-        
+
         virtual bool isFree(int col, int row) const = 0;
         virtual bool isInside(int col, int row) const = 0;
         virtual bool placeStoneOfColor(int col, int row, CellStatus color) = 0;
@@ -34,14 +34,8 @@ class GameBoard : public IGameBoard
         bool isInside(int col, int row) const override;
         bool placeStoneOfColor(int col, int row, CellStatus color) override;
         Color currentColor() const override;
-        void setCurrentColor(Color color) override; // To delete, move to GameController
+        void setCurrentColor(Color color) override;
         CellStatus getCell(int col, int row) const override;
-<<<<<<< Updated upstream
-        Seat currentSeat() const override;
-        int getSize() const override;
-
-        void setCurrentPlayer(Seat player) override; // To delete, move to GameController
-        void switchPlayer() override; // To delete
         void clearCell(int col, int row) override;
 
     private:

@@ -60,10 +60,12 @@ template <typename Traits> struct CaptureResult {
   int count;
 };
 
+template <typename Traits>
 struct TurnOutcome {
   MoveResult result;
   int capturesAdded; // for mover's color
   std::optional<Color> winnerByColor;
+  typename Traits::Bitboard capturedMask{};
 };
 
 #endif
