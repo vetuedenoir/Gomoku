@@ -18,7 +18,7 @@ struct GameConfig
 };
 
 
-enum class CellStatus { Empty, Black, White };
+enum class CellStatus { Empty, Black, White, AI };
 
 inline CellStatus colorToCell(Color c) noexcept
 {

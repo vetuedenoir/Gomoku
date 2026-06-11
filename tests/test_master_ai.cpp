@@ -1,224 +1,117 @@
 #include "doctest.h"
-#include "ai/MoveGenerator.hpp"
+#include "logger/Logger.hpp"
+#include "ai/MasterAI.hpp"
 #include "ai/SearchPosition.hpp"
-#include "game/board/GameBoard.hpp"
-#include "game/contracts/contracts.hpp"
-#include "test_helpers.hpp"
-#include <iostream>
+#include "helpers/helpers.hpp"
+#include "helpers/helpers_19.hpp"
+#include "helpers/line_helpers.hpp"
 
-// ── File-local helpers ────────────────────────────────────────────────────────
-
-static void place(GameBoard& b, int col, int row, CellStatus color)
+static SearchPosition19 posWithSideToMove(GameBoard& b, Color colorToMove)
 {
-	b.placeStoneOfColor(col, row, color);
+	b.setCurrentColor(colorToMove);
+	return SearchPosition19::fromBoard(b);
 }
 
-static void print_moves(const std::vector<t_cell>& moves)
+static std::string colorStr(Color color)
 {
-	std::cout << "  moves (" << moves.size() << "):\n";
-	for (const auto& m : moves)
-		std::cout << "    (" << m.x << ", " << m.y << ")\n";
+	return (color == Color::Black) ? "Black" : "White";
 }
 
-// print_bb_19 takes a non-const ref; copy the board first.
-static void print_board(const SearchPosition19& pos)
+static MasterAI19 makeAI(int depth, Color aiColor = Color::Black, int radius = 1)
 {
-	auto board = pos.board();
-	print_bb_19(board);	
+	Logger::info("AI", "makeAI: depth=" + std::to_string(depth) + " radius=" + std::to_string(radius) + " aiColor=" + colorStr(aiColor));
+	MasterAI19 ai(depth, radius, aiColor);
+	return ai;
 }
 
-// ── Test cases ────────────────────────────────────────────────────────────────
+// ── findBestMove ─────────────────────────────────────────────────────
 
-// ── 1. Empty board ────────────────────────────────────────────────────────────
-//
-// With no stones on the board the active zone is completely empty.
-// generateMoves must return an empty vector — the same guard that causes
-// minimax (line 43 of MasterAI.inl) to fall through to evaluatePosition.
-
-TEST_CASE("MasterAI::generateMoves: empty board produces no candidates")
+TEST_CASE("MasterAI: empty board returns no move")
 {
-	GameBoard b(19, Color::Black);
-	SearchPosition19 pos = SearchPosition19::fromBoard(b);
-
-	MoveGenerator19 gen(2);
-	auto moves = gen.generateMoves(pos.board(), pos.sideToMove());
-
-	std::cout << "\n[empty board] sideToMove=Black\n";
-	print_board(pos);
-	print_moves(moves);
-	std::cout << "  Expected: 0 moves (active zone has no seeds)\n";
-
-	CHECK(moves.empty());
+	Logger::info("TEST_CASE", "MasterAI: empty board returns no move");
+	GameBoard b = empty_board();
+	SearchPosition19 pos = posWithSideToMove(b, Color::Black);
+	MasterAI19 ai = makeAI(2, Color::Black);
+	t_cell move = ai.findBestMove(pos, Color::Black);
+	CHECK(move.x == -1);
+	CHECK(move.y == -1);
 }
 
-// ── 2. Single center stone — radius=2 produces 24 legal candidates ────────────
-//
-// A single Black stone at (9,9) seeds a 5×5 active zone (radius=2).
-// All 24 surrounding cells are empty and legal → 24 moves expected.
-// The occupied cell (9,9) must never appear in the result.
+// ── Terminal win detection ────────────────────────────────────────────────────
 
-TEST_CASE("MasterAI::generateMoves: single center stone yields 24 candidates at radius=2")
+TEST_CASE("MasterAI: wins in one when four stones are aligned")
 {
-	GameBoard b(19, Color::Black);
-	place(b, 9, 9, CellStatus::Black);
-	SearchPosition19 pos = SearchPosition19::fromBoard(b);
-
-	MoveGenerator19 gen(2);
-	auto moves = gen.generateMoves(pos.board(), pos.sideToMove());
-
-	std::cout << "\n[single center stone B@(9,9)] sideToMove=Black, radius=2\n";
-	print_board(pos);
-	print_moves(moves);
-	std::cout << "  Expected: 24 moves (5x5 zone minus the occupied center)\n";
-
-	CHECK(moves.size() == 24);
-	CHECK_FALSE(contains_move(moves, 9, 9));   // occupied — must be excluded
-	CHECK(contains_move(moves, 7, 7));          // top-left corner of zone
-	CHECK(contains_move(moves, 11, 11));        // bottom-right corner of zone
-	CHECK(contains_move(moves, 9, 7));          // top edge of zone
-	CHECK(contains_move(moves, 7, 9));          // left edge of zone
+	Logger::info("TEST_CASE", "MasterAI: wins in one when four stones are aligned");
+	ThreatLine line{ Direction::E, 3, 9, 4, CellStatus::Black, CellStatus::White, -1 };
+	GameBoard b = empty_board();
+	buildThreatLine(b, line);
+	SearchPosition19 pos = posWithSideToMove(b, Color::Black);
+	MasterAI19 ai = makeAI(1, Color::Black);
+	t_cell move = ai.findBestMove(pos, Color::Black);
+	CHECK(moveIsOneOf(move, winningCells(line)));
 }
 
-// ── 3. sideToMove() propagates to the legality filter ────────────────────────
-//
-// Setup: Black stones at (3,9),(4,9) and (5,7),(5,8).
-// Playing at (5,9) simultaneously creates two free-threes for Black → double-three
-// → illegal for Black.  White playing at (5,9) forms no double-three at all
-// → legal for White.
-//
-// This directly verifies that position.sideToMove() is forwarded correctly
-// from minimax line 42 all the way into StandardRules::isLegal.
+TEST_CASE("MasterAI: blocks opponent win in one (depth 2)")
+{
+	Logger::info("TEST_CASE", "MasterAI: blocks opponent win in one (depth 2)");
+	ThreatLine line{ Direction::E, 3, 9, 4, CellStatus::Black, CellStatus::White, -1 };
+	GameBoard b(19, Color::White);
+	buildThreatLine(b, line);
+	SearchPosition19 pos = posWithSideToMove(b, Color::White);
+	MasterAI19 ai = makeAI(2, Color::White);
+	t_cell move = ai.findBestMove(pos, Color::White);
+	CHECK(moveIsOneOf(move, winningCells(line)));
+}
 
-// TEST_CASE("MasterAI::generateMoves: sideToMove propagates to double-three legality filter")
-// {
-// 	SUBCASE("Black to move — double-three at (5,9) is filtered out")
-// 	{
-// 		GameBoard b(19, Color::Black);
-// 		place(b, 3, 9, CellStatus::Black);
-// 		place(b, 4, 9, CellStatus::Black);
-// 		place(b, 5, 7, CellStatus::Black);
-// 		place(b, 5, 8, CellStatus::Black);
+// ── Evaluation-driven choice ──────────────────────────────────────────────────
 
-// 		SearchPosition19 pos = SearchPosition19::fromBoard(b);
-// 		MoveGenerator19 gen(2);
-// 		auto moves = gen.generateMoves(pos.board(), pos.sideToMove());
+TEST_CASE("MasterAI: extends three to four rather than a quiet move (depth 1)") { MasterAI19 ai = makeAI(1, Color::Black); SUBCASE("horizontal") { ThreatLine three{ Direction::E, 7, 9, 3, CellStatus::Black, CellStatus::White, -1 }; GameBoard b = empty_board(); buildThreatLine(b, three); SearchPosition19 pos = posWithSideToMove(b, Color::Black); t_cell move = ai.findBestMove(pos, Color::Black); CHECK(moveIsOneOf(move, extendToFourCells(three))); } SUBCASE("vertical") { ThreatLine three{ Direction::S, 9, 7, 3, CellStatus::Black, CellStatus::White, -1 }; GameBoard b = empty_board(); buildThreatLine(b, three); SearchPosition19 pos = posWithSideToMove(b, Color::Black); t_cell move = ai.findBestMove(pos, Color::Black); CHECK(moveIsOneOf(move, extendToFourCells(three))); } SUBCASE("diagonal SE") { ThreatLine three{ Direction::SE, 7, 9, 3, CellStatus::Black, CellStatus::White, -1 }; GameBoard b = empty_board(); buildThreatLine(b, three); SearchPosition19 pos = posWithSideToMove(b, Color::Black); t_cell move = ai.findBestMove(pos, Color::Black); CHECK(moveIsOneOf(move, extendToFourCells(three))); } SUBCASE("diagonal NE") { ThreatLine three{ Direction::NE, 7, 11, 3, CellStatus::Black, CellStatus::White, -1 }; GameBoard b = empty_board(); buildThreatLine(b, three); SearchPosition19 pos = posWithSideToMove(b, Color::Black); t_cell move = ai.findBestMove(pos, Color::Black); CHECK(moveIsOneOf(move, extendToFourCells(three))); } }
+TEST_CASE("MasterAI: blocks open-four threat at depth 2")
+{
+	Logger::info("TEST_CASE", "MasterAI: blocks open-four threat at depth 2");
+	MasterAI19 ai = makeAI(2, Color::White);
 
-// 		std::cout << "\n[double-three — Black to move] candidate (5,9)\n";
-// 		std::cout << "  Horizontal arm: (3,9)B (4,9)B -> (5,9)\n";
-// 		std::cout << "  Vertical   arm: (5,7)B (5,8)B -> (5,9)\n";
-// 		print_board(pos);
-// 		std::cout << "  sideToMove = Black\n";
-// 		print_moves(moves);
-// 		std::cout << "  Expected: (5,9) absent — double-three is illegal for Black\n";
+	SUBCASE("horizontal")
+	{
+		Logger::info("SUBCASE", "horizontal");
+		ThreatLine line{ Direction::E, 7, 9, 3, CellStatus::Black, CellStatus::White, 0 };
+		GameBoard b = empty_board();
+		buildThreatLine(b, line);
+		SearchPosition19 pos = posWithSideToMove(b, Color::White);
+		t_cell move = ai.findBestMove(pos, Color::White);
+		CHECK(moveIsOneOf(move, blockCells(line)));
+	}
 
-// 		CHECK(pos.sideToMove() == Color::Black);
-// 		CHECK_FALSE(contains_move(moves, 5, 9));
-// 	}
+	SUBCASE("vertical")
+	{
+		Logger::info("SUBCASE", "vertical");
+		ThreatLine line{ Direction::S, 9, 7, 3, CellStatus::Black, CellStatus::White, 0 };
+		GameBoard b = empty_board();
+		buildThreatLine(b, line);
+		SearchPosition19 pos = posWithSideToMove(b, Color::White);
+		t_cell move = ai.findBestMove(pos, Color::White);
+		CHECK(moveIsOneOf(move, blockCells(line)));
+	}
 
-// 	SUBCASE("White to move — same Black stones, (5,9) is legal for White")
-// 	{
-// 		GameBoard b(19, Seat::Second);
-// 		place(b, 3, 9, CellStatus::Black);
-// 		place(b, 4, 9, CellStatus::Black);
-// 		place(b, 5, 7, CellStatus::Black);
-// 		place(b, 5, 8, CellStatus::Black);
+	SUBCASE("diagonal SE")
+	{
+		Logger::info("SUBCASE", "diagonal SE");
+		ThreatLine line{ Direction::SE, 7, 9, 3, CellStatus::Black, CellStatus::White, 0 };
+		GameBoard b = empty_board();
+		buildThreatLine(b, line);
+		SearchPosition19 pos = posWithSideToMove(b, Color::White);
+		t_cell move = ai.findBestMove(pos, Color::White);
+		CHECK(moveIsOneOf(move, blockCells(line)));
+	}
 
-// 		SearchPosition19 pos = SearchPosition19::fromBoard(b);
-// 		MoveGenerator19 gen(2);
-// 		auto moves = gen.generateMoves(pos.board(), pos.sideToMove());
-
-// 		std::cout << "\n[double-three — White to move] candidate (5,9)\n";
-// 		std::cout << "  Same board, but White is to play — White forms no double-three here\n";
-// 		print_board(pos);
-// 		std::cout << "  sideToMove = White\n";
-// 		print_moves(moves);
-// 		std::cout << "  Expected: (5,9) present — legal for White\n";
-
-// 		CHECK(pos.sideToMove() == Color::White);
-// 		CHECK(contains_move(moves, 5, 9));
-// 	}
-// }
-
-// ── 4. makeMove flips sideToMove — moves reflect the new player ──────────────
-//
-// Simulates what minimax does when recursing: after makeMove the side flips,
-// and the next generateMoves call must use the updated sideToMove.
-// Starting from an empty board Black plays (9,9); the position then belongs
-// to White, and generateMoves should enumerate White's legal replies.
-
-// TEST_CASE("MasterAI::generateMoves: after makeMove sideToMove flips and moves update")
-// {
-// 	GameBoard b(19, Color::Black);
-// 	SearchPosition19 pos = SearchPosition19::fromBoard(b);
-
-// 	std::cout << "\n[makeMove flip]\n";
-// 	std::cout << "  before makeMove: sideToMove="
-// 	          << (pos.sideToMove() == Color::Black ? "Black" : "White") << "\n";
-
-// 	pos.makeMove(9, 9, CellStatus::Black);
-
-// 	std::cout << "  after makeMove(9,9,Black): sideToMove="
-// 	          << (pos.sideToMove() == Color::Black ? "Black" : "White") << "\n";
-
-// 	MoveGenerator19 gen(2);
-// 	auto moves = gen.generateMoves(pos.board(), pos.sideToMove());
-
-// 	print_board(pos);
-// 	print_moves(moves);
-// 	std::cout << "  Expected: sideToMove=White, 24 moves around (9,9)\n";
-
-// 	CHECK(pos.sideToMove() == Color::White);
-// 	CHECK(moves.size() == 24);
-// 	CHECK_FALSE(contains_move(moves, 9, 9));    // occupied by Black
-// 	CHECK(contains_move(moves, 10, 9));
-// 	CHECK(contains_move(moves, 9, 10));
-// 	CHECK(contains_move(moves, 8, 8));
-// }
-
-// ── 5. Active zone unions multiple seeds — evaluatePosition empty-guard path ──
-//
-// The moves.empty() guard in minimax (line 43 of MasterAI.inl) is triggered
-// only when there are no seeds on the board (i.e. the position is empty), as
-// demonstrated by test 1.  This test verifies the complementary invariant:
-// once two stones exist at opposite corners the zone correctly unions both
-// seeds and produces candidates around each, giving minimax a non-empty move
-// list to recurse into.
-//
-// Board: Black@(0,0) and Black@(18,18).  With radius=2 the zone around (0,0)
-// contributes the 3×3 corner clip (8 cells) and the zone around (18,18)
-// contributes another 3×3 corner clip (8 cells) — 16 candidates total, both
-// stones excluded.
-
-// TEST_CASE("MasterAI::generateMoves: two corner stones produce unioned zone — non-empty for minimax recursion")
-// {
-// 	GameBoard b(19, Color::Black);
-// 	place(b, 0,  0,  CellStatus::Black);
-// 	place(b, 18, 18, CellStatus::Black);
-
-// 	SearchPosition19 pos = SearchPosition19::fromBoard(b);
-// 	MoveGenerator19 gen(2);
-// 	auto moves = gen.generateMoves(pos.board(), pos.sideToMove());
-
-// 	std::cout << "\n[two corner stones] B@(0,0) and B@(18,18), radius=2\n";
-// 	print_board(pos);
-// 	print_moves(moves);
-// 	std::cout << "  Expected: 16 moves (3x3 clip at each corner minus 2 occupied)\n";
-// 	std::cout << "  Both seeds unioned → minimax can recurse (moves not empty)\n";
-
-// 	CHECK(moves.size() == 16);
-
-// 	// Top-left corner zone (clips to board edge)
-// 	CHECK(contains_move(moves, 1, 0));
-// 	CHECK(contains_move(moves, 0, 1));
-// 	CHECK(contains_move(moves, 1, 1));
-// 	CHECK_FALSE(contains_move(moves, 0, 0));   // occupied by Black
-
-// 	// Bottom-right corner zone (clips to board edge)
-// 	CHECK(contains_move(moves, 17, 18));
-// 	CHECK(contains_move(moves, 18, 17));
-// 	CHECK(contains_move(moves, 17, 17));
-// 	CHECK_FALSE(contains_move(moves, 18, 18)); // occupied by Black
-
-// 	// The two zones must not bleed into each other (board is large enough)
-// 	CHECK_FALSE(contains_move(moves, 9, 9));
-// }
+	SUBCASE("diagonal NE")
+	{
+		Logger::info("SUBCASE", "diagonal NE");
+		ThreatLine line{ Direction::NE, 7, 11, 3, CellStatus::Black, CellStatus::White, 0 };
+		GameBoard b = empty_board();
+		buildThreatLine(b, line);
+		SearchPosition19 pos = posWithSideToMove(b, Color::White);
+		t_cell move = ai.findBestMove(pos, Color::White);
+		CHECK(moveIsOneOf(move, blockCells(line)));
+	}
+}

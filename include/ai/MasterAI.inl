@@ -2,6 +2,62 @@
 #include "game/turn/WinDetector.hpp"
 #include "logger/Logger.hpp"
 
+static std::string signedScoreLabel(int score, const char* label)
+{
+	if (score > 0)
+		return std::string(" [AI_") + label + "]";
+	return std::string(" [OPP_") + label + "]";
+}
+
+static std::string scoreMacroLabel(int score)
+{
+	if (score == 0)
+		return "";
+
+	const int magnitude = (score < 0) ? -score : score;
+	const char* label = nullptr;
+
+	switch (magnitude)
+	{
+		case 1000000: label = "WIN"; break;
+		case 500000:  label = "OPEN_FOUR"; break;
+		case 5000:    label = "HALF_OPEN_FOUR"; break;
+		case 60000:   label = "SUPER_FOUR"; break;
+		case 6000:    label = "BROKEN_FOUR"; break;
+		case 90000:   label = "CROSS_FULL|DOUBLE_FULL_FULL"; break;
+		case 85000:   label = "DOUBLE_HOLE_FULL"; break;
+		case 80000:   label = "DOUBLE_HOLE_HOLE"; break;
+		case 9000:    label = "CROSS_FULL_OPP_INTERN|DOUBLE_FULL_FULL_INTERN"; break;
+		case 8500:    label = "DOUBLE_HOLE_FULL_INTERN"; break;
+		case 8000:    label = "DOUBLE_HOLE_HOLE_INTERN"; break;
+		case 7500:    label = "DOUBLE_FULL_FULL_MIXED"; break;
+		case 7000:    label = "DOUBLE_HOLE_FULL_MIXED"; break;
+		case 6500:    label = "DOUBLE_HOLE_HOLE_MIXED"; break;
+		case 2000:    label = "CROSS_DEMI_NO_MID"; break;
+		case 1500:    label = "CROSS_DEMI_MID"; break;
+		case 800:     label = "SCORE_3_FULL"; break;
+		case 700:     label = "SCORE_3_HOLE"; break;
+		case 500:     label = "SCORE_FULL_EXTERN"; break;
+		case 450:     label = "SCORE_HOLE_EXTERN"; break;
+		case 350:     label = "CROSS_DEMI_MID_OPP_EXTERN"; break;
+		case 300:     label = "CROSS_DEMI_NO_OPP_EXTERN"; break;
+		case 175:     label = "CROSS_DEMI_MID_OPP_INTERN"; break;
+		case 150:     label = "CROSS_DEMI_NO_OPP_INTERN"; break;
+		case 90:      label = "DOUBLE_FULL_FULL_INTERN2"; break;
+		case 85:      label = "DOUBLE_HOLE_FULL_INTERN2"; break;
+		case 80:      label = "DOUBLE_HOLE_HOLE_INTERN2"; break;
+		case 40:      label = "SCORE_FULL_INTERN"; break;
+		case 35:      label = "SCORE_HOLE_INTERN"; break;
+		default: break;
+	}
+
+	if (label)
+		return signedScoreLabel(score, label);
+
+	const std::string prefix = (score > 0) ? " [AI_UNKNOWN:" : " [OPP_UNKNOWN:";
+	return prefix + std::to_string(magnitude) + "]";
+}
+
 template <typename Traits>
 MasterAI<Traits>::MasterAI(int depth, int activeZoneRadius, Color aiColor)
 	: _maxDepth(depth), _aiColor(aiColor), _moveGenerator(activeZoneRadius)
@@ -17,8 +73,9 @@ t_cell	MasterAI<Traits>::findBestMove(
 	_aiColor = color;
 
 	_stats        = SearchStats{};
-	_timeExceeded = false;
-	_searchStart  = Clock::now();
+	// Time limit disabled — search runs to completion (tests / debug).
+	// _timeExceeded = false;
+	// _searchStart  = Clock::now();
 
 	const std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
 
@@ -43,8 +100,9 @@ t_cell	MasterAI<Traits>::findBestMove(
 		                    std::numeric_limits<int>::max(), false, pv);
 
 		const std::string marker = (score > bestScore) ? " ← best" : "";
+		const std::string macro  = scoreMacroLabel(score);
 		Logger::debug("AI", "  root (" + std::to_string(move.x) + ","
-		              + std::to_string(move.y) + ")  score=" + std::to_string(score) + marker);
+		              + std::to_string(move.y) + ")  score =  " + std::to_string(score) + macro + marker);
 
 		if (score > bestScore)
 		{
@@ -54,11 +112,11 @@ t_cell	MasterAI<Traits>::findBestMove(
 			bestPV.insert(bestPV.begin(), move);
 		}
 
-		if (_timeExceeded)
-		{
-			Logger::debug("AI", "[findBestMove] time limit reached — returning best so far");
-			break;
-		}
+		// if (_timeExceeded)
+		// {
+		// 	Logger::debug("AI", "[findBestMove] time limit reached — returning best so far");
+		// 	break;
+		// }
 	}
 
 	_stats.bestScore = bestScore;
@@ -80,7 +138,7 @@ t_cell	MasterAI<Traits>::findBestMove(
 		std::string pvStr = "PV:";
 		for (const t_cell& c : _stats.principalVariation)
 			pvStr += " (" + std::to_string(c.x) + "," + std::to_string(c.y) + ")";
-		Logger::debug("AI", pvStr + "  score=" + std::to_string(bestScore));
+		Logger::debug("AI", pvStr + "  score=" + std::to_string(bestScore) + scoreMacroLabel(bestScore));
 	}
 
 	return bestMove;
@@ -95,7 +153,9 @@ void	MasterAI<Traits>::setSearchDepth(int depth) noexcept
 template <typename Traits>
 void	MasterAI<Traits>::setTimeLimit(int milliseconds) noexcept
 {
-	_timeLimitMs = milliseconds;
+	(void)milliseconds;
+	// Time limit disabled — search runs to completion (tests / debug).
+	// _timeLimitMs = milliseconds;
 }
 
 template <typename Traits>
@@ -112,19 +172,20 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 {
 	++_stats.nodesVisited;
 
-	if (!_timeExceeded)
-	{
-		const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-		    Clock::now() - _searchStart).count();
-		if (elapsed >= _timeLimitMs)
-		{
-			_timeExceeded = true;
-			Logger::debug("AI", "[minimax] time limit hit at "
-			    + std::to_string(elapsed) + "ms  nodes=" + std::to_string(_stats.nodesVisited));
-		}
-	}
-	if (_timeExceeded)
-		return 0;
+	// Time limit disabled — search runs to completion (tests / debug).
+	// if (!_timeExceeded)
+	// {
+	// 	const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+	// 	    Clock::now() - _searchStart).count();
+	// 	if (elapsed >= _timeLimitMs)
+	// 	{
+	// 		_timeExceeded = true;
+	// 		Logger::debug("AI", "[minimax] time limit hit at "
+	// 		    + std::to_string(elapsed) + "ms  nodes=" + std::to_string(_stats.nodesVisited));
+	// 	}
+	// }
+	// if (_timeExceeded)
+	// 	return 0;
 
 	const int currentDepth = _maxDepth - depth;
 	if (currentDepth > _stats.maxDepthSeen)
@@ -231,8 +292,6 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 //						comme une croix avec un seul coté ouvert, ou un three ouvert
 
 // inferieur a 100 = coups avec 3 chances de parade ou plus, comme une croix avec les 2 cotés fermés, ou un three demi-ouvert
-
-
 
 static int cross_score(int crossResult)
 {

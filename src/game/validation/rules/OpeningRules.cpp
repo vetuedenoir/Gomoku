@@ -74,6 +74,7 @@ static std::vector<OpeningStep> proScript(int thirdStoneMinDist)
         makeStep(OpeningActor::TentativeFirst,  {{ CellStatus::Black, centerConstraint() }}),
         makeStep(OpeningActor::TentativeSecond, {{ CellStatus::White, {} }}),
         makeStep(OpeningActor::TentativeFirst,  {{ CellStatus::Black, distanceConstraint(0, thirdStoneMinDist) }}),
+        makeStep(OpeningActor::TentativeSecond, {{ CellStatus::White, {} }}),
     };
 }
 
@@ -303,7 +304,8 @@ bool commitOpeningMove(GameState& state, const Move& move)
         const GamePhase prev = state.phase;
         state.phase = GamePhase::Standard;
 
-        Logger::info("PHASE",
+
+        Logger::info("PHASE HERE",
             std::string(phaseStr(prev)) + " → " + phaseStr(state.phase)
             + "  (opening complete — colour assignment handled by GameController)");
     }
@@ -314,17 +316,15 @@ bool commitOpeningMove(GameState& state, const Move& move)
 std::vector<Move> getLegalOpeningMoves(const GameState& state)
 {
     std::vector<Move> moves;
-    // why this function is called if the opening is complete?
-    if (isOpeningComplete(state))
-        return moves;
 
     const OpeningStep& step = state.openingSteps[state.stepIdx];
     const StoneSpec&   spec = step.stones[state.subIdx];
     const int          size = state.board->getSize();
+    const int          centerPerimeter = size / 2;
 
-    for (int row = 0; row < size; ++row)
+    for (int row = centerPerimeter - 1; row < centerPerimeter + 1; ++row)
     {
-        for (int col = 0; col < size; ++col)
+        for (int col = centerPerimeter - 1; col < centerPerimeter + 1; ++col)
         {
             const Move m{ col, row, spec.color };
             if (canPlaceOpeningStone(state, m))
