@@ -60,15 +60,23 @@ template<typename Traits>
 void ActiveZone<Traits>::initialize(const t_BWBoard<Traits>& board)
 {
 	_candidateMask = {};
+	int	neighborAdded = 0;
 
 	for (int y = 0; y < Traits::BOARD_SIZE; y++)
 	{
 		for (int x = 0; x < Traits::BOARD_SIZE; x++)
 		{
 			if (get_bb_generic<Traits>(board.black, x, y) ||
-				get_bb_generic<Traits>(board.white, x, y))
-				addNeighborBits(x, y);
+				get_bb_generic<Traits>(board.white, x, y)) {
+					addNeighborBits(x, y);
+					neighborAdded++;
+				}
 		}
+	}
+
+	if (neighborAdded == 0)
+	{
+		addNeighborBits(Traits::BOARD_SIZE / 2 + 1, Traits::BOARD_SIZE / 2 + 1);
 	}
 
 	for (int i = 0; i < Traits::WORD_COUNT; i++)
