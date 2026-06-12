@@ -5,8 +5,6 @@
 #include <random>
 #include <iostream>
 
-// #include "bitboard/bitboard.hpp"
-
 #ifdef __APPLE__
     static const char *FONT = "/System/Library/Fonts/Helvetica.ttc";
 #else
@@ -26,8 +24,6 @@ Gomoku::Gomoku()
     buildOpeningPage();
 
     _states.push(AppState::MainMenu);
-
-    // _activeZone = std::make_unique<ActiveZone19>(2);
 }
 
 void Gomoku::run()
@@ -227,29 +223,32 @@ void Gomoku::update(sf::Vector2f mouse)
     else if (_states.top() == AppState::Game)
     {
         _board->updateHover(mouse);
-        if (_controller->phase() == GamePhase::ColorChoice)
-            _colorChoice.updateHover(mouse);
     }
     else
     {
         currentPage().updateHover(mouse);
     }
 
-    if (_config.aiOpponent && _states.top() == AppState::Game && isAITurn())
-    {
-        _controller->requestAIMove();
+    // Logger::debug("DEBUG", "currentActor: " + seatStr(_controller->currentActor().seat) + " " + (_controller->currentActor().color == Color::Black ? "Black" : "White"));
 
-        if (_controller->phase() == GamePhase::ColorChoice)
-            buildColorChoicePage();
+    // if (_config.aiOpponent && _states.top() == AppState::Game && isAITurn())
+    // {
+    //     Logger::info("AI DEBUG", "AI turn");
+    //     _controller->requestAIMove();
+    //     exit(0);
 
-        if (_controller->getColorFromWinningActor().has_value())
-        {
-            buildWinScreenPage(_controller->getColorFromWinningActor().value(),
-                               _controller->captureCount(Color::Black),
-                               _controller->captureCount(Color::White));
-            navigateTo(AppState::GameOver);
-        }
-    }
+    //     // if (_controller->phase() == GamePhase::ColorChoice)
+    //     //     Logger::info("ACTOR DEBUG", "buildColorChoicePage on AI turn");
+    //     //     buildColorChoicePage();
+
+    //     // if (_controller->getColorFromWinningActor().has_value())
+    //     // {
+    //     //     buildWinScreenPage(_controller->getColorFromWinningActor().value(),
+    //     //                        _controller->captureCount(Color::Black),
+    //     //                        _controller->captureCount(Color::White));
+    //     //     navigateTo(AppState::GameOver);
+    //     // }
+    // }
 }
 
 
@@ -289,15 +288,23 @@ void Gomoku::buildColorChoicePage()
 {
     _colorChoice.clear();
 
+    const Actor       actor = _controller->currentActor();
+
+    Logger::info("COLORCHOICE", "actor: " + seatStr(actor.seat) + " " + (actor.color == Color::Black ? "Black" : "White"));
+
+
+    const Seat        seat = _controller->currentActor().seat;
+
     const OpeningProtocol openingProtocol  = _controller->openingProtocol();
-    const Seat        actor = _controller->currentActor().seat;
     const bool threeOptions = (openingProtocol == OpeningProtocol::Swap2
-                               && actor == Seat::Second
+                               && seat == Seat::Second
                                && _controller->stepIdx() == 1);
+
+    
 
     const char* titleStr = threeOptions
         ? "Seat 2: Choose your option"
-        : (actor == Seat::Second ? "Seat 2: Choose your colour"
+        : (seat == Seat::Second ? "Seat 2: Choose your colour"
                                  : "Seat 1: Choose your colour");
 
     sf::Text title = makeText(titleStr, _font, FONT_CC, GOLD);
@@ -310,8 +317,8 @@ void Gomoku::buildColorChoicePage()
     divider.setOrigin(divW / 2.f, 0.5f);
     divider.setPosition(CX, WIN_H * 0.50f);
 
-    const char* label1 = (actor == Seat::Second) ? "Play White" : "Play Black";
-    const char* label2 = (actor == Seat::Second) ? "Play Black" : "Play White";
+    const char* label1 = (seat == Seat::Second) ? "Play White" : "Play Black";
+    const char* label2 = (seat == Seat::Second) ? "Play Black" : "Play White";
 
     _colorChoice.addItem("opt1", FonctionItem(
         Item(label1,         _font, CX, WIN_H * 0.545f),

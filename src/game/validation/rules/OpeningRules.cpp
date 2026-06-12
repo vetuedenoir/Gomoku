@@ -265,6 +265,8 @@ bool commitOpeningMove(GameState& state, const Move& move)
     if (!state.board->placeStoneOfColor(move.col, move.row, spec.color))
         return false;
 
+    
+
     Logger::debug("OPENING",
         stepInfo + " | " + colorStr(spec.color)
         + " → (" + std::to_string(move.col) + "," + std::to_string(move.row) + ") ✓");

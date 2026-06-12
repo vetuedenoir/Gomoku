@@ -23,7 +23,11 @@ class GameController : public IGameController
 
         const GameBoard&     visualBoard()      const override;
         GamePhase            phase()            const override;
+        
         Actor                currentActor()     const override;
+        Actor                playerActor()      const override;
+        Actor                aiActor()          const override;
+
         CellStatus           nextOpeningColor() const override;
         Color                currentColor()     const override;
         OpeningProtocol      openingProtocol()  const override;
@@ -32,10 +36,10 @@ class GameController : public IGameController
         int                  captureCount(const Color c) const override;
 
     private:
-        void assignDefaultColors();
         void assignColorsAfterChoice(bool swapped);
         Color colorForSeat(Seat seat) const;
         void syncBoardCurrentColor();
+        void syncCurrentActorFromState();
         void beginNormalPlay();
         void switchActor();
 
@@ -47,9 +51,9 @@ class GameController : public IGameController
         int                    _capturesBlack = 0;
         int                    _capturesWhite = 0;
 
-        Actor _blackActor{Seat::First, Color::Black};
-        Actor _whiteActor{Seat::Second, Color::White};
-        Actor _currentActor{Seat::First, Color::Black};
+        Actor _playerActor;
+        Actor _aiActor;
+        Actor _currentActor;
 };
 
 #include "game/controller/GameController.inl"
