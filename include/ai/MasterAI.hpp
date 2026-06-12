@@ -2,7 +2,6 @@
 # define MASTER_AI_HPP
 
 #include "game/board/GameBoard.hpp"
-#include "game/GameState.hpp"
 #include "game/contracts/contracts.hpp"
 #include "game/validation/MoveValidator.hpp"
 #include "bitboard/bitboard.hpp"

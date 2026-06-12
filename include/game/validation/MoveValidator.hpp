@@ -1,10 +1,7 @@
 #ifndef MOVEVALIDATOR_HPP
 # define MOVEVALIDATOR_HPP
 
-// Uniform façade for move legality. Delegates by phase to policies with
-// different internal representations. See include/game/validation/RULES.md.
-
-#include "game/GameState.hpp"
+#include "game/validation/ValidationContext.hpp"
 #include "game/contracts/contracts.hpp"
 #include "game/validation/policy/OpeningMovePolicy.hpp"
 #include "game/validation/policy/StandardMovePolicy.hpp"
@@ -16,41 +13,39 @@ template<typename Traits>
 class MoveValidator
 {
 public:
-    bool isLegal(const GameState& state, const Move& move) const
+    bool isLegal(const ValidationContext& ctx, GamePhase phase,
+                 Color sideToMove, const Move& move) const
     {
-        switch (state.phase)
+        switch (phase)
         {
             case GamePhase::Opening:
                 return logResult("opening", move,
-                    OpeningMovePolicy::isLegal(state, move));
+                    OpeningMovePolicy::isLegal(ctx, move));
             case GamePhase::Standard:
                 return logResult("standard", move,
-                    _standard.isLegal(state, move.col, move.row, sideToMove(state)));
+                    _standard.isLegal(ctx.board, move.col, move.row, sideToMove));
             case GamePhase::ColorChoice:
             default:
                 return false;
         }
     }
 
-    std::vector<Move> legalMoves(const GameState& state) const
+    std::vector<Move> legalMoves(const ValidationContext& ctx,
+                                 GamePhase phase,
+                                 Color sideToMove) const
     {
-        switch (state.phase)
+        switch (phase)
         {
             case GamePhase::Opening:
-                return OpeningMovePolicy::legalMoves(state);
+                return OpeningMovePolicy::legalMoves(ctx);
             case GamePhase::Standard:
-                return _standard.legalMoves(state, sideToMove(state));
+                return _standard.legalMoves(ctx.board, sideToMove);
             default:
                 return {};
         }
     }
 
 private:
-    static Color sideToMove(const GameState& state)
-    {
-        return state.board->currentColor();
-    }
-
     static bool logResult(const char* phase, const Move& move, bool ok)
     {
         const std::string coord = "(" + std::to_string(move.col) + ","

@@ -1,22 +1,20 @@
 #ifndef OPENINGMOVEPOLICY_HPP
 # define OPENINGMOVEPOLICY_HPP
 
-#include "game/GameState.hpp"
 #include "game/contracts/contracts.hpp"
+#include "game/validation/ValidationContext.hpp"
 #include "game/validation/rules/OpeningRules.hpp"
 
-// Opening-phase move checks. Uses GameBoard + OpeningRules (not bitboard).
-// See RULES.md.
 struct OpeningMovePolicy
 {
-    static bool isLegal(const GameState& state, const Move& move)
+    static bool isLegal(const ValidationContext& ctx, const Move& move)
     {
-        return canPlaceOpeningStone(state, move);
+        return canPlaceOpeningStone(ctx.opening, ctx.board, move);
     }
 
-    static std::vector<Move> legalMoves(const GameState& state)
+    static std::vector<Move> legalMoves(const ValidationContext& ctx)
     {
-        return getLegalOpeningMoves(state);
+        return getLegalOpeningMoves(ctx.opening, ctx.board);
     }
 };
 

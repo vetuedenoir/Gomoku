@@ -3,7 +3,10 @@
 #include "logger/Logger.hpp"
 #include <algorithm>
 #include <random>
+#include <chrono>
 #include <iostream>
+#include <thread>
+
 
 #ifdef __APPLE__
     static const char *FONT = "/System/Library/Fonts/Helvetica.ttc";
@@ -104,6 +107,10 @@ void Gomoku::startGame()
     float boardSize = std::min(WIN_W, WIN_H) * 0.90f;
     _board      = std::make_unique<Board>(WIN_W / 2.f, WIN_H / 2.f, boardSize, _config.boardSize);
     _controller = makeGameController(_config);
+
+    Logger::info("GAME DEBUG", "player actor: " + seatStr(_controller->playerActor().seat) + " " + (_controller->playerActor().color == Color::Black ? "Black" : "White"));
+    Logger::info("GAME DEBUG", "ai actor: " + seatStr(_controller->aiActor().seat) + " " + (_controller->aiActor().color == Color::Black ? "Black" : "White"));
+    Logger::info("GAME DEBUG", "current actor: " + seatStr(_controller->currentActor().seat) + " " + (_controller->currentActor().color == Color::Black ? "Black" : "White"));
 }
 
 // ── Ghost-colour computation ──────────────────────────────────────────────────
@@ -133,20 +140,7 @@ CellStatus Gomoku::computeGhostColor() const
 bool Gomoku::isAITurn() const
 {
     if (!_controller) return false;
-    const Seat humanSeat = (_config.playerColor == Color::Black)
-                           ? Seat::First : Seat::Second;
-    const Seat aiSeat    = (humanSeat == Seat::First)
-                           ? Seat::Second : Seat::First;
-
-    switch (_controller->phase())
-    {
-        case GamePhase::Opening:
-        case GamePhase::ColorChoice:
-            return _controller->currentActor().seat == aiSeat;
-        case GamePhase::Standard:
-            return _controller->currentColor() != _config.playerColor;
-    }
-    return false;
+    return _controller->currentActor().seat == _controller->aiActor().seat;
 }
 
 void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
@@ -183,11 +177,13 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
                 break;
 
             if (_controller->phase() == GamePhase::ColorChoice)
+                Logger::info("ACTOR DEBUG", "buildColorChoicePage on opening click");
                 buildColorChoicePage();
             break;
         }
 
         case GamePhase::ColorChoice:
+            Logger::info("COLORCHOICE", "handleEvent");
             _colorChoice.handleClick(mouse);
             break;
 
@@ -229,26 +225,11 @@ void Gomoku::update(sf::Vector2f mouse)
         currentPage().updateHover(mouse);
     }
 
-    // Logger::debug("DEBUG", "currentActor: " + seatStr(_controller->currentActor().seat) + " " + (_controller->currentActor().color == Color::Black ? "Black" : "White"));
-
-    // if (_config.aiOpponent && _states.top() == AppState::Game && isAITurn())
-    // {
-    //     Logger::info("AI DEBUG", "AI turn");
-    //     _controller->requestAIMove();
-    //     exit(0);
-
-    //     // if (_controller->phase() == GamePhase::ColorChoice)
-    //     //     Logger::info("ACTOR DEBUG", "buildColorChoicePage on AI turn");
-    //     //     buildColorChoicePage();
-
-    //     // if (_controller->getColorFromWinningActor().has_value())
-    //     // {
-    //     //     buildWinScreenPage(_controller->getColorFromWinningActor().value(),
-    //     //                        _controller->captureCount(Color::Black),
-    //     //                        _controller->captureCount(Color::White));
-    //     //     navigateTo(AppState::GameOver);
-    //     // }
-    // }
+    if (_config.aiOpponent && _states.top() == AppState::Game && isAITurn())
+    {
+        Logger::info("AI DEBUG", "AI turn");
+       _controller->requestAIMove();
+    }
 }
 
 
