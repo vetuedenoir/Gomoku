@@ -21,6 +21,7 @@ static MasterAI19 makeAI(int depth, Color aiColor = Color::Black, int radius = 1
 {
 	Logger::info("AI", "makeAI: depth=" + std::to_string(depth) + " radius=" + std::to_string(radius) + " aiColor=" + colorStr(aiColor));
 	MasterAI19 ai(depth, radius, aiColor);
+	ai.disableTimeLimit();
 	return ai;
 }
 

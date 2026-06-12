@@ -53,6 +53,8 @@ class MasterAI
 		void setAIColor(Color color) noexcept { _aiColor = color; }
 
 		void setTimeLimit(int milliseconds) noexcept;
+		void disableTimeLimit() noexcept;
+		bool hasTimeLimit() const noexcept;
 
 		const SearchStats& lastSearchStats() const noexcept { return _stats; }
 
@@ -67,9 +69,11 @@ class MasterAI
 		using TimePoint = std::chrono::time_point<Clock>;
 
 		SearchStats             _stats;
-		int                     _timeLimitMs  = 1000;
+		std::optional<int>      _timeLimitMs = 1000;
 		bool                    _timeExceeded = false;
 		TimePoint               _searchStart  = {};
+
+		void tickTimeLimit();
 
 		int signedFromAi(Color side, int raw) const;
 

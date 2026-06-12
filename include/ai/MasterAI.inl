@@ -73,9 +73,9 @@ t_cell	MasterAI<Traits>::findBestMove(
 	_aiColor = color;
 
 	_stats        = SearchStats{};
-	// Time limit disabled — search runs to completion (tests / debug).
-	// _timeExceeded = false;
-	// _searchStart  = Clock::now();
+	_timeExceeded = false;
+	if (_timeLimitMs)
+		_searchStart = Clock::now();
 
 	const std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
 
@@ -99,6 +99,12 @@ t_cell	MasterAI<Traits>::findBestMove(
 		                    std::numeric_limits<int>::min(),
 		                    std::numeric_limits<int>::max(), false, pv);
 
+		if (_timeExceeded)
+		{
+			Logger::debug("AI", "[findBestMove] time limit reached — returning best so far");
+			break;
+		}
+
 		const std::string marker = (score > bestScore) ? " ← best" : "";
 		const std::string macro  = scoreMacroLabel(score);
 		Logger::debug("AI", "  root (" + std::to_string(move.x) + ","
@@ -111,12 +117,6 @@ t_cell	MasterAI<Traits>::findBestMove(
 			bestPV    = pv;
 			bestPV.insert(bestPV.begin(), move);
 		}
-
-		// if (_timeExceeded)
-		// {
-		// 	Logger::debug("AI", "[findBestMove] time limit reached — returning best so far");
-		// 	break;
-		// }
 	}
 
 	_stats.bestScore = bestScore;
@@ -153,9 +153,35 @@ void	MasterAI<Traits>::setSearchDepth(int depth) noexcept
 template <typename Traits>
 void	MasterAI<Traits>::setTimeLimit(int milliseconds) noexcept
 {
-	(void)milliseconds;
-	// Time limit disabled — search runs to completion (tests / debug).
-	// _timeLimitMs = milliseconds;
+	_timeLimitMs = (milliseconds > 0) ? std::optional<int>{milliseconds} : std::nullopt;
+}
+
+template <typename Traits>
+void	MasterAI<Traits>::disableTimeLimit() noexcept
+{
+	_timeLimitMs = std::nullopt;
+}
+
+template <typename Traits>
+bool	MasterAI<Traits>::hasTimeLimit() const noexcept
+{
+	return _timeLimitMs.has_value();
+}
+
+template <typename Traits>
+void	MasterAI<Traits>::tickTimeLimit()
+{
+	if (!_timeLimitMs || _timeExceeded)
+		return;
+
+	const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+	    Clock::now() - _searchStart).count();
+	if (elapsed >= *_timeLimitMs)
+	{
+		_timeExceeded = true;
+		Logger::debug("AI", "[minimax] time limit hit at "
+		    + std::to_string(elapsed) + "ms  nodes=" + std::to_string(_stats.nodesVisited));
+	}
 }
 
 template <typename Traits>
@@ -172,20 +198,9 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 {
 	++_stats.nodesVisited;
 
-	// Time limit disabled — search runs to completion (tests / debug).
-	// if (!_timeExceeded)
-	// {
-	// 	const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-	// 	    Clock::now() - _searchStart).count();
-	// 	if (elapsed >= _timeLimitMs)
-	// 	{
-	// 		_timeExceeded = true;
-	// 		Logger::debug("AI", "[minimax] time limit hit at "
-	// 		    + std::to_string(elapsed) + "ms  nodes=" + std::to_string(_stats.nodesVisited));
-	// 	}
-	// }
-	// if (_timeExceeded)
-	// 	return 0;
+	tickTimeLimit();
+	if (_timeExceeded)
+		return 0;
 
 	const int currentDepth = _maxDepth - depth;
 	if (currentDepth > _stats.maxDepthSeen)
