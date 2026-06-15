@@ -206,6 +206,7 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 	if (currentDepth > _stats.maxDepthSeen)
 		_stats.maxDepthSeen = currentDepth;
 
+	// TODO: who does the flip ?
 	// The side that just played is the opponent of sideToMove() (makeMove flipped it).
 	const Color lastPlayed = (position.sideToMove() == Color::Black) ? Color::White : Color::Black;
 
