@@ -15,25 +15,40 @@
 template<typename Traits>
 class SearchPosition
 {
-public:
-    static SearchPosition fromBoard(const GameBoard& src);
-    static const ZobristHasher<Traits>& hasher();
+    
+    private:
+        SearchPosition(t_BWBoard<Traits> board, uint64_t hash, const Color side,
+            const ZobristHasher<Traits>& hasher);
+        
+        struct MoveState {
+            uint64_t hash;
+            Color    sideToMove;
+            int      _blackCaptures;
+            int      _whiteCaptures;
+            typename Traits::Bitboard capturedStones; // PIERRES RETIRÉES (à restaurer)
+        };
 
-    void makeMove(int col, int row, CellStatus color);
-    void undoMove(int col, int row, CellStatus color);
-
-    const t_BWBoard<Traits>& board()       const;
-    uint64_t                 zobristHash() const;
-    Color                    sideToMove()  const;
-
-private:
-    SearchPosition(t_BWBoard<Traits> board, uint64_t hash, const Color side,
-                const ZobristHasher<Traits>& hasher);
-
-    t_BWBoard<Traits>              _board;
-    uint64_t                       _hash;
-    Color                          _sideToMove;
-    const ZobristHasher<Traits>&   _hasher;
+        int                            _blackCaptures;
+        int                            _whiteCaptures;
+        t_BWBoard<Traits>              _board;
+        uint64_t                       _hash;
+        Color                          _sideToMove;
+        const ZobristHasher<Traits>&   _hasher;
+        
+    public:
+        static SearchPosition fromBoard(const GameBoard& src);
+        static const ZobristHasher<Traits>& hasher();
+    
+        void makeMove(int col, int row, CellStatus color);
+        void undoMove(int col, int row, CellStatus color);
+    
+        int  blackCaptures() const { return _blackCaptures; }
+        int  whiteCaptures() const { return _whiteCaptures; }
+    
+        const t_BWBoard<Traits>& board()       const;
+        uint64_t                 zobristHash() const;
+        Color                    sideToMove()  const;
+        
 };
 
 template<typename Traits>
