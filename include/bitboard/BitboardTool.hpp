@@ -4,6 +4,8 @@
 #include "bitboard/bitboard.hpp"
 #include "bitboard/PatternTypes.hpp"
 
+#include "game/contracts/contracts.hpp"
+
 #include <cstddef>
 #include <cstring>
 
@@ -67,6 +69,10 @@ public:
 	                const typename Traits::Bitboard& opponent, int col, int row) const;
 	bool is_double_three_at(const typename Traits::Bitboard& stones,
 	                        const typename Traits::Bitboard& opponent, int col, int row) const;
+
+
+	CaptureResult<Traits> resolveCaptures(t_BWBoard<Traits>& bb, int col,
+                                                              int row, const Color color) const;
 };
 
 using BitboardTool19 = BitboardTool<BoardTraits<19>>;
