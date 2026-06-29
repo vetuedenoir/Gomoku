@@ -3,6 +3,7 @@
 
 #include "game/contracts/contracts.hpp"
 #include "game/board/GameBoard.hpp"
+#include <optional>
 #include <vector>
 
 enum class OpeningActor
@@ -32,18 +33,39 @@ struct OpeningStep
     bool                   triggersColorChoice = false;
 };
 
-struct GameState;
+struct OpeningRuntime;
+struct PlacedStone;
+
+enum class OpeningEvent
+{
+    StepContinues,
+    NextStep,
+    ColorChoice,
+    Finished,
+};
+
+struct OpeningCommitResult
+{
+    bool                success = false;
+    OpeningEvent        event   = OpeningEvent::StepContinues;
+    std::optional<Seat> nextSeat;
+};
 
 std::vector<OpeningStep> buildOpeningSteps(OpeningProtocol openingProtocol);
 
-OpeningStep              getCurrentOpeningStep(const GameState& state);
+OpeningStep              getCurrentOpeningStep(const OpeningRuntime& runtime);
 
-bool                     isOpeningComplete(const GameState& state);
+bool                     isOpeningComplete(const OpeningRuntime& runtime);
 
-bool                     canPlaceOpeningStone(const GameState& state, const Move& move);
+bool                     canPlaceOpeningStone(const OpeningRuntime& runtime,
+                                              const GameBoard& board,
+                                              const Move& move);
 
-bool                     commitOpeningMove(GameState& state, const Move& move);
+OpeningCommitResult      commitOpeningMove(OpeningRuntime& runtime,
+                                           GameBoard& board,
+                                           const Move& move);
 
-std::vector<Move>        getLegalOpeningMoves(const GameState& state);
+std::vector<Move>        getLegalOpeningMoves(const OpeningRuntime& runtime,
+                                              const GameBoard& board);
 
 #endif

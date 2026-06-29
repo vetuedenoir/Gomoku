@@ -1,5 +1,5 @@
 #include "game/validation/rules/OpeningRules.hpp"
-#include "game/GameState.hpp"
+#include "game/OpeningRuntime.hpp"
 #include "game/contracts/contracts.hpp"
 #include "logger/Logger.hpp"
 #include <cmath>
@@ -15,28 +15,17 @@ static const char* colorStr(CellStatus c)
     }
 }
 
-static const char* phaseStr(GamePhase p)
-{
-    switch (p)
-    {
-        case GamePhase::Opening: return "Opening";
-        case GamePhase::ColorChoice:      return "Color choice";
-        case GamePhase::Standard:       return "Standard";
-        default:                          return "Unknown phase";
-    }
-}
-
 static Seat toSeat(OpeningActor a)
 {
     return (a == OpeningActor::TentativeFirst) ? Seat::First : Seat::Second;
 }
 
-static std::string stepCtx(const GameState& state)
+static std::string stepCtx(const OpeningRuntime& runtime)
 {
-    const OpeningStep& step = state.openingSteps[state.stepIdx];
-    return "step " + std::to_string(state.stepIdx)
-        + "/" + std::to_string(static_cast<int>(state.openingSteps.size()) - 1)
-        + "  sub " + std::to_string(state.subIdx)
+    const OpeningStep& step = runtime.openingSteps[runtime.stepIdx];
+    return "step " + std::to_string(runtime.stepIdx)
+        + "/" + std::to_string(static_cast<int>(runtime.openingSteps.size()) - 1)
+        + "  sub " + std::to_string(runtime.subIdx)
         + "/" + std::to_string(static_cast<int>(step.stones.size()) - 1)
         + "  actor=" + seatStr(toSeat(step.actor));
 }
@@ -137,33 +126,35 @@ static bool isLegalPlacement(int col, int row, int boardSize,
     return true;
 }
 
-OpeningStep getCurrentOpeningStep(const GameState& state)
+OpeningStep getCurrentOpeningStep(const OpeningRuntime& runtime)
 {
-    return state.openingSteps[state.stepIdx];
+    return runtime.openingSteps[runtime.stepIdx];
 }
 
-bool isOpeningComplete(const GameState& state)
+bool isOpeningComplete(const OpeningRuntime& runtime)
 {
-    return state.openingSteps.empty()
-        || state.stepIdx >= (int)state.openingSteps.size();
+    return runtime.openingSteps.empty()
+        || runtime.stepIdx >= (int)runtime.openingSteps.size();
 }
 
-bool canPlaceOpeningStone(const GameState& state, const Move& move)
+bool canPlaceOpeningStone(const OpeningRuntime& runtime,
+                          const GameBoard& board,
+                          const Move& move)
 {
-    if (isOpeningComplete(state))
+    if (isOpeningComplete(runtime))
         return false;
 
-    const OpeningStep& step = state.openingSteps[state.stepIdx];
-    const StoneSpec&   spec = step.stones[state.subIdx];
+    const OpeningStep& step = runtime.openingSteps[runtime.stepIdx];
+    const StoneSpec&   spec = step.stones[runtime.subIdx];
 
     if (move.forcedColor != CellStatus::Empty && move.forcedColor != spec.color)
         return false;
 
-    if (!state.board->isFree(move.col, move.row))
+    if (!board.isFree(move.col, move.row))
         return false;
 
-    if (!isLegalPlacement(move.col, move.row, state.board->getSize(),
-                          spec.constraint, state.historyPlacedStones))
+    if (!isLegalPlacement(move.col, move.row, board.getSize(),
+                          spec.constraint, runtime.historyPlacedStones))
         return false;
 
     return true;
@@ -212,23 +203,25 @@ static std::string openingStepDescription(OpeningProtocol openingProtocol, int s
     return "Unknown step";
 }
 
-bool commitOpeningMove(GameState& state, const Move& move)
+OpeningCommitResult commitOpeningMove(OpeningRuntime& runtime,
+                                      GameBoard& board,
+                                      const Move& move)
 {
-    if (isOpeningComplete(state))
+    if (isOpeningComplete(runtime))
     {
         Logger::warn("OPENING", "commitOpeningMove called but opening is already complete");
-        return false;
+        return {};
     }
 
-    const OpeningStep& step = state.openingSteps[state.stepIdx];
-    const StoneSpec&   spec = step.stones[state.subIdx];
+    const OpeningStep& step = runtime.openingSteps[runtime.stepIdx];
+    const StoneSpec&   spec = step.stones[runtime.subIdx];
 
-    if (state.subIdx == 0)
-        Logger::info("OPENING", openingStepDescription(state.openingProtocol, state.stepIdx));
+    if (runtime.subIdx == 0)
+        Logger::info("OPENING", openingStepDescription(runtime.openingProtocol, runtime.stepIdx));
 
-    const std::string stepInfo = stepCtx(state);
+    const std::string stepInfo = stepCtx(runtime);
 
-    if (!canPlaceOpeningStone(state, move))
+    if (!canPlaceOpeningStone(runtime, board, move))
     {
         if (move.forcedColor != CellStatus::Empty && move.forcedColor != spec.color)
         {
@@ -236,7 +229,7 @@ bool commitOpeningMove(GameState& state, const Move& move)
                 stepInfo + " | wrong colour: got " + colorStr(move.forcedColor)
                 + ", expected " + colorStr(spec.color));
         }
-        else if (!state.board->isFree(move.col, move.row))
+        else if (!board.isFree(move.col, move.row))
         {
             Logger::warn("OPENING",
                 stepInfo + " | (" + std::to_string(move.col) + "," + std::to_string(move.row)
@@ -258,76 +251,68 @@ bool commitOpeningMove(GameState& state, const Move& move)
                 stepInfo + " | (" + std::to_string(move.col) + "," + std::to_string(move.row)
                 + ") rejected — " + reason);
         }
-        return false;
+        return {};
     }
 
-    if (!state.board->placeStoneOfColor(move.col, move.row, spec.color))
-        return false;
+    if (!board.placeStoneOfColor(move.col, move.row, spec.color))
+        return {};
 
     Logger::debug("OPENING",
         stepInfo + " | " + colorStr(spec.color)
         + " → (" + std::to_string(move.col) + "," + std::to_string(move.row) + ") ✓");
 
-    state.historyPlacedStones.push_back({ move.col, move.row, spec.color });
+    runtime.historyPlacedStones.push_back({ move.col, move.row, spec.color });
 
-    ++state.subIdx;
+    ++runtime.subIdx;
 
-    if (state.subIdx < (int)step.stones.size())
-        return true;
+    if (runtime.subIdx < (int)step.stones.size())
+        return { true, OpeningEvent::StepContinues, std::nullopt };
 
     const bool hadColorChoice = step.triggersColorChoice;
-    ++state.stepIdx;
-    state.subIdx = 0;
+    ++runtime.stepIdx;
+    runtime.subIdx = 0;
 
-    Logger::debug("OPENING",
+    Logger::debug("DEBUG OPENING RULES",
         "step complete — triggersColorChoice=" + std::string(hadColorChoice ? "true" : "false"));
 
     if (hadColorChoice)
     {
-        const GamePhase prev = state.phase;
-        state.phase        = GamePhase::ColorChoice;
-        state.currentActor = otherSeat(toSeat(step.actor));
-
-        Logger::info("PHASE",
-            std::string(phaseStr(prev)) + " → " + phaseStr(state.phase)
-            + "  chooser=" + seatStr(state.currentActor));
+        const Seat chooser = otherSeat(toSeat(step.actor));
+        Logger::info("OPENING", "step complete — color choice for " + seatStr(chooser));
+        return { true, OpeningEvent::ColorChoice, chooser };
     }
-    else if (state.stepIdx < (int)state.openingSteps.size())
+
+    if (runtime.stepIdx < (int)runtime.openingSteps.size())
     {
-        state.currentActor = toSeat(state.openingSteps[state.stepIdx].actor);
-        Logger::debug("OPENING",
-            "next step actor → " + seatStr(state.currentActor));
-    }
-    else if (state.stepIdx >= (int)state.openingSteps.size())
-    {
-        const GamePhase prev = state.phase;
-        state.phase = GamePhase::Standard;
-
-        Logger::info("PHASE",
-            std::string(phaseStr(prev)) + " → " + phaseStr(state.phase)
-            + "  (opening complete — colour assignment handled by GameController)");
+        const Seat next = toSeat(runtime.openingSteps[runtime.stepIdx].actor);
+        Logger::debug("OPENING", "next step actor → " + seatStr(next));
+        return { true, OpeningEvent::NextStep, next };
     }
 
-    return true;
+    const Seat next = otherSeat(toSeat(step.actor));
+    Logger::info("OPENING", "opening complete — next seat " + seatStr(next));
+    return { true, OpeningEvent::Finished, next };
 }
 
-std::vector<Move> getLegalOpeningMoves(const GameState& state)
+std::vector<Move> getLegalOpeningMoves(const OpeningRuntime& runtime,
+                                       const GameBoard& board)
 {
     std::vector<Move> moves;
-    // why this function is called if the opening is complete?
-    if (isOpeningComplete(state))
+
+    if (isOpeningComplete(runtime))
         return moves;
 
-    const OpeningStep& step = state.openingSteps[state.stepIdx];
-    const StoneSpec&   spec = step.stones[state.subIdx];
-    const int          size = state.board->getSize();
+    const OpeningStep& step = runtime.openingSteps[runtime.stepIdx];
+    const StoneSpec&   spec = step.stones[runtime.subIdx];
+    const int          size = board.getSize();
+    const int          centerPerimeter = size / 2;
 
-    for (int row = 0; row < size; ++row)
+    for (int row = centerPerimeter - 1; row < centerPerimeter + 1; ++row)
     {
-        for (int col = 0; col < size; ++col)
+        for (int col = centerPerimeter - 1; col < centerPerimeter + 1; ++col)
         {
             const Move m{ col, row, spec.color };
-            if (canPlaceOpeningStone(state, m))
+            if (canPlaceOpeningStone(runtime, board, m))
                 moves.push_back(m);
         }
     }

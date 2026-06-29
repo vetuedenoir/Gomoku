@@ -2,7 +2,7 @@
 
 ## Facade: `MoveValidator`
 
-- **Input:** always `GameState` + `Move` (and phase from `GameState`).
+- **Input:** `ValidationContext` (board + opening runtime) + `GamePhase` + side to move + `Move`.
 - **Output:** `isLegal`, `legalMoves` — read-only, no stone placement.
 - **Logging:** tag `VALIDATOR` on accept/reject.
 

@@ -1,25 +1,9 @@
 #include "doctest.h"
-#include "game/board/GameBoard.hpp"
 #include "ai/ActiveZone.hpp"
-#include "game/board/DebugBoard.hpp"
-#include "bitboard/bitboard.hpp"
+#include "helpers/helpers.hpp"
+#include "helpers/helpers_19.hpp"
 
-static GameBoard empty_board()
-{
-    return GameBoard(19, Color::Black);
-}
-
-static void place(GameBoard& b, int col, int row, CellStatus color)
-{
-    b.placeStoneOfColor(col, row, color);
-}
-
-static t_BWBoard19 to_bb(const GameBoard& b)
-{
-    return GameBoard_to_bitboard<BoardTraits<19>>(b);
-}
-
-TEST_CASE("ActiveZone: empty board yields zero candidates")
+TEST_CASE("[19x19] ActiveZone: empty board yields zero candidates")
 {
     ActiveZone19 zone(2);
     zone.initialize(to_bb(empty_board()));
@@ -27,7 +11,7 @@ TEST_CASE("ActiveZone: empty board yields zero candidates")
     CHECK(zone.size() == 0);
 }
 
-TEST_CASE("ActiveZone: corner stone clips to board boundary")
+TEST_CASE("[19x19] ActiveZone: corner stone clips to board boundary")
 {
     GameBoard b = empty_board();
     place(b, 0, 0, CellStatus::Black);
@@ -49,7 +33,7 @@ TEST_CASE("ActiveZone: corner stone clips to board boundary")
     CHECK_FALSE(zone.contains(0, 2));
 }
 
-TEST_CASE("ActiveZone: center stone radius=1 yields exactly 8 candidates")
+TEST_CASE("[19x19] ActiveZone: center stone radius=1 yields exactly 8 candidates")
 {
     GameBoard b = empty_board();
     place(b, 9, 9, CellStatus::Black);
@@ -66,7 +50,7 @@ TEST_CASE("ActiveZone: center stone radius=1 yields exactly 8 candidates")
     CHECK_FALSE(zone.contains(9, 9));
 }
 
-TEST_CASE("ActiveZone: center stone radius=2 yields exactly 24 candidates")
+TEST_CASE("[19x19] ActiveZone: center stone radius=2 yields exactly 24 candidates")
 {
     GameBoard b = empty_board();
     place(b, 9, 9, CellStatus::Black);
@@ -81,7 +65,7 @@ TEST_CASE("ActiveZone: center stone radius=2 yields exactly 24 candidates")
     CHECK_FALSE(zone.contains(9, 12));
 }
 
-TEST_CASE("ActiveZone: adjacent stones merge zones correctly")
+TEST_CASE("[19x19] ActiveZone: adjacent stones merge zones correctly")
 {
     GameBoard b = empty_board();
     place(b, 9,  9, CellStatus::Black);
@@ -106,7 +90,7 @@ TEST_CASE("ActiveZone: adjacent stones merge zones correctly")
     CHECK_FALSE(zone.contains(10, 9));
 }
 
-TEST_CASE("ActiveZone: edge stone clips out-of-board neighbors")
+TEST_CASE("[19x19] ActiveZone: edge stone clips out-of-board neighbors")
 {
     GameBoard b = empty_board();
     place(b, 0, 9, CellStatus::Black); // left edge, mid-row
@@ -125,7 +109,7 @@ TEST_CASE("ActiveZone: edge stone clips out-of-board neighbors")
     CHECK_FALSE(zone.contains(0, 9)); // occupied
 }
 
-TEST_CASE("ActiveZone: clear() resets all candidates")
+TEST_CASE("[19x19] ActiveZone: clear() resets all candidates")
 {
     GameBoard b = empty_board();
     place(b, 9, 9, CellStatus::Black);
@@ -140,11 +124,9 @@ TEST_CASE("ActiveZone: clear() resets all candidates")
     CHECK(zone.size() == 0);
     CHECK_FALSE(zone.contains(8, 9));
     CHECK_FALSE(zone.contains(10, 9));
-
-    printBoardWithOverlay(b, buildOverlayFromActiveZone(zone));
 }
 
-TEST_CASE("ActiveZone: re-initialize overwrites previous state")
+TEST_CASE("[19x19] ActiveZone: re-initialize overwrites previous state")
 {
     ActiveZone19 zone(1);
 
@@ -166,7 +148,7 @@ TEST_CASE("ActiveZone: re-initialize overwrites previous state")
     CHECK(zone.contains(10, 9));
 }
 
-TEST_CASE("ActiveZone: visual overlay — neighbors of all stones")
+TEST_CASE("[19x19] ActiveZone: visual overlay — neighbors of all stones")
 {
     GameBoard b = empty_board();
 

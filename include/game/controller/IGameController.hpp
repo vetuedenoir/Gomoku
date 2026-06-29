@@ -31,6 +31,9 @@ class IGameController
         virtual int                  stepIdx()          const = 0;
         virtual std::optional<Color> getColorFromWinningActor()           const = 0;
         virtual int                  captureCount(const Color c) const = 0;
+
+        virtual Actor                playerActor()      const = 0;
+        virtual Actor                aiActor()          const = 0;
 };
 
 std::unique_ptr<IGameController> makeGameController(const GameConfig& config);

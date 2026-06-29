@@ -20,8 +20,8 @@ private:
     static Color colorFromCell(CellStatus cell);
     static const char* colorLabel(const Color color);
 
-    CaptureResult<Traits> resolveCaptures(t_BWBoard<Traits>& bb, int col, int row,
-                                          const Color color) const;
+    // CaptureResult<Traits> resolveCaptures(t_BWBoard<Traits>& bb, int col, int row,
+    //                                       const Color color) const;
 
     std::optional<Color> checkWin(const t_BWBoard<Traits>& bb, const Color color, int col, int row,
                                   int capturesBlack, int capturesWhite) const;
@@ -41,18 +41,18 @@ const char* TurnController<Traits>::colorLabel(const Color color)
     return (color == Color::Black) ? "Black" : "White";
 }
 
-template<typename Traits>
-CaptureResult<Traits> TurnController<Traits>::resolveCaptures(t_BWBoard<Traits>& bb, int col,
-                                                              int row, const Color color) const
-{
-    typename Traits::Bitboard capturedMask = {};
+// template<typename Traits>
+// CaptureResult<Traits> TurnController<Traits>::resolveCaptures(t_BWBoard<Traits>& bb, int col,
+//                                                               int row, const Color color) const
+// {
+//     typename Traits::Bitboard capturedMask = {};
 
-    detect_captures<Traits>(bb, col, row, color, capturedMask);
+//     detect_captures<Traits>(bb, col, row, color, capturedMask);
 
-    const int newCaptures = popcount_bb_generic<Traits>(capturedMask);
+//     const int newCaptures = popcount_bb_generic<Traits>(capturedMask);
 
-    return { capturedMask, newCaptures };
-}
+//     return { capturedMask, newCaptures };
+// }
 
 template<typename Traits>
 std::optional<Color> TurnController<Traits>::checkWin(const t_BWBoard<Traits>& bb, const Color color,
@@ -92,7 +92,7 @@ TurnOutcome<Traits> TurnController<Traits>::play(t_BWBoard<Traits>& bb, const Mo
 {
     const Color color = colorFromCell(move.forcedColor);
 
-    const CaptureResult<Traits> caps = resolveCaptures(bb, move.col, move.row, color);
+    const CaptureResult<Traits> caps = BitboardTool<Traits>::instance().resolveCaptures(bb, move.col, move.row, color);
 
     set_bb_generic<Traits>(bitboardForColor<Traits>(bb, color), move.col, move.row);
     apply_captures<Traits>(bb, caps.mask, color);

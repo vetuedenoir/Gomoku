@@ -20,10 +20,14 @@ struct TTEntry
     Move     bestMove;
 };
 
+//calcule de la taille de la table.
+// 7 ^ depth
+// 7 ^ 10 = 282 475 249
+
 class TranspositionTable
 {
     private:
-        static constexpr int TABLE_SIZE = 1024;
+        static constexpr int TABLE_SIZE = 282475249;
         TTEntry              _table[TABLE_SIZE];
 
     public:

@@ -277,3 +277,17 @@ bool BitboardTool<Traits>::is_double_three_at(const typename Traits::Bitboard& s
 	const int score = check_open_three(stones, opponent, col, row);
 	return isDoubleThreeScore(score);
 }
+
+
+template<typename Traits>
+CaptureResult<Traits> BitboardTool<Traits>::resolveCaptures(t_BWBoard<Traits>& bb, int col,
+                                                              int row, const Color color) const
+{
+    typename Traits::Bitboard capturedMask = {};
+
+    detect_captures<Traits>(bb, col, row, color, capturedMask);
+
+    const int newCaptures = popcount_bb_generic<Traits>(capturedMask);
+
+    return { capturedMask, newCaptures };
+}

@@ -6,113 +6,206 @@
 
 template<typename Traits>
 GameController<Traits>::GameController(const GameConfig& config)
-    : _state(config.boardSize, config.openingProtocol)
+    : _board(std::make_unique<GameBoard>(config.boardSize, Color::Black)),
+      _opening(config.openingProtocol)
 {
-    if (_state.phase == GamePhase::Standard)
+    if (config.playerColor == Color::Black)
     {
-        assignDefaultColors();
-        beginNormalPlay();
+        _aiActor.color = Color::White;
+        _aiActor.seat = Seat::Second;
+        _playerActor.color = Color::Black;
+        _playerActor.seat = Seat::First;
+        _masterAI.setAIColor(Color::White);
     }
+    else
+    {
+        _aiActor.color = Color::Black;
+        _aiActor.seat = Seat::First;
+        _playerActor.color = Color::White;
+        _playerActor.seat = Seat::Second;
+        _masterAI.setAIColor(Color::Black);
+    }
+
+    _phase = _opening.openingSteps.empty() ? GamePhase::Standard : GamePhase::Opening;
+
+    if (_phase == GamePhase::Standard)
+        _currentActor = actorWithColor(Color::Black);
+    else
+        setCurrentActorForSeat(Seat::First);
+
+    Logger::info("CONTROLLER",
+        std::string("phase=") + (_phase == GamePhase::Standard ? "Standard"
+            : _phase == GamePhase::Opening ? "Opening" : "ColorChoice")
+        + "  current=" + seatStr(_currentActor.seat)
+        + " (" + (_currentActor.color == Color::Black ? "Black" : "White") + ")");
 }
 
 template<typename Traits>
-void GameController<Traits>::assignDefaultColors()
+ValidationContext GameController<Traits>::validationContext() const
 {
-    _blackActor  = {Seat::First, Color::Black};
-    _whiteActor  = {Seat::Second, Color::White};
+    return { *_board, _opening };
+}
+
+template<typename Traits>
+void GameController<Traits>::logPhaseTransition(GamePhase from, GamePhase to) const
+{
+    auto str = [](GamePhase p) {
+        switch (p)
+        {
+            case GamePhase::Opening:     return "Opening";
+            case GamePhase::ColorChoice: return "ColorChoice";
+            case GamePhase::Standard:    return "Standard";
+        }
+        return "Unknown";
+    };
+    Logger::info("PHASE", std::string(str(from)) + " → " + str(to));
 }
 
 template<typename Traits>
 void GameController<Traits>::assignColorsAfterChoice(bool swapped)
 {
-    if (!swapped)
+    if (swapped)
     {
-        _blackActor = {Seat::First, Color::Black};
-        _whiteActor = {Seat::Second, Color::White};
-    }
-    else
-    {
-        _blackActor = {Seat::Second, Color::Black};
-        _whiteActor = {Seat::First, Color::White};
+        std::swap(_playerActor.color, _aiActor.color);
+        std::swap(_playerActor.seat, _aiActor.seat);
+        _masterAI.setAIColor(_aiActor.color);
     }
 
     Logger::info("RESOLVE",
-        "Black → " + seatStr(_blackActor.seat)
-        + "  |  White → " + seatStr(_whiteActor.seat));
+        "Player → " + seatStr(_playerActor.seat)
+        + "  |  AI → " + seatStr(_aiActor.seat)
+        + "  |  swapped=" + (swapped ? "true" : "false"));
+}
+
+template<typename Traits>
+Actor GameController<Traits>::actorWithColor(Color color) const
+{
+    return (_playerActor.color == color) ? _playerActor : _aiActor;
 }
 
 template<typename Traits>
 Color GameController<Traits>::colorForSeat(Seat seat) const
 {
-    return (seat == _blackActor.seat) ? Color::Black : Color::White;
+    return (seat == _playerActor.seat) ? _playerActor.color : _aiActor.color;
+}
+
+template<typename Traits>
+void GameController<Traits>::setCurrentActorForSeat(Seat seat)
+{
+    _currentActor = { seat, colorForSeat(seat) };
+}
+
+template<typename Traits>
+void GameController<Traits>::syncCurrentActorColor()
+{
+    _currentActor.color = colorForSeat(_currentActor.seat);
 }
 
 template<typename Traits>
 void GameController<Traits>::syncBoardCurrentColor()
 {
-    _state.board->setCurrentColor(_currentActor.color);
+    _board->setCurrentColor(_currentActor.color);
 }
 
 template<typename Traits>
 void GameController<Traits>::beginNormalPlay()
 {
-    // TODO: verify this on swap openings
-    _currentActor = _blackActor;
     syncBoardCurrentColor();
 
-    Logger::info("PHASE",
-        std::string("Standard — Black=") + seatStr(_blackActor.seat)
-        + "  White=" + seatStr(_whiteActor.seat)
+    Logger::info("PHASE BEGIN NORMAL PLAY",
+        std::string("Standard — Player=") + seatStr(_playerActor.seat)
+        + "  AI=" + seatStr(_aiActor.seat)
         + "  to move=" + seatStr(_currentActor.seat)
         + " (" + (_currentActor.color == Color::Black ? "Black" : "White") + ")");
 }
 
 template<typename Traits>
-void GameController<Traits>::switchActor()
+void GameController<Traits>::enterStandardPhase()
 {
-    _currentActor = (_currentActor.seat == _blackActor.seat) ? _whiteActor : _blackActor;
+    const GamePhase prev = _phase;
+    _phase = GamePhase::Standard;
+    logPhaseTransition(prev, _phase);
+    beginNormalPlay();
+}
+
+template<typename Traits>
+void GameController<Traits>::applyOpeningResult(const OpeningCommitResult& result)
+{
+    if (result.nextSeat.has_value())
+        setCurrentActorForSeat(*result.nextSeat);
+
+    switch (result.event)
+    {
+        case OpeningEvent::StepContinues:
+        case OpeningEvent::NextStep:
+            break;
+
+        case OpeningEvent::ColorChoice:
+        {
+            const GamePhase prev = _phase;
+            _phase = GamePhase::ColorChoice;
+            logPhaseTransition(prev, _phase);
+            break;
+        }
+
+        case OpeningEvent::Finished:
+            enterStandardPhase();
+            break;
+    }
+}
+
+template<typename Traits>
+void GameController<Traits>::passTurn()
+{
+    _currentActor = (_currentActor.seat == _playerActor.seat) ? _aiActor : _playerActor;
     syncBoardCurrentColor();
 }
 
 template<typename Traits>
 Color GameController<Traits>::currentColor() const
 {
-    if (_state.phase == GamePhase::Standard)
-        return _currentActor.color;
-    return colorForSeat(_state.currentActor);
+    return _currentActor.color;
 }
 
 template<typename Traits>
 bool GameController<Traits>::handleOpeningClick(int col, int row)
 {
-    const GamePhase prevPhase = _state.phase;
-    const CellStatus forced   = _state.nextOpeningColor();
+    const CellStatus forced = _opening.nextOpeningColor();
     const Move       m{ col, row, forced };
-    if (!commitOpeningMove(_state, m))
+
+    const OpeningCommitResult result = commitOpeningMove(_opening, *_board, m);
+    if (!result.success)
         return false;
 
-    if (prevPhase != GamePhase::Standard && _state.phase == GamePhase::Standard)
-    {
-        assignDefaultColors();
-        beginNormalPlay();
-    }
-
+    applyOpeningResult(result);
     return true;
 }
 
 template<typename Traits>
 void GameController<Traits>::resolveColorChoice(bool swapped)
 {
+    Logger::info("CHOICE",
+        seatStr(_currentActor.seat)
+        + (swapped ? " swapped → takes opposite colour"
+                   : " keeps default colour"));
+
+    // Swap interverts player/ai actors, not currentActor seat.
     assignColorsAfterChoice(swapped);
-    // TODO: rename this function
-    _state.resolveColorChoice(swapped);
-    beginNormalPlay();
+    syncCurrentActorColor();
+
+    // Chooser finished their action → pass to opposite colour for first Standard move.
+    passTurn();
+    enterStandardPhase();
 }
 
 template<typename Traits>
 void GameController<Traits>::continueOpeningPlacement()
 {
-    _state.continueOpeningPlacement();
+    const GamePhase prev = _phase;
+    _opening.continueOpeningPlacement();
+    _phase = GamePhase::Opening;
+    setCurrentActorForSeat(Seat::Second);
+    logPhaseTransition(prev, _phase);
 }
 
 template<typename Traits>
@@ -120,22 +213,22 @@ MoveResult GameController<Traits>::submitMove(int col, int row)
 {
     if (_winner.has_value())
         return MoveResult::Illegal;
-    if (_state.phase != GamePhase::Standard)
+    if (_phase != GamePhase::Standard)
         return MoveResult::Illegal;
 
     const Color moverColor = currentColor();
     const Move  move{ col, row, colorToCell(moverColor) };
 
-    if (!_validator.isLegal(_state, move))
+    if (!_validator.isLegal(validationContext(), _phase, moverColor, move))
         return MoveResult::Illegal;
 
-    t_BWBoard<Traits> bb = GameBoard_to_bitboard<Traits>(*_state.board);
+    t_BWBoard<Traits> bb = GameBoard_to_bitboard<Traits>(*_board);
     const TurnOutcome<Traits> outcome =
         _turnController.play(bb, move, _capturesBlack, _capturesWhite);
 
-    _state.board->placeStoneOfColor(move.col, move.row, move.forcedColor);
+    _board->placeStoneOfColor(move.col, move.row, move.forcedColor);
     bb_for_each_bit<Traits>(outcome.capturedMask, [this](int x, int y) {
-        _state.board->clearCell(x, y);
+        _board->clearCell(x, y);
     });
 
     if (moverColor == Color::Black)
@@ -149,7 +242,7 @@ MoveResult GameController<Traits>::submitMove(int col, int row)
     if (outcome.result == MoveResult::Win)
         return MoveResult::Win;
 
-    switchActor();
+    passTurn();
     return MoveResult::Ok;
 }
 
@@ -162,7 +255,7 @@ std::optional<Move> GameController<Traits>::requestAIMove()
         return std::nullopt;
     }
 
-    if (_state.phase == GamePhase::ColorChoice)
+    if (_phase == GamePhase::ColorChoice)
     {
         static std::mt19937 rng{std::random_device{}()};
         bool swapped = std::uniform_int_distribution<int>(0, 1)(rng);
@@ -172,23 +265,15 @@ std::optional<Move> GameController<Traits>::requestAIMove()
         return std::nullopt;
     }
 
-    Logger::info("AI", "requestAIMove — in progress");
-
-    if (_state.phase == GamePhase::Opening)
+    if (_phase == GamePhase::Opening)
     {
-        const std::vector<Move> candidates = getLegalOpeningMoves(_state);
+        const std::vector<Move> candidates = getLegalOpeningMoves(_opening, *_board);
         if (candidates.empty())
         {
             Logger::warn("AI", "requestAIMove — no legal opening moves");
             return std::nullopt;
         }
-        // Logger::debug("AI", "[requestAIMove/Opening] candidates: " + std::to_string(candidates.size()));
-        
-        std::string candidatesStr = "";
-        for (const auto& c : candidates)
-            candidatesStr += "  (" + std::to_string(c.col) + ", " + std::to_string(c.row) + "), ";
 
-        // Logger::debug("AI", "[requestAIMove/Opening] candidates: " + candidatesStr);
         const Move& m = candidates.front();
         if (!handleOpeningClick(m.col, m.row))
         {
@@ -198,9 +283,9 @@ std::optional<Move> GameController<Traits>::requestAIMove()
         return m;
     }
 
-    if (_state.phase == GamePhase::Standard)
+    if (_phase == GamePhase::Standard)
     {
-        SearchPosition<Traits> pos = SearchPosition<Traits>::fromBoard(*_state.board);
+        SearchPosition<Traits> pos = SearchPosition<Traits>::fromBoard(*_board);
         auto [col, row] = _masterAI.findBestMove(pos, currentColor());
         if (col == -1)
         {
@@ -218,40 +303,49 @@ std::optional<Move> GameController<Traits>::requestAIMove()
 template<typename Traits>
 const GameBoard& GameController<Traits>::visualBoard() const
 {
-    return *_state.board;
+    return *_board;
 }
 
 template<typename Traits>
 GamePhase GameController<Traits>::phase() const
 {
-    return _state.phase;
+    return _phase;
+}
+
+template<typename Traits>
+Actor GameController<Traits>::playerActor() const
+{
+    return _playerActor;
+}
+
+template<typename Traits>
+Actor GameController<Traits>::aiActor() const
+{
+    return _aiActor;
 }
 
 template<typename Traits>
 Actor GameController<Traits>::currentActor() const
 {
-    if (_state.phase == GamePhase::Standard)
-        return _currentActor;
-    // TODO: actor is suppose to be on game controller, not on state
-    return {_state.currentActor, colorForSeat(_state.currentActor)};
+    return _currentActor;
 }
 
 template<typename Traits>
 CellStatus GameController<Traits>::nextOpeningColor() const
 {
-    return _state.nextOpeningColor();
+    return _opening.nextOpeningColor();
 }
 
 template<typename Traits>
 OpeningProtocol GameController<Traits>::openingProtocol() const
 {
-    return _state.openingProtocol;
+    return _opening.openingProtocol;
 }
 
 template<typename Traits>
 int GameController<Traits>::stepIdx() const
 {
-    return _state.stepIdx;
+    return _opening.stepIdx;
 }
 
 template<typename Traits>
