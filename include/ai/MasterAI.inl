@@ -246,6 +246,7 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 		for (const t_cell& move : moves)
 		{
 			const CellStatus stone = colorToCell(position.sideToMove());
+			//ne gere pas les captures.
 			position.makeMove(move.x, move.y, stone);
 			int eval = minimax(position, move, depth - 1, alpha, beta, false, childPV);
 			position.undoMove(move.x, move.y, stone);
@@ -421,6 +422,12 @@ int	MasterAI<Traits>::evaluatePosition(const SearchPosition<Traits>& position, t
 	// ne verifie pas les captures gagnantes, seulement les alignements de 5
 	if (isWinAfterMove<Traits>(board, side, cell.x, cell.y))
 		return signedFromAi(side, 1000000);
+
+	// n'enrigistre pas le compte de capture et ne modifie pas l'etat du board.
+	// methode bientot obsolete, le nombre de capture sera enregistre dans le SearchPosition.
+	const CaptureResult<Traits> caps = bitboardTool.resolveCaptures(board, cell.x, cell.y, side);
+	if (caps.count)
+		return signedFromAi(side, 200 * caps.count);
 
 	if (side == Color::Black)
 		result = bitboardTool.check_open_four(board.black, board.white, cell.x, cell.y);
