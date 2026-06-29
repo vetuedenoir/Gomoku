@@ -243,6 +243,7 @@ MoveResult GameController<Traits>::submitMove(int col, int row)
         return MoveResult::Win;
 
     passTurn();
+
     return MoveResult::Ok;
 }
 

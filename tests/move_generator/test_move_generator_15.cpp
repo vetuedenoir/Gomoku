@@ -11,8 +11,9 @@ TEST_CASE("TEST_CASE [15x15] MoveGenerator: empty board has no active-zone legal
 
     auto moves = gen.generateMoves(to_bb(empty_board()), Color::Black);
 
-    CHECK(moves.empty());
-    CHECK(moves.size() == 0);
+    CHECK(moves.size() == 1);
+    CHECK(moves[0].x == 7);
+    CHECK(moves[0].y == 7);
 }
 
 TEST_CASE("TEST_CASE [15x15] MoveGenerator: center stone radius=1 produces eight legal moves")

@@ -2,6 +2,36 @@
 #include "game/turn/WinDetector.hpp"
 #include "logger/Logger.hpp"
 
+// Score d'un alignement gagnant (mat). Les scores dont la magnitude dépasse
+// MATE_THRESHOLD sont des scores de mat : ils encodent une distance (ply) et
+// doivent être ré-ajustés à l'entrée/sortie de la table de transposition.
+static constexpr int WIN_SCORE      = 1000000;
+static constexpr int MATE_THRESHOLD = 900000;
+
+// "depuis le nœud" -> "depuis la racine" (au probe TT)
+// ply = currentDepth
+static inline int ttScoreFromEntry(int score, int ply)
+{
+	if (score > MATE_THRESHOLD)
+		return score - ply;
+	if (score < -MATE_THRESHOLD)
+		return score + ply;
+	return score;
+}
+
+// "depuis la racine" -> "depuis le nœud" (au store TT)
+// ply = currentDepth
+static inline int ttScoreToEntry(int score, int ply)
+{
+	if (score > MATE_THRESHOLD)
+		return score + ply;
+	if (score < -MATE_THRESHOLD)
+		return score - ply;
+
+	// captures ? 
+	return score;
+}
+
 static std::string signedScoreLabel(int score, const char* label)
 {
 	if (score > 0)
@@ -67,84 +97,6 @@ MasterAI<Traits>::MasterAI(int depth, int activeZoneRadius, Color aiColor)
 }
 
 template <typename Traits>
-t_cell	MasterAI<Traits>::findBestMove(
-	const SearchPosition<Traits>& position, Color color)
-{
-	_aiColor = color;
-
-	_stats        = SearchStats{};
-	_timeExceeded = false;
-	if (_timeLimitMs)
-		_searchStart = Clock::now();
-
-	const std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
-
-	Logger::debug("AI", "[findBestMove] depth=" + std::to_string(_maxDepth)
-	              + "  root candidates=" + std::to_string(moves.size()));
-
-	if (moves.empty())
-		return {-1, -1};
-
-	int bestScore = std::numeric_limits<int>::min();
-	t_cell bestMove = {-1, -1};
-	std::vector<t_cell> bestPV;
-
-	for (const t_cell& move : moves)
-	{
-		SearchPosition<Traits> newPosition = position;
-		newPosition.makeMove(move.x, move.y, colorToCell(position.sideToMove()));
-
-		std::vector<t_cell> pv;
-		int score = minimax(newPosition, move, _maxDepth - 1,
-		                    std::numeric_limits<int>::min(),
-		                    std::numeric_limits<int>::max(), false, pv);
-
-		if (_timeExceeded)
-		{
-			Logger::debug("AI", "[findBestMove] time limit reached — returning best so far");
-			break;
-		}
-
-		const std::string marker = (score > bestScore) ? " ← best" : "";
-		const std::string macro  = scoreMacroLabel(score);
-		Logger::debug("AI", "  root (" + std::to_string(move.x) + ","
-		              + std::to_string(move.y) + ")  score =  " + std::to_string(score) + macro + marker);
-
-		if (score > bestScore)
-		{
-			bestScore = score;
-			bestMove  = move;
-			bestPV    = pv;
-			bestPV.insert(bestPV.begin(), move);
-		}
-	}
-
-	_stats.bestScore = bestScore;
-	_stats.bestMove  = bestMove;
-	_stats.principalVariation = bestPV;
-
-	if (Logger::level() <= LogLevel::Debug && Logger::isEnabled())
-	{
-		const int pruningPct = _stats.nodesVisited > 0
-		    ? (_stats.nodesPruned * 100 / _stats.nodesVisited) : 0;
-
-		Logger::debug("AI", "[findBestMove] stats:"
-		    "  visited="   + std::to_string(_stats.nodesVisited)
-		    + "  evaluated=" + std::to_string(_stats.nodesEvaluated)
-		    + "  pruned="    + std::to_string(_stats.nodesPruned)
-		    + " (" + std::to_string(pruningPct) + "%)"
-		    + "  maxDepth="  + std::to_string(_stats.maxDepthSeen));
-
-		std::string pvStr = "PV:";
-		for (const t_cell& c : _stats.principalVariation)
-			pvStr += " (" + std::to_string(c.x) + "," + std::to_string(c.y) + ")";
-		Logger::debug("AI", pvStr + "  score=" + std::to_string(bestScore) + scoreMacroLabel(bestScore));
-	}
-
-	return bestMove;
-}
-
-template <typename Traits>
 void	MasterAI<Traits>::setSearchDepth(int depth) noexcept
 {
 	_maxDepth = depth;
@@ -192,9 +144,77 @@ int	MasterAI<Traits>::getSearchDepth() const noexcept
 
 
 template <typename Traits>
+t_cell	MasterAI<Traits>::findBestMove(
+	const SearchPosition<Traits>& position, Color color)
+{
+	_aiColor = color;
+
+	_stats        = SearchStats{};
+	_timeExceeded = false;
+	if (_timeLimitMs)
+		_searchStart = Clock::now();
+
+	const std::vector<t_cell> rootMoves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
+
+	Logger::debug("AI", "[findBestMove] depth=" + std::to_string(_maxDepth)
+	              + "  root candidates=" + std::to_string(moves.size()));
+
+	if (moves.empty())
+		return {-1, -1};
+
+	int bestScore = std::numeric_limits<int>::min();
+	t_cell bestMove = {-1, -1};
+
+	for (const t_cell& move : moves)
+	{
+		SearchPosition<Traits> newPosition = position;
+		
+		newPosition.makeMove(move.x, move.y, colorToCell(position.sideToMove()));
+
+		int score = minimax(newPosition, move, _maxDepth - 1,
+		                    std::numeric_limits<int>::min(),
+		                    std::numeric_limits<int>::max(), false);
+
+		if (_timeExceeded)
+		{
+			Logger::debug("AI", "[findBestMove] time limit reached — returning best so far");
+			break;
+		}
+
+		const std::string marker = (score > bestScore) ? " ← best" : "";
+		const std::string macro  = scoreMacroLabel(score);
+		Logger::debug("AI", "  root (" + std::to_string(move.x) + ","
+		              + std::to_string(move.y) + ")  score =  " + std::to_string(score) + macro + marker);
+
+		if (score > bestScore)
+		{
+			bestScore = score;
+			bestMove  = move;
+		}
+	}
+
+	_stats.bestScore = bestScore;
+	_stats.bestMove  = bestMove;
+
+	if (Logger::level() <= LogLevel::Debug && Logger::isEnabled())
+	{
+		const int pruningPct = _stats.nodesVisited > 0
+		    ? (_stats.nodesPruned * 100 / _stats.nodesVisited) : 0;
+
+		Logger::debug("AI", "[findBestMove] stats:"
+		    "  visited="   + std::to_string(_stats.nodesVisited)
+		    + "  evaluated=" + std::to_string(_stats.nodesEvaluated)
+		    + "  pruned="    + std::to_string(_stats.nodesPruned)
+		    + " (" + std::to_string(pruningPct) + "%)"
+		    + "  maxDepth="  + std::to_string(_stats.maxDepthSeen));
+	}
+
+	return bestMove;
+}
+
+template <typename Traits>
 int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
-			int depth, int alpha, int beta, bool isMaximizing,
-			std::vector<t_cell>& pv)
+			int depth, int alpha, int beta, bool isMaximizing)
 {
 	++_stats.nodesVisited;
 
@@ -213,14 +233,15 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 	// ne verifie pas les captures gagnantes, seulement les alignements de 5
 	if (isWinAfterMove<Traits>(position.board(), lastPlayed, cell.x, cell.y))
 	{
-		pv.clear();
 		++_stats.nodesEvaluated;
-		return (lastPlayed == _aiColor) ? 1000000 : -1000000;
+		// Score relatif à la racine : un mat plus proche (currentDepth petit)
+		// vaut plus, pour préférer la victoire la plus rapide / retarder la défaite.
+		const int mate = WIN_SCORE - currentDepth;
+		return (lastPlayed == _aiColor) ? mate : -mate;
 	}
 
 	if (depth == 0)
 	{
-		pv.clear();
 		++_stats.nodesEvaluated;
 		if (lastPlayed == Color::Black)
 			return evaluateBlackPosition(position, cell);
@@ -229,9 +250,10 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 	}
 
 	const std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
+	
+
 	if (moves.empty())
 	{
-		pv.clear();
 		++_stats.nodesEvaluated;
 		if (lastPlayed == Color::Black)
 			return evaluateBlackPosition(position, cell);
@@ -239,50 +261,77 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 		// return evaluatePosition(position, cell);
 	}
 
-	std::vector<t_cell> childPV;
+	const uint64_t ttKey = position.zobristHash();
+
+	if (const TTEntry* ttHit = _tt.probe(ttKey); ttHit && ttHit->depth >= depth)
+	{
+		++_stats.ttHits;
+		const int ttScore = ttScoreFromEntry(ttHit->score, currentDepth);
+		if (ttHit->flag == TTFlag::Exact)
+			return ttScore;
+		if (ttHit->flag == TTFlag::LowerBound)
+			alpha = std::max(alpha, ttScore);
+		else if (ttHit->flag == TTFlag::UpperBound)
+			beta = std::min(beta, ttScore);
+
+		if (alpha >= beta)
+			return ttScore;
+	}
+
+	int alphaSearch = alpha;
+	int betaSearch = beta;
+	t_cell bestMove = {-1, -1};
+
+	int bestEval = 0;
 
 	if (isMaximizing)
-	{
-		int maxEval = std::numeric_limits<int>::min();
+	{ 
+		bestEval = std::numeric_limits<int>::min();
+
 		for (const t_cell& move : moves)
 		{
 			const CellStatus stone = colorToCell(position.sideToMove());
+			
 			position.makeMove(move.x, move.y, stone);
-			int eval = minimax(position, move, depth - 1, alpha, beta, false, childPV);
+			
+			int eval = minimax(position, move, depth - 1, alpha, beta, false);
+			
 			position.undoMove(move.x, move.y, stone);
 
-			if (eval > maxEval)
+			if (eval > bestEval)
 			{
-				maxEval = eval;
-				pv.clear();
-				pv.push_back(move);
-				pv.insert(pv.end(), childPV.begin(), childPV.end());
+				bestEval = eval;
+				bestMove = move;
 			}
+
 			alpha = std::max(alpha, eval);
+			
 			if (beta <= alpha)
 			{
 				++_stats.nodesPruned;
 				break;
 			}
 		}
-		return maxEval;
+
+		// return maxEval;
 	}
 	else
 	{
-		int minEval = std::numeric_limits<int>::max();
+		bestEval = std::numeric_limits<int>::max();
+
 		for (const t_cell& move : moves)
 		{
 			const CellStatus stone = colorToCell(position.sideToMove());
 			position.makeMove(move.x, move.y, stone);
-			int eval = minimax(position, move, depth - 1, alpha, beta, true, childPV);
+			
+			int eval = minimax(position, move, depth - 1, alpha, beta, true);
+
 			position.undoMove(move.x, move.y, stone);
 
-			if (eval < minEval)
+			if (eval < bestEval)
 			{
-				minEval = eval;
-				pv.clear();
-				pv.push_back(move);
-				pv.insert(pv.end(), childPV.begin(), childPV.end());
+				bestEval = eval;
+				bestMove = move;
 			}
 			beta = std::min(beta, eval);
 			if (beta <= alpha)
@@ -291,8 +340,29 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 				break;
 			}
 		}
-		return minEval;
+		// return minEval;
 	}
+
+
+	// Résultat tronqué par le timeout : ne pas polluer la TT.
+	if (_timeExceeded)
+		return bestEval;
+
+	// When storing a LowerBound or UpperBound, we are storing knowledge about a cutoff that already happened.
+	TTFlag flag;
+
+	if (bestEval <= alphaSearch)        // Fail-low : on n'a pas dépassé alpha
+		flag = TTFlag::UpperBound;
+	else if (bestEval >= betaSearch)    // Fail-high : coupure
+		flag = TTFlag::LowerBound;
+	else
+		flag = TTFlag::Exact;            // alphaSearch < bestEval < betaSearch
+	
+	// TODO: cell or move ?!!! 
+	_tt.store(position.zobristHash(), ttScoreToEntry(bestEval, currentDepth), depth, flag,
+	          {bestMove.x, bestMove.y, CellStatus::Empty});
+
+	return bestEval;
 }
 
 // les coups impliquant des captures doivent toujours etre mieux evalues que les coups sans capture.

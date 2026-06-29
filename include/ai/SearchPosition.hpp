@@ -31,6 +31,8 @@ private:
                 const ZobristHasher<Traits>& hasher);
 
     t_BWBoard<Traits>              _bitboard;
+    
+    // Transposition table key (score)
     uint64_t                       _hash;
     Color                          _sideToMove;
     const ZobristHasher<Traits>&   _hasher;
@@ -63,8 +65,6 @@ const ZobristHasher<Traits>& SearchPosition<Traits>::hasher()
 {
     return ZobristHasher<Traits>::instance();
 }
-
-
 
 template<typename Traits>
 void SearchPosition<Traits>::makeMove(int col, int row, CellStatus color)

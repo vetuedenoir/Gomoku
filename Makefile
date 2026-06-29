@@ -136,13 +136,13 @@ TEST_GAME_SRCS := $(wildcard $(SRC_DIR)/game/*.cpp) \
                   $(wildcard $(SRC_DIR)/logger/*.cpp) \
                   $(wildcard $(SRC_DIR)/optimization/*.cpp) \
                   $(wildcard $(SRC_DIR)/bitboard/*.cpp)
-TEST_SRCS      := $(wildcard $(TEST_DIR)/*.cpp) $(wildcard $(TEST_DIR)/patterns/*.cpp) $(wildcard $(TEST_DIR)/move_generator/*.cpp)
+TEST_SRCS      := $(wildcard $(TEST_DIR)/*.cpp) $(wildcard $(TEST_DIR)/patterns/*.cpp) $(wildcard $(TEST_DIR)/move_generator/*.cpp) $(wildcard $(TEST_DIR)/ai/*.cpp)
 
 TEST_GAME_OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(TEST_OBJ_DIR)/%.o,$(TEST_GAME_SRCS))
 TEST_OBJS      := $(patsubst $(TEST_DIR)/%.cpp,$(TEST_OBJ_DIR)/%.o,$(TEST_SRCS))
 
 CXXFLAGS_TEST  := -std=c++17 -Wall -Wextra \
-                  -I$(INC_DIR) -I$(EXT_INC_DIR) \
+                  -I$(INC_DIR) -I$(EXT_INC_DIR) -I$(TEST_DIR) \
                   $(CXXFLAGS_MODE) \
                   -MMD -MP
 

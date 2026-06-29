@@ -13,6 +13,8 @@ class MoveGenerator
 	public:
 		explicit MoveGenerator(int activeZoneRadius = 2);
 
+		BitboardTool<Traits> getBitboardTool() const;
+
 		// This mask can be used to generate a list of legal moves by iterating over the bits in the mask.
 		void getMaskOfLegalMoves(const t_BWBoard<Traits>& board, const Color color,
 								typename Traits::Bitboard& legalMovesMask) const;
