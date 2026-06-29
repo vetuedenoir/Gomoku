@@ -6,6 +6,7 @@
 #include "game/validation/policy/OpeningMovePolicy.hpp"
 #include "game/validation/policy/StandardMovePolicy.hpp"
 #include "logger/Logger.hpp"
+#include "config/config.hpp"
 #include <string>
 #include <vector>
 
@@ -53,7 +54,7 @@ private:
         if (!ok)
             Logger::warn("VALIDATOR", std::string(phase) + " " + coord + " rejected");
         else
-            Logger::debug("VALIDATOR", std::string(phase) + " " + coord + " ok");
+            LOG_DEBUG("VALIDATOR", std::string(phase) + " " + coord + " ok");
         return ok;
     }
 

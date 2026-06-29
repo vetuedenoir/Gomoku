@@ -6,6 +6,7 @@
 #include "game/turn/WinDetector.hpp"
 #include "bitboard/bitboard.hpp"
 #include "logger/Logger.hpp"
+#include "config/config.hpp"
 #include <optional>
 #include <string>
 
@@ -80,10 +81,11 @@ std::optional<Color> TurnController<Traits>::checkWin(const t_BWBoard<Traits>& b
 template<typename Traits>
 void TurnController<Traits>::logMove(const Color color, const Move& move, int newCaptures) const
 {
-    Logger::debug("TURN",
+    LOG_DEBUG("TURN",
         std::string(colorLabel(color)) + " → (" + std::to_string(move.col) + ","
         + std::to_string(move.row) + ")"
         + (newCaptures > 0 ? " captures=" + std::to_string(newCaptures) : ""));
+    LOG_SUPPRESS(color, move, newCaptures);
 }
 
 template<typename Traits>

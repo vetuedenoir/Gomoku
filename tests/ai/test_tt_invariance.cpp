@@ -36,7 +36,7 @@ TEST_CASE("[Minimax] TT invariance: warm table same result, fewer nodes")
 	SearchPosition19 pos = posWithSideToMove(b, Color::Black);
 
 	MasterAI19 ai = MasterAI19(4, 1, Color::Black);
-	ai.disableTimeLimit();
+
 
 	// 1. Passe à froid (TT vide).
 	const t_cell move1     = ai.findBestMove(pos, Color::Black);
@@ -80,13 +80,12 @@ TEST_CASE("[Minimax] TT invariance: iterative-deepening pre-seed keeps the resul
 
 	// 1. Référence : recherche froide directe à depth 4.
 	MasterAI19 aiRef = MasterAI19(4, 1, Color::Black);
-	aiRef.disableTimeLimit();
 	const t_cell moveRef = aiRef.findBestMove(pos, Color::Black);
 	const int    vRef    = aiRef.lastSearchStats().bestScore;
 
 	// 2. Recherche pré-remplie par paliers 2 → 3 → 4 (même TT, profondeur croissante).
 	MasterAI19 ai = MasterAI19(4, 1, Color::Black);
-	ai.disableTimeLimit();
+
 	ai.setSearchDepth(2);
 	ai.findBestMove(pos, Color::Black);
 	ai.setSearchDepth(3);

@@ -44,13 +44,13 @@ TEST_CASE("[Minimax] pruning: MAX beta-cutoff evaluates one move and stores Lowe
 
 	// 1. Référence en fenêtre complète : sans coupure, tous les coups sont évalués.
 	MasterAI19 aiFull = MasterAI19(1, 1, Color::Black);
-	aiFull.disableTimeLimit();
+	
 	Access::search(aiFull, pos, previousHarmlessMove, 1, NEG_INF, POS_INF, true);
 	CHECK(aiFull.lastSearchStats().nodesEvaluated > 1);
 
 	// 2. Recherche MAX avec beta sous toutes les valeurs possibles
 	MasterAI19 ai = MasterAI19(1, 1, Color::Black);
-	ai.disableTimeLimit();
+
 	const int value = Access::search(ai, pos, previousHarmlessMove, 1, NEG_INF, -2000000, true);
 
 	// 3. Vérification de l'élagage
@@ -79,13 +79,13 @@ TEST_CASE("[Minimax] pruning: MIN alpha-cutoff evaluates one move and stores Upp
 
 	// 1. Référence en fenêtre complète : sans coupure, tous les coups sont évalués.
 	MasterAI19 aiFull = MasterAI19(1, 1, Color::Black);
-	aiFull.disableTimeLimit();
+	
 	Access::search(aiFull, pos, previousHarmlessMove, 1, NEG_INF, POS_INF, false);
 	CHECK(aiFull.lastSearchStats().nodesEvaluated > 1);
 
 	// 2. Recherche MIN avec alpha au-dessus de toutes les valeurs possibles
 	MasterAI19 ai = MasterAI19(1, 1, Color::Black);
-	ai.disableTimeLimit();
+
 	const int value = Access::search(ai, pos, previousHarmlessMove, 1, 2000000, POS_INF, false);
 
 	// 3. Vérification de l'élagage

@@ -42,7 +42,7 @@ TEST_CASE("[Minimax] TT: exact hit returns cached value without re-exploring")
 	SearchPosition19 pos = posWithSideToMove(b, Color::Black);
 
 	MasterAI19 ai = MasterAI19(2, 1, Color::Black);
-	ai.disableTimeLimit();
+
 
 	// 1. Première recherche : remplit la TT et explore tout le sous-arbre.
 	const int cached = Access::search(ai, pos, previousHarmlessMove, 2, NEG_INF, POS_INF, true);
@@ -75,14 +75,13 @@ TEST_CASE("[Minimax] TT: shallow entry is rejected, full search runs")
 
 	// 1. Référence : recherche complète à depth = 4 sans entrée injectée.
 	MasterAI19 aiRef = MasterAI19(4, 1, Color::Black);
-	aiRef.disableTimeLimit();
 	const int refValue   = Access::search(aiRef, pos, previousHarmlessMove, 4, NEG_INF, POS_INF, true);
 	const int refVisited = aiRef.lastSearchStats().nodesVisited;
 	const int refHits    = aiRef.lastSearchStats().ttHits; // hits internes légitimes (transpositions)
 
 	// 2. Injection d'une entrée Exact peu profonde (depth = 2) au hash de la racine.
 	MasterAI19 ai = MasterAI19(4, 1, Color::Black);
-	ai.disableTimeLimit();
+
 	const int sentinel = 123456; // valeur que la vraie recherche ne produit jamais
 	Access::ttMutable(ai).store(pos.zobristHash(), sentinel, 2, TTFlag::Exact,
 	                            { -1, -1, CellStatus::Empty });

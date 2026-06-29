@@ -45,7 +45,7 @@ TEST_CASE("[Minimax] mate distance: maximizer prefers the fastest win")
 
 	// 3. Recherche assez profonde (>= 3) pour « voir » aussi le chemin lent.
 	MasterAI19 ai = MasterAI19(3, 1, Color::Black);
-	ai.disableTimeLimit();
+
 	const t_cell move = ai.findBestMove(pos, Color::Black);
 
 	// 4. Vérifications : coup gagnant immédiat, et score au ply 1 (mat le plus rapide).

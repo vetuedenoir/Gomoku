@@ -103,40 +103,6 @@ void	MasterAI<Traits>::setSearchDepth(int depth) noexcept
 }
 
 template <typename Traits>
-void	MasterAI<Traits>::setTimeLimit(int milliseconds) noexcept
-{
-	_timeLimitMs = (milliseconds > 0) ? std::optional<int>{milliseconds} : std::nullopt;
-}
-
-template <typename Traits>
-void	MasterAI<Traits>::disableTimeLimit() noexcept
-{
-	_timeLimitMs = std::nullopt;
-}
-
-template <typename Traits>
-bool	MasterAI<Traits>::hasTimeLimit() const noexcept
-{
-	return _timeLimitMs.has_value();
-}
-
-template <typename Traits>
-void	MasterAI<Traits>::tickTimeLimit()
-{
-	if (!_timeLimitMs || _timeExceeded)
-		return;
-
-	const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-	    Clock::now() - _searchStart).count();
-	if (elapsed >= *_timeLimitMs)
-	{
-		_timeExceeded = true;
-		Logger::debug("AI", "[minimax] time limit hit at "
-		    + std::to_string(elapsed) + "ms  nodes=" + std::to_string(_stats.nodesVisited));
-	}
-}
-
-template <typename Traits>
 int	MasterAI<Traits>::getSearchDepth() const noexcept
 {
 	return _maxDepth;
@@ -156,7 +122,7 @@ t_cell	MasterAI<Traits>::findBestMove(
 
 	const std::vector<t_cell> rootMoves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
 
-	Logger::debug("AI", "[findBestMove] depth=" + std::to_string(_maxDepth)
+	LOG_DEBUG("AI", "[findBestMove] depth=" + std::to_string(_maxDepth)
 	              + "  root candidates=" + std::to_string(rootMoves.size()));
 
 	if (rootMoves.empty())
@@ -175,15 +141,15 @@ t_cell	MasterAI<Traits>::findBestMove(
 		                    std::numeric_limits<int>::min(),
 		                    std::numeric_limits<int>::max(), false);
 
-		if (_timeExceeded)
-		{
-			Logger::debug("AI", "[findBestMove] time limit reached — returning best so far");
-			break;
-		}
+		// if (_timeExceeded)
+		// {
+		// 	LOG_DEBUG("AI", "[findBestMove] time limit reached — returning best so far");
+		// 	break;
+		// }
 
 		const std::string marker = (score > bestScore) ? " ← best" : "";
 		const std::string macro  = scoreMacroLabel(score);
-		Logger::debug("AI", "  root (" + std::to_string(move.x) + ","
+		LOG_DEBUG("AI", "  root (" + std::to_string(move.x) + ","
 		              + std::to_string(move.y) + ")  score =  " + std::to_string(score) + macro + marker);
 
 		if (score > bestScore)
@@ -196,18 +162,21 @@ t_cell	MasterAI<Traits>::findBestMove(
 	_stats.bestScore = bestScore;
 	_stats.bestMove  = bestMove;
 
-	if (Logger::level() <= LogLevel::Debug && Logger::isEnabled())
-	{
-		const int pruningPct = _stats.nodesVisited > 0
-		    ? (_stats.nodesPruned * 100 / _stats.nodesVisited) : 0;
 
-		Logger::debug("AI", "[findBestMove] stats:"
-		    "  visited="   + std::to_string(_stats.nodesVisited)
-		    + "  evaluated=" + std::to_string(_stats.nodesEvaluated)
-		    + "  pruned="    + std::to_string(_stats.nodesPruned)
-		    + " (" + std::to_string(pruningPct) + "%)"
-		    + "  maxDepth="  + std::to_string(_stats.maxDepthSeen));
-	}
+	const int pruningPct = _stats.nodesVisited > 0
+		? (_stats.nodesPruned * 100 / _stats.nodesVisited) : 0;
+
+	LOG_DEBUG("AI", "[findBestMove] stats:"
+		"  visited="   + std::to_string(_stats.nodesVisited)
+		+ "  evaluated=" + std::to_string(_stats.nodesEvaluated)
+		+ "  pruned="    + std::to_string(_stats.nodesPruned)
+		+ " (" + std::to_string(pruningPct) + "%)"
+		+ "  maxDepth="  + std::to_string(_stats.maxDepthSeen));
+	LOG_SUPPRESS(_stats.nodesVisited, _stats.nodesEvaluated, _stats.nodesPruned, _stats.maxDepthSeen, pruningPct);
+	LOG_DEBUG("AI", "[findBestMove] tt stores=" + std::to_string(_stats.ttStores));
+	LOG_DEBUG("AI", "[findBestMove] tt hits=" + std::to_string(_stats.ttHits));
+	LOG_DEBUG("AI", "[findBestMove] tt cutoffs=" + std::to_string(_stats.ttCutoffs));
+	
 
 	return bestMove;
 }
@@ -217,10 +186,6 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 			int depth, int alpha, int beta, bool isMaximizing)
 {
 	++_stats.nodesVisited;
-
-	tickTimeLimit();
-	if (_timeExceeded)
-		return 0;
 
 	const int currentDepth = _maxDepth - depth;
 	if (currentDepth > _stats.maxDepthSeen)
@@ -361,6 +326,7 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 	// TODO: cell or move ?!!! 
 	_tt.store(position.zobristHash(), ttScoreToEntry(bestEval, currentDepth), depth, flag,
 	          {bestMove.x, bestMove.y, CellStatus::Empty});
+	++_stats.ttStores;
 
 	return bestEval;
 }
@@ -418,7 +384,7 @@ static int cross_score(int crossResult)
 
 static int score_open_three(int threeResult)
 {
-	// Logger::debug("AI", "[score_open_three] threeResult=" + std::to_string(threeResult));
+	// LOG_DEBUG("AI", "[score_open_three] threeResult=" + std::to_string(threeResult));
     
 	switch (threeResult)
     {

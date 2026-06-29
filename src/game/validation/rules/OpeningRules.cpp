@@ -2,6 +2,7 @@
 #include "game/OpeningRuntime.hpp"
 #include "game/contracts/contracts.hpp"
 #include "logger/Logger.hpp"
+#include "config/config.hpp"
 #include <cmath>
 #include <algorithm>
 
@@ -209,7 +210,7 @@ OpeningCommitResult commitOpeningMove(OpeningRuntime& runtime,
 {
     if (isOpeningComplete(runtime))
     {
-        Logger::warn("OPENING", "commitOpeningMove called but opening is already complete");
+        LOG_WARN("OPENING", "commitOpeningMove called but opening is already complete");
         return {};
     }
 
@@ -217,7 +218,10 @@ OpeningCommitResult commitOpeningMove(OpeningRuntime& runtime,
     const StoneSpec&   spec = step.stones[runtime.subIdx];
 
     if (runtime.subIdx == 0)
-        Logger::info("OPENING", openingStepDescription(runtime.openingProtocol, runtime.stepIdx));
+    {
+        LOG_INFO("OPENING", openingStepDescription(runtime.openingProtocol, runtime.stepIdx));
+        LOG_SUPPRESS(openingStepDescription(runtime.openingProtocol, runtime.stepIdx));
+    }
 
     const std::string stepInfo = stepCtx(runtime);
 
@@ -225,18 +229,20 @@ OpeningCommitResult commitOpeningMove(OpeningRuntime& runtime,
     {
         if (move.forcedColor != CellStatus::Empty && move.forcedColor != spec.color)
         {
-            Logger::warn("OPENING",
+            LOG_WARN("OPENING",
                 stepInfo + " | wrong colour: got " + colorStr(move.forcedColor)
                 + ", expected " + colorStr(spec.color));
-        }
-        else if (!board.isFree(move.col, move.row))
-        {
-            Logger::warn("OPENING",
-                stepInfo + " | (" + std::to_string(move.col) + "," + std::to_string(move.row)
-                + ") cell occupied");
+            LOG_SUPPRESS(stepInfo, colorStr(move.forcedColor), colorStr(spec.color));
         }
         else
         {
+            if (!board.isFree(move.col, move.row))
+            {
+                LOG_WARN("OPENING",
+                    stepInfo + " | (" + std::to_string(move.col) + "," + std::to_string(move.row)
+                    + ") cell occupied");
+                LOG_SUPPRESS(stepInfo, move.col, move.row);
+            }
             std::string reason;
             if (spec.constraint.mustBeCenter)
                 reason = "must be centre";
@@ -247,9 +253,10 @@ OpeningCommitResult commitOpeningMove(OpeningRuntime& runtime,
             else
                 reason = "constraint violated";
 
-            Logger::warn("OPENING",
+            LOG_WARN("OPENING",
                 stepInfo + " | (" + std::to_string(move.col) + "," + std::to_string(move.row)
                 + ") rejected — " + reason);
+            LOG_SUPPRESS(stepInfo, move.col, move.row, reason);
         }
         return {};
     }
@@ -257,10 +264,13 @@ OpeningCommitResult commitOpeningMove(OpeningRuntime& runtime,
     if (!board.placeStoneOfColor(move.col, move.row, spec.color))
         return {};
 
-    Logger::debug("OPENING",
+    LOG_DEBUG("OPENING",
         stepInfo + " | " + colorStr(spec.color)
         + " → (" + std::to_string(move.col) + "," + std::to_string(move.row) + ") ✓");
 
+    LOG_SUPPRESS(stepInfo, move.col, move.row, spec.color);
+    
+    
     runtime.historyPlacedStones.push_back({ move.col, move.row, spec.color });
 
     ++runtime.subIdx;
@@ -272,25 +282,25 @@ OpeningCommitResult commitOpeningMove(OpeningRuntime& runtime,
     ++runtime.stepIdx;
     runtime.subIdx = 0;
 
-    Logger::debug("DEBUG OPENING RULES",
+    LOG_DEBUG("DEBUG OPENING RULES",
         "step complete — triggersColorChoice=" + std::string(hadColorChoice ? "true" : "false"));
 
     if (hadColorChoice)
     {
         const Seat chooser = otherSeat(toSeat(step.actor));
-        Logger::info("OPENING", "step complete — color choice for " + seatStr(chooser));
+        LOG_INFO("OPENING", "step complete — color choice for " + seatStr(chooser));
         return { true, OpeningEvent::ColorChoice, chooser };
     }
 
     if (runtime.stepIdx < (int)runtime.openingSteps.size())
     {
         const Seat next = toSeat(runtime.openingSteps[runtime.stepIdx].actor);
-        Logger::debug("OPENING", "next step actor → " + seatStr(next));
+        LOG_DEBUG("OPENING", "next step actor → " + seatStr(next));
         return { true, OpeningEvent::NextStep, next };
     }
 
     const Seat next = otherSeat(toSeat(step.actor));
-    Logger::info("OPENING", "opening complete — next seat " + seatStr(next));
+    LOG_INFO("OPENING", "opening complete — next seat " + seatStr(next));
     return { true, OpeningEvent::Finished, next };
 }
 
@@ -317,7 +327,7 @@ std::vector<Move> getLegalOpeningMoves(const OpeningRuntime& runtime,
         }
     }
 
-    Logger::info("OPENING",
+    LOG_INFO("OPENING",
         "getLegalOpeningMoves: " + std::to_string(moves.size()) + " candidates");
     return moves;
 }

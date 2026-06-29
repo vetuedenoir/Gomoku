@@ -35,7 +35,7 @@ TEST_CASE("[TT] transposition: different move orders share hash and TT entry")
 
 	// 3. Bout-en-bout : une valeur cachée pour p1 est retrouvée via p2.
 	MasterAI19 ai = MasterAI19(2, 1, Color::Black);
-	ai.disableTimeLimit();
+
 	Access::ttMutable(ai).store(p1.zobristHash(), 777, 5, TTFlag::Exact,
 	                            { -1, -1, CellStatus::Empty });
 

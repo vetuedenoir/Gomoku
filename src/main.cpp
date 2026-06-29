@@ -3,11 +3,11 @@
 
 int main()
 {
-    Logger::info("MAIN", "Gomoku starting");
+    LOG_INFO("MAIN", "Gomoku starting");
 
     Gomoku game;
     game.run();
 
-    Logger::info("MAIN", "Gomoku exiting");
+    LOG_INFO("MAIN", "Gomoku exiting");
     return 0;
 }

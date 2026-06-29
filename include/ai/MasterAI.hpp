@@ -8,6 +8,7 @@
 #include "SearchPosition.hpp"
 #include "optimization/TranspositionTable.hpp"
 #include "logger/Logger.hpp"
+#include "config/config.hpp"
 #include <optional>
 #include <variant>
 #include <limits>
@@ -58,10 +59,6 @@ class MasterAI
 		Color getAIColor() const noexcept { return _aiColor; }
 		void setAIColor(Color color) noexcept { _aiColor = color; }
 
-		void setTimeLimit(int milliseconds) noexcept;
-		void disableTimeLimit() noexcept;
-		bool hasTimeLimit() const noexcept;
-
 		const SearchStats& lastSearchStats() const noexcept { return _stats; }
 
 	private:
@@ -79,8 +76,6 @@ class MasterAI
 		std::optional<int>      _timeLimitMs = 1000;
 		bool                    _timeExceeded = false;
 		TimePoint               _searchStart  = {};
-
-		void tickTimeLimit();
 
 		int signedFromAi(Color side, int raw) const;
 

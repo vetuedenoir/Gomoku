@@ -19,14 +19,15 @@ OpeningRuntime::OpeningRuntime(OpeningProtocol protocol)
 {
     openingSteps = buildOpeningSteps(protocol);
 
-    Logger::info("OPENING",
+    LOG_INFO("OPENING",
         std::string("protocol=") + openingProtocolStr(protocol)
         + "  steps=" + std::to_string(openingSteps.size()));
+    LOG_SUPPRESS(openingProtocolStr(protocol), openingSteps.size());
 }
 
 void OpeningRuntime::continueOpeningPlacement()
 {
-    Logger::info("CHOICE",
+    LOG_INFO("CHOICE",
         "Seat::Second chose option 3 — placing 2 more stones (B + W)");
     subIdx = 0;
 }

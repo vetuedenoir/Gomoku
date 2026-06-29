@@ -41,7 +41,7 @@ TEST_CASE("[Minimax] TT: LowerBound raises alpha and cuts instantly")
 	SearchPosition19 pos = posWithSideToMove(b, Color::Black);
 
 	MasterAI19 ai = MasterAI19(2, 1, Color::Black);
-	ai.disableTimeLimit();
+
 	Access::ttMutable(ai).store(pos.zobristHash(), 15, 2, TTFlag::LowerBound,
 	                            { -1, -1, CellStatus::Empty });
 
@@ -67,7 +67,7 @@ TEST_CASE("[Minimax] TT: UpperBound lowers beta and cuts instantly")
 	SearchPosition19 pos = posWithSideToMove(b, Color::Black);
 
 	MasterAI19 ai = MasterAI19(2, 1, Color::Black);
-	ai.disableTimeLimit();
+
 	Access::ttMutable(ai).store(pos.zobristHash(), 2, 2, TTFlag::UpperBound,
 	                            { -1, -1, CellStatus::Empty });
 
@@ -98,7 +98,6 @@ TEST_CASE("[Minimax] TT: UpperBound shrinks window and enables a later beta-cuto
 
 	// 1. Découvrir la vraie valeur du nœud (meilleur enfant) en fenêtre complète.
 	MasterAI19 aiProbe = MasterAI19(1, 1, Color::Black);
-	aiProbe.disableTimeLimit();
 	const int best = Access::search(aiProbe, pos, previousHarmlessMove, 1, NEG_INF, POS_INF, true);
 	REQUIRE(best > 1); // marge pour placer alpha=0 < (best-1)
 
@@ -107,14 +106,13 @@ TEST_CASE("[Minimax] TT: UpperBound shrinks window and enables a later beta-cuto
 
 	// 2. Référence sans injection, fenêtre [0, best+1] : aucune coupure.
 	MasterAI19 aiRef = MasterAI19(1, 1, Color::Black);
-	aiRef.disableTimeLimit();
 	const int refValue = Access::search(aiRef, pos, previousHarmlessMove, 1, 0, wideBeta, true);
 	CHECK(aiRef.lastSearchStats().nodesPruned == 0); // best < beta original => pas de coupure
 
 	// 3. Avec UpperBound = best-1 : le probe descend beta, la recherche continue,
 	//    puis le coup valant `best` provoque la coupure Beta.
 	MasterAI19 ai = MasterAI19(1, 1, Color::Black);
-	ai.disableTimeLimit();
+
 	Access::ttMutable(ai).store(pos.zobristHash(), injectedUpper, 1, TTFlag::UpperBound,
 	                            { -1, -1, CellStatus::Empty });
 	const int value = Access::search(ai, pos, previousHarmlessMove, 1, 0, wideBeta, true);

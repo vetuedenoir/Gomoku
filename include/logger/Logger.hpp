@@ -2,6 +2,7 @@
 # define LOGGER_HPP
 
 #include <string>
+#include "config/config.hpp"
 
 enum class LogLevel
 {
