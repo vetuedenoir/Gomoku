@@ -157,15 +157,15 @@ t_cell	MasterAI<Traits>::findBestMove(
 	const std::vector<t_cell> rootMoves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
 
 	Logger::debug("AI", "[findBestMove] depth=" + std::to_string(_maxDepth)
-	              + "  root candidates=" + std::to_string(moves.size()));
+	              + "  root candidates=" + std::to_string(rootMoves.size()));
 
-	if (moves.empty())
+	if (rootMoves.empty())
 		return {-1, -1};
 
 	int bestScore = std::numeric_limits<int>::min();
 	t_cell bestMove = {-1, -1};
 
-	for (const t_cell& move : moves)
+	for (const t_cell& move : rootMoves)
 	{
 		SearchPosition<Traits> newPosition = position;
 		
