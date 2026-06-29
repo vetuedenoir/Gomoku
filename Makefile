@@ -9,7 +9,7 @@ UNAME_S   := $(shell uname -s)
 
 ifeq ($(UNAME_S),Linux)
 	NPROC := $(shell nproc)
-	CXX         := c++
+	CXX         := clang++
 	CXXFLAGS_OS := -D_GNU_SOURCE
 	LDFLAGS_OS  :=
 else ifeq ($(UNAME_S),Darwin)

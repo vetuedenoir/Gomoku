@@ -302,6 +302,7 @@ bool detect_captures(const t_BWBoard<Traits>& board, int col, int row, const Col
 	return captured;
 }
 
+
 template<typename Traits>
 void apply_captures(t_BWBoard<Traits>& board, const typename Traits::Bitboard captured, const Color attacker)
 {

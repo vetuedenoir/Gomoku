@@ -118,14 +118,13 @@ int	MasterAI<Traits>::getSearchDepth() const noexcept
 }
 
 template <typename Traits>
-t_cell	MasterAI<Traits>::findBestMove(
-	const SearchPosition<Traits>& position, Color color)
+t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Color color)
 {
 	_aiColor = color;
 
 	_stats        = SearchStats{};
 
-	const std::vector<t_cell> rootMoves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
+	std::vector<t_cell> rootMoves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
 
 	LOG_DEBUG("AI", "[findBestMove] depth=" + std::to_string(_maxDepth)
 	              + "  root candidates=" + std::to_string(rootMoves.size()));
@@ -142,8 +141,10 @@ t_cell	MasterAI<Traits>::findBestMove(
 	for (const t_cell& move : rootMoves)
 	{
 		SearchPosition<Traits> newPosition = position;
-
-		LOG_DEBUG("ROOT", "[findBestMove] making move (" + std::to_string(move.x) + "," + std::to_string(move.y) + ")");
+		if (isWinAfterMove<Traits>(position.board(), position.sideToMove(), move.x, move.y))
+		{
+			return move;
+		}
 		
 		newPosition.makeMove(move.x, move.y, colorToCell(position.sideToMove()));
 

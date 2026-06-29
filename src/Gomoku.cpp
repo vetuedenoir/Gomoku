@@ -178,8 +178,10 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
                 break;
 
             if (_controller->phase() == GamePhase::ColorChoice)
+            {
                 LOG_INFO("ACTOR DEBUG", "buildColorChoicePage on opening click");
                 buildColorChoicePage();
+            }
             break;
         }
 

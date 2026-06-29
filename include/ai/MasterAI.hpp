@@ -74,6 +74,8 @@ class MasterAI
 	
 		int signedFromAi(Color side, int raw) const;
 
+		void protoTry(std::vector<t_cell>& Moves, const SearchPosition<Traits>& position);
+
 		int minimax(
 			SearchPosition<Traits>& position, t_cell cell,
 			int depth, int alpha, int beta, bool isMaximizing);
