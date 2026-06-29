@@ -58,9 +58,9 @@ static Color toColor(CellStatus s)
 }
 
 template<typename Traits>
-SearchPosition<Traits>::SearchPosition(t_BWBoard<Traits> board, uint64_t hash, const Color side,
+SearchPosition<Traits>::SearchPosition(t_BWBoard<Traits> bitboard, uint64_t hash, const Color side,
                                  const ZobristHasher<Traits>& hasher)
-    : _board(board), _hash(hash), _sideToMove(side), _hasher(hasher)
+    : _bitboard(bitboard), _hash(hash), _sideToMove(side), _hasher(hasher)
 {}
 
 template<typename Traits>
@@ -79,14 +79,12 @@ const ZobristHasher<Traits>& SearchPosition<Traits>::hasher()
     return ZobristHasher<Traits>::instance();
 }
 
-
-
-// TODO: why affects _sideToMove in this function?
 template<typename Traits>
 void SearchPosition<Traits>::makeMove(int col, int row, CellStatus color)
 {
-    set_bb_generic<Traits>(bitboardForColor(_board, toColor<Traits>(color)), col, row);
+    set_bb_generic<Traits>(bitboardForColor(_bitboard, toColor<Traits>(color)), col, row);
     _hash ^= _hasher.key(col, row, toColor<Traits>(color));
+    _hash ^= _hasher.sideKey();
     _sideToMove = (_sideToMove == Color::Black) ? Color::White : Color::Black;
 }
 
@@ -94,14 +92,15 @@ template<typename Traits>
 void SearchPosition<Traits>::undoMove(int col, int row, CellStatus color)
 {
     _sideToMove = (_sideToMove == Color::Black) ? Color::White : Color::Black;
+    _hash ^= _hasher.sideKey();
     _hash ^= _hasher.key(col, row, toColor<Traits>(color));
-    clear_bit_generic<Traits>(bitboardForColor(_board, toColor<Traits>(color)), col, row);
+    clear_bit_generic<Traits>(bitboardForColor(_bitboard, toColor<Traits>(color)), col, row);
 }
 
 template<typename Traits>
 const t_BWBoard<Traits>& SearchPosition<Traits>::board() const
 {
-    return _board;
+    return _bitboard;
 }
 
 template<typename Traits>

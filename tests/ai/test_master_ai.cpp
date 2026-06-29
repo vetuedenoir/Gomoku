@@ -27,15 +27,15 @@ static MasterAI19 makeAI(int depth, Color aiColor = Color::Black, int radius = 1
 
 // ── findBestMove ─────────────────────────────────────────────────────
 
-TEST_CASE("MasterAI: empty board returns no move")
+TEST_CASE("MasterAI: empty board returns center move")
 {
 	Logger::info("TEST_CASE", "MasterAI: empty board returns no move");
 	GameBoard b = empty_board();
 	SearchPosition19 pos = posWithSideToMove(b, Color::Black);
 	MasterAI19 ai = makeAI(2, Color::Black);
 	t_cell move = ai.findBestMove(pos, Color::Black);
-	CHECK(move.x == -1);
-	CHECK(move.y == -1);
+	CHECK(move.x == 9);
+	CHECK(move.y == 9);
 }
 
 // ── Terminal win detection ────────────────────────────────────────────────────
@@ -66,7 +66,45 @@ TEST_CASE("MasterAI: blocks opponent win in one (depth 2)")
 
 // ── Evaluation-driven choice ──────────────────────────────────────────────────
 
-TEST_CASE("MasterAI: extends three to four rather than a quiet move (depth 1)") { MasterAI19 ai = makeAI(1, Color::Black); SUBCASE("horizontal") { ThreatLine three{ Direction::E, 7, 9, 3, CellStatus::Black, CellStatus::White, -1 }; GameBoard b = empty_board(); buildThreatLine(b, three); SearchPosition19 pos = posWithSideToMove(b, Color::Black); t_cell move = ai.findBestMove(pos, Color::Black); CHECK(moveIsOneOf(move, extendToFourCells(three))); } SUBCASE("vertical") { ThreatLine three{ Direction::S, 9, 7, 3, CellStatus::Black, CellStatus::White, -1 }; GameBoard b = empty_board(); buildThreatLine(b, three); SearchPosition19 pos = posWithSideToMove(b, Color::Black); t_cell move = ai.findBestMove(pos, Color::Black); CHECK(moveIsOneOf(move, extendToFourCells(three))); } SUBCASE("diagonal SE") { ThreatLine three{ Direction::SE, 7, 9, 3, CellStatus::Black, CellStatus::White, -1 }; GameBoard b = empty_board(); buildThreatLine(b, three); SearchPosition19 pos = posWithSideToMove(b, Color::Black); t_cell move = ai.findBestMove(pos, Color::Black); CHECK(moveIsOneOf(move, extendToFourCells(three))); } SUBCASE("diagonal NE") { ThreatLine three{ Direction::NE, 7, 11, 3, CellStatus::Black, CellStatus::White, -1 }; GameBoard b = empty_board(); buildThreatLine(b, three); SearchPosition19 pos = posWithSideToMove(b, Color::Black); t_cell move = ai.findBestMove(pos, Color::Black); CHECK(moveIsOneOf(move, extendToFourCells(three))); } }
+TEST_CASE("MasterAI: extends three to four rather than a quiet move (depth 1)")
+{ 
+	MasterAI19 ai = makeAI(1, Color::Black); 
+	
+	SUBCASE("horizontal") { 
+		ThreatLine three{ Direction::E, 7, 9, 3, CellStatus::Black, CellStatus::White, -1 }; 
+		GameBoard b = empty_board(); 
+		buildThreatLine(b, three); 
+		SearchPosition19 pos = posWithSideToMove(b, Color::Black); 
+		t_cell move = ai.findBestMove(pos, Color::Black); 
+		CHECK(moveIsOneOf(move, extendToFourCells(three))); 
+	} 
+	SUBCASE("vertical") { 
+		ThreatLine three{ Direction::S, 9, 7, 3, CellStatus::Black, CellStatus::White, -1 }; 
+		GameBoard b = empty_board(); 
+		buildThreatLine(b, three); 
+		SearchPosition19 pos = posWithSideToMove(b, Color::Black); 
+		t_cell move = ai.findBestMove(pos, Color::Black); 
+		CHECK(moveIsOneOf(move, extendToFourCells(three))); 
+	} 
+	SUBCASE("diagonal SE") { 
+		ThreatLine three{ Direction::SE, 7, 9, 3, CellStatus::Black, CellStatus::White, -1 }; 
+		GameBoard b = empty_board(); 
+		buildThreatLine(b, three); 
+		SearchPosition19 pos = posWithSideToMove(b, Color::Black); 
+		t_cell move = ai.findBestMove(pos, Color::Black); 
+		CHECK(moveIsOneOf(move, extendToFourCells(three))); 
+	} 
+	SUBCASE("diagonal NE") { 
+		ThreatLine three{ Direction::NE, 7, 11, 3, CellStatus::Black, CellStatus::White, -1 }; 
+		GameBoard b = empty_board(); 
+		buildThreatLine(b, three); 
+		SearchPosition19 pos = posWithSideToMove(b, Color::Black); 
+		t_cell move = ai.findBestMove(pos, Color::Black); 
+		CHECK(moveIsOneOf(move, extendToFourCells(three))); 
+	} 
+}
+
+
 TEST_CASE("MasterAI: blocks open-four threat at depth 2")
 {
 	Logger::info("TEST_CASE", "MasterAI: blocks open-four threat at depth 2");

@@ -76,7 +76,8 @@ void ActiveZone<Traits>::initialize(const t_BWBoard<Traits>& board)
 
 	if (neighborAdded == 0)
 	{
-		addNeighborBits(Traits::BOARD_SIZE / 2 + 1, Traits::BOARD_SIZE / 2 + 1);
+		set_bb_generic<Traits>(_candidateMask,
+			Traits::BOARD_SIZE / 2, Traits::BOARD_SIZE / 2);
 	}
 
 	for (int i = 0; i < Traits::WORD_COUNT; i++)

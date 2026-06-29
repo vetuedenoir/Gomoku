@@ -69,6 +69,11 @@ public:
         return _table[y * Traits::STRIDE + x][static_cast<int>(color)];
     }
 
+    uint64_t sideKey() const
+    {
+        return _sideKey;
+    }
+
     uint64_t compute(const t_BWBoard<Traits>& board) const
     {
         uint64_t hash = 0;

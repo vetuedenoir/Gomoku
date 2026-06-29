@@ -6,6 +6,7 @@
 #include "game/validation/MoveValidator.hpp"
 #include "bitboard/bitboard.hpp"
 #include "SearchPosition.hpp"
+#include "optimization/TranspositionTable.hpp"
 #include "logger/Logger.hpp"
 #include <optional>
 #include <variant>
@@ -21,15 +22,21 @@ struct SearchStats
     int    nodesEvaluated = 0;  // leaf nodes reaching evaluatePosition()
     int    nodesPruned    = 0;  // alpha-beta cut-offs
     int    maxDepthSeen   = 0;  // deepest ply actually reached
+    int    ttHits         = 0;  // TT entries reused with sufficient depth
+    int    ttCutoffs      = 0;  // TT bound that produced an immediate cutoff
+    int    ttStores       = 0;  // entries written to the TT
     int    bestScore      = 0;
     t_cell bestMove       = {-1, -1};
-
-    std::vector<t_cell> principalVariation; // expected line of play
 };
+
+// Test-only accessor (defined in tests).
+template <typename T> struct MasterAITestAccess;
 
 template<typename Traits>
 class MasterAI
 {
+	template <typename T> friend struct MasterAITestAccess;
+
 	public:
 		explicit MasterAI(int depth = 5, int activeZoneRadius = 1, Color aiColor = Color::Black);
 		
@@ -63,6 +70,7 @@ class MasterAI
 		int					 	_stoneCapturedByOPP = 0;
 		Color                   _aiColor      = Color::Black;
 		MoveGenerator<Traits>   _moveGenerator;
+		TranspositionTable      _tt;
 		
 		using Clock     = std::chrono::steady_clock;
 		using TimePoint = std::chrono::time_point<Clock>;
@@ -78,8 +86,7 @@ class MasterAI
 
 		int minimax(
 			SearchPosition<Traits>& position, t_cell cell,
-			int depth, int alpha, int beta, bool isMaximizing,
-			std::vector<t_cell>& pv);
+			int depth, int alpha, int beta, bool isMaximizing);
 		
 		int evaluatePosition(const SearchPosition<Traits>& position, t_cell cell);
 
