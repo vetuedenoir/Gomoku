@@ -122,7 +122,11 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 {
 	_aiColor = color;
 
-	_stats        = SearchStats{};
+
+	_stats.nodesVisited   = 0;
+	_stats.nodesEvaluated = 0;
+	_stats.nodesPruned    = 0;
+	_stats.maxDepthSeen   = 0;
 
 	std::vector<t_cell> rootMoves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
 
@@ -232,23 +236,31 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 		return evaluateWhitePosition(position, cell);
 	}
 
+	// TT move first
 	const uint64_t ttKey = position.zobristHash();
 
-	if (const TTEntry* ttHit = _tt.probe(ttKey); ttHit && ttHit->depth >= depth)
+	const TTEntry* ttHit = _tt.probe(ttKey);
+
+	if (ttHit && ttHit->depth >= depth)
 	{
 		++_stats.ttHits;
 		const int ttScore = ttScoreFromEntry(ttHit->score, currentDepth);
-		if (ttHit->flag == TTFlag::Exact)
+		if (ttHit->flag == TTFlag::Exact) {
+			++_stats.ttCutoffs;
 			return ttScore;
+		}
 		if (ttHit->flag == TTFlag::LowerBound)
 			alpha = std::max(alpha, ttScore);
 		else if (ttHit->flag == TTFlag::UpperBound)
 			beta = std::min(beta, ttScore);
 
-		if (alpha >= beta)
+		if (alpha >= beta) {
+			++_stats.ttCutoffs;
 			return ttScore;
+		}
 	}
 
+	// Classic minimax loop
 	int alphaSearch = alpha;
 	int betaSearch = beta;
 	t_cell bestMove = {-1, -1};
