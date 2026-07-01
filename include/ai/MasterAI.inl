@@ -83,7 +83,7 @@ static std::string scoreMacroLabel(int score)
 
 	if (label)
 		return signedScoreLabel(score, label);
-
+	
 	const std::string prefix = (score > 0) ? " [AI_UNKNOWN:" : " [OPP_UNKNOWN:";
 	return prefix + std::to_string(magnitude) + "]";
 }
@@ -108,7 +108,6 @@ int	MasterAI<Traits>::getSearchDepth() const noexcept
 	return _maxDepth;
 }
 
-
 template <typename Traits>
 t_cell	MasterAI<Traits>::findBestMove(
 	const SearchPosition<Traits>& position, Color color)
@@ -116,9 +115,6 @@ t_cell	MasterAI<Traits>::findBestMove(
 	_aiColor = color;
 
 	_stats        = SearchStats{};
-	_timeExceeded = false;
-	if (_timeLimitMs)
-		_searchStart = Clock::now();
 
 	const std::vector<t_cell> rootMoves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
 
@@ -161,7 +157,6 @@ t_cell	MasterAI<Traits>::findBestMove(
 
 	_stats.bestScore = bestScore;
 	_stats.bestMove  = bestMove;
-
 
 	const int pruningPct = _stats.nodesVisited > 0
 		? (_stats.nodesPruned * 100 / _stats.nodesVisited) : 0;
@@ -298,20 +293,17 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 				bestEval = eval;
 				bestMove = move;
 			}
+
 			beta = std::min(beta, eval);
+			
 			if (beta <= alpha)
 			{
 				++_stats.nodesPruned;
 				break;
 			}
 		}
-		// return minEval;
+
 	}
-
-
-	// Résultat tronqué par le timeout : ne pas polluer la TT.
-	if (_timeExceeded)
-		return bestEval;
 
 	// When storing a LowerBound or UpperBound, we are storing knowledge about a cutoff that already happened.
 	TTFlag flag;
@@ -323,9 +315,7 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 	else
 		flag = TTFlag::Exact;            // alphaSearch < bestEval < betaSearch
 	
-	// TODO: cell or move ?!!! 
-	_tt.store(position.zobristHash(), ttScoreToEntry(bestEval, currentDepth), depth, flag,
-	          {bestMove.x, bestMove.y, CellStatus::Empty});
+	_tt.store(position.zobristHash(), ttScoreToEntry(bestEval, currentDepth), depth, flag, {bestMove.x, bestMove.y});
 	++_stats.ttStores;
 
 	return bestEval;

@@ -38,6 +38,18 @@ struct Move {
   }
 };
 
+typedef struct s_cell
+{
+	int x;
+	int y;
+
+	bool operator==(const s_cell& other) const
+    {
+        return x == other.x && y == other.y;
+    }
+}	t_cell;
+
+
 // Identifies a physical seat at the table.
 // Stable for the entire game; independent of colour assignment.
 enum class Seat : int { First = 0, Second = 1 };

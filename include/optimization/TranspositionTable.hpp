@@ -20,7 +20,7 @@ struct TTEntry
     int32_t  score      = 0;
     uint8_t  depth      = 0;
     TTFlag   flag       = TTFlag::Exact;
-    Move     bestMove   = {-1, -1, CellStatus::Empty};
+    t_cell   bestMove   = {-1, -1};
 };
 
 //calcule de la taille de la table.
@@ -35,7 +35,7 @@ class TranspositionTable
         const TTEntry* probe(uint64_t hash) const;
 
         void           store(uint64_t hash, int32_t score, uint8_t depth,
-                             TTFlag flag, Move bestMove);
+                            TTFlag flag, t_cell bestMove);
 
         void           clear();
 
