@@ -7,6 +7,7 @@
 // doivent être ré-ajustés à l'entrée/sortie de la table de transposition.
 static constexpr int WIN_SCORE      = 1000000;
 static constexpr int MATE_THRESHOLD = 900000;
+static constexpr int CAPTURE_SCORE = 202;
 
 // "depuis le nœud" -> "depuis la racine" (au probe TT)
 // ply = currentDepth
@@ -467,6 +468,8 @@ int	MasterAI<Traits>::evaluatePosition(const SearchPosition<Traits>& position, t
 	// is the OPPONENT of sideToMove().
 	const Color side = (position.sideToMove() == Color::Black) ? Color::White : Color::Black;
 
+	
+
 	// ne verifie pas les captures gagnantes, seulement les alignements de 5
 	if (isWinAfterMove<Traits>(board, side, cell.x, cell.y))
 		return signedFromAi(side, 1000000);
@@ -523,32 +526,40 @@ int MasterAI<Traits>::evaluateBlackPosition(
 	t_cell cell)
 {
 	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
-	auto board = position.board();
+	const auto board = position.board();
+
+	const int totalWhiteCaptures = position.getTotalwhiteCaptures();
+	const int whiteCaptures =  (position.getWhiteCaptures()) ? 2 : 0;
+
+	const int captureScore = whiteCaptures * CAPTURE_SCORE + totalWhiteCaptures;
+
+	if (totalWhiteCaptures >= 10)
+		return signedFromAi(Color::Black, 1100000 + captureScore);
 
 	if (isWinAfterMove<Traits>(board, Color::Black, cell.x, cell.y))
-		return signedFromAi(Color::Black, 1000000);
+		return signedFromAi(Color::Black, 1000000 + captureScore);
 
 	int result = tool.check_open_four(board.black, board.white, cell.x, cell.y);
 	if (result == 2)
-		return signedFromAi(Color::Black, 500000);
+		return signedFromAi(Color::Black, 500000 + captureScore);
 	if (result == 1)
-		return signedFromAi(Color::Black, 5000);
+		return signedFromAi(Color::Black, 5000 + captureScore);
 
 	if (tool.check_super_four(board.black, board.white, cell.x, cell.y))
-		return signedFromAi(Color::Black, 60000);
+		return signedFromAi(Color::Black, 60000 + captureScore);
 
 	if (tool.check_broken_four(board.black, board.white, cell.x, cell.y))
-		return signedFromAi(Color::Black, 6000);
+		return signedFromAi(Color::Black, 6000 + captureScore);
 
 	result = tool.check_cross(board.black, board.white, cell.x, cell.y);
 	if (result)
-		return signedFromAi(Color::Black, cross_score(result));
+		return signedFromAi(Color::Black, cross_score(result) + captureScore);
 
 	result = tool.check_open_three(board.black, board.white, cell.x, cell.y);
 	if (result)
-		return signedFromAi(Color::Black, score_open_three(result));
+		return signedFromAi(Color::Black, score_open_three(result) + captureScore);
 
-	return 0;
+	return captureScore;
 }
 
 
@@ -558,30 +569,38 @@ int MasterAI<Traits>::evaluateWhitePosition(
 	t_cell cell)
 {
 	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
-	auto board = position.board();
+	const auto board = position.board();
+
+	const int totalBlackCaptures = position.getTotalblackCaptures();
+	const int blackCaptures = (position.getBlackCaptures()) ? 2 : 0;
+
+	const int captureScore = blackCaptures * CAPTURE_SCORE + totalBlackCaptures;
+
+	if (totalBlackCaptures >= 10)
+		return signedFromAi(Color::White, 1100000 + captureScore);
 
 	if (isWinAfterMove<Traits>(board, Color::White, cell.x, cell.y))
-		return signedFromAi(Color::White, 1000000);
+		return signedFromAi(Color::White, 1000000 + captureScore);
 
 	int result = tool.check_open_four(board.black, board.white, cell.x, cell.y);
 	if (result == 2)
-		return signedFromAi(Color::White, 500000);
+		return signedFromAi(Color::White, 500000 + captureScore);
 	if (result == 1)
-		return signedFromAi(Color::White, 5000);
+		return signedFromAi(Color::White, 5000 + captureScore);
 
 	if (tool.check_super_four(board.white, board.black, cell.x, cell.y))
-		return signedFromAi(Color::White, 60000);
+		return signedFromAi(Color::White, 60000 + captureScore);
 
 	if (tool.check_broken_four(board.white, board.black, cell.x, cell.y))
-		return signedFromAi(Color::White, 6000);
+		return signedFromAi(Color::White, 6000 + captureScore);
 
 	result = tool.check_cross(board.white, board.black, cell.x, cell.y);
 	if (result)
-		return signedFromAi(Color::White, cross_score(result));
+		return signedFromAi(Color::White, cross_score(result) + captureScore);
 
 	result = tool.check_open_three(board.white, board.black, cell.x, cell.y);
 	if (result)
-		return signedFromAi(Color::White, score_open_three(result));
+		return signedFromAi(Color::White, score_open_three(result) + captureScore);
 
-	return 0;
+	return captureScore;
 }

@@ -6,7 +6,7 @@
 #include "game/contracts/contracts.hpp"
 #include "optimization/ZobristHasher.hpp"
 #include "bitboard/bitboard.hpp"
-#include "ai/ActiveZone.hpp"
+
 
 // a "SearchPosition" conventionally includes:
 // - board occupancy,
@@ -49,8 +49,11 @@ class SearchPosition
         void makeMove(int col, int row, CellStatus color);
         void undoMove(int col, int row, CellStatus color);
     
-        int  blackCaptures() const { return _blackCaptures; }
-        int  whiteCaptures() const { return _whiteCaptures; }
+        int  getTotalblackCaptures() const { return _blackCaptures; }
+        int  getTotalwhiteCaptures() const { return _whiteCaptures; }
+
+        int getBlackCaptures() const { return _history.empty() ? 0 : _history.back().blackCaptures; }
+        int getWhiteCaptures() const { return _history.empty() ? 0 : _history.back().whiteCaptures; }
     
         const t_BWBoard<Traits>& board()       const;
         uint64_t                 zobristHash() const;
@@ -117,6 +120,8 @@ int SearchPosition<Traits>::detect_captures_hash(const t_BWBoard<Traits>& board,
 				get_bb_generic<Traits>(victime, x2, y2) &&
 				get_bb_generic<Traits>(attacker, x3, y3))
 			{
+                clear_bit_generic<Traits>(bitboardForColor(const_cast<t_BWBoard<Traits>&>(board), victimColor), x1, y1);
+                clear_bit_generic<Traits>(bitboardForColor(const_cast<t_BWBoard<Traits>&>(board), victimColor), x2, y2);
                 _hash ^= _hasher.key(x1, y1, victimColor);
                 _hash ^= _hasher.key(x2, y2, victimColor);
                 capturedStones[captured] = {x1, y1};
