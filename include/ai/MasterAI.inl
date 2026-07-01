@@ -290,6 +290,7 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 		for (const t_cell& move : moves)
 		{
 			const CellStatus stone = colorToCell(position.sideToMove());
+			
 			position.makeMove(move.x, move.y, stone);
 			
 			int eval = minimax(position, move, depth - 1, alpha, beta, true);

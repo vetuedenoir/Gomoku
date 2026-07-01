@@ -15,7 +15,7 @@ const TTEntry* TranspositionTable::probe(uint64_t hash) const
 }
 
 void TranspositionTable::store(uint64_t hash, int32_t score, uint8_t depth,
-                               TTFlag flag, Move bestMove)
+                               TTFlag flag, t_cell bestMove)
 {
     TTEntry& entry = _table[hash & (TABLE_SIZE - 1)];
 

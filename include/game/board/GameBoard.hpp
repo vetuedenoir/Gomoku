@@ -29,6 +29,9 @@ class GameBoard : public IGameBoard
         GameBoard(int size, Color currentColor = Color::Black);
         ~GameBoard();
 
+        GameBoard(GameBoard&&) noexcept;
+        GameBoard& operator=(GameBoard&&) noexcept;
+
         int getSize() const override;
         bool isFree(int col, int row) const override;
         bool isInside(int col, int row) const override;
