@@ -30,7 +30,6 @@ struct SearchStats
     t_cell bestMove       = {-1, -1};
 };
 
-// Test-only accessor (defined in tests).
 template <typename T> struct MasterAITestAccess;
 
 template<typename Traits>
@@ -41,7 +40,6 @@ class MasterAI
 	public:
 		explicit MasterAI(int depth = 5, int activeZoneRadius = 1, Color aiColor = Color::Black);
 		
-		// Trouve le meilleur coup via minimax
 		t_cell findBestMove(
 			const SearchPosition<Traits>& position,
 			Color color
@@ -73,10 +71,7 @@ class MasterAI
 		using TimePoint = std::chrono::time_point<Clock>;
 
 		SearchStats             _stats;
-		std::optional<int>      _timeLimitMs = 1000;
-		bool                    _timeExceeded = false;
-		TimePoint               _searchStart  = {};
-
+	
 		int signedFromAi(Color side, int raw) const;
 
 		int minimax(

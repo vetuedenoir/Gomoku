@@ -2,18 +2,8 @@
 # define ACTIVEZONE_HPP
 
 #include "bitboard/bitboard.hpp"
+#include "game/contracts/contracts.hpp"
 #include <vector>
-
-typedef struct s_cell
-{
-	int x;
-	int y;
-
-	bool operator==(const s_cell& other) const
-    {
-        return x == other.x && y == other.y;
-    }
-}	t_cell;
 
 template<typename Traits>
 class ActiveZone

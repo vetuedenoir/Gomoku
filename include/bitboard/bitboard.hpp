@@ -166,12 +166,12 @@ void print_bb_19(t_BWBoard<Traits> &bw)
 			if (get_bb_generic<Traits>(bw.black, x, y) || get_bb_generic<Traits>(bw.white, x, y))
 			{
 				if (get_bb_generic<Traits>(bw.black, x, y))
-					str += "B ";
+					str += BLACK_STONE "B" RESET " ";
 				else if (get_bb_generic<Traits>(bw.white, x, y))
-					str += "W ";
+					str += WHITE_STONE "W" RESET " ";
 			}	
 			else
-				str += "0 ";
+				str += EMPTY_CELL "." RESET " ";
 		}
 		str += "|\n";
 	}

@@ -12,6 +12,9 @@ GameBoard::GameBoard(int size, Color currentColor)
 
 GameBoard::~GameBoard() = default;
 
+GameBoard::GameBoard(GameBoard&&) noexcept = default;
+GameBoard& GameBoard::operator=(GameBoard&&) noexcept = default;
+
 int GameBoard::getSize() const { return _impl->getSize(); }
 bool GameBoard::isFree(int col, int row) const { return _impl->isFree(col, row); }
 bool GameBoard::isInside(int col, int row) const { return _impl->isInside(col, row); }
