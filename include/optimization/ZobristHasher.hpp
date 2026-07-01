@@ -31,6 +31,8 @@ class ZobristHasher
 
     static uint64_t _table[TABLE_SIZE][2];
     static uint64_t _sideKey;
+    static uint64_t _captureBlackTable[5];
+    static uint64_t _captureWhiteTable[5];
     static bool     _initialized;
 
     static uint64_t random_u64()
@@ -54,6 +56,11 @@ class ZobristHasher
             }
         }
         _sideKey     = random_u64();
+        for (int i = 1; i < 5; ++i)
+        {
+            _captureBlackTable[i] = random_u64();
+            _captureWhiteTable[i] = random_u64();
+        }
         _initialized = true;
     }
 
@@ -72,6 +79,14 @@ public:
     uint64_t sideKey() const
     {
         return _sideKey;
+    }
+
+    uint64_t captureHash(Color c, int count) const
+    {
+        if (c == Color::Black)
+            return _captureBlackTable[count];
+        else 
+            return _captureWhiteTable[count];
     }
 
     uint64_t compute(const t_BWBoard<Traits>& board) const
@@ -98,6 +113,8 @@ public:
 
 template<typename Traits> uint64_t ZobristHasher<Traits>::_table[ZobristHasher<Traits>::TABLE_SIZE][2] = {};
 template<typename Traits> uint64_t ZobristHasher<Traits>::_sideKey = 0;
+template<typename Traits> uint64_t ZobristHasher<Traits>::_captureBlackTable[5] = {};
+template<typename Traits> uint64_t ZobristHasher<Traits>::_captureWhiteTable[5] = {};
 template<typename Traits> bool     ZobristHasher<Traits>::_initialized = false;
 
 using ZobristHasher19 = ZobristHasher<BoardTraits<19>>;

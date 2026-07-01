@@ -54,7 +54,7 @@ private:
         if (!ok)
             Logger::warn("VALIDATOR", std::string(phase) + " " + coord + " rejected");
         else
-            LOG_DEBUG("VALIDATOR", std::string(phase) + " " + coord + " ok");
+            {LOG_DEBUG("VALIDATOR", std::string(phase) + " " + coord + " ok");}
         return ok;
     }
 
