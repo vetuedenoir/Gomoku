@@ -45,6 +45,15 @@ static std::string scoreMacroLabel(int score)
 		return "";
 
 	const int magnitude = (score < 0) ? -score : score;
+
+	if (magnitude > MATE_THRESHOLD)
+    {
+        const int plies = WIN_SCORE - magnitude;
+        const char* side = (score > 0) ? " [AI_WIN" : " [OPP_WIN";
+        return std::string(side) + " mate in " + std::to_string(plies) + " ply]";
+    }
+
+
 	const char* label = nullptr;
 
 	switch (magnitude)
@@ -124,35 +133,38 @@ t_cell	MasterAI<Traits>::findBestMove(
 	if (rootMoves.empty())
 		return {-1, -1};
 
-	int bestScore = std::numeric_limits<int>::min();
 	t_cell bestMove = {-1, -1};
+	
+	int bestScore = std::numeric_limits<int>::min();
+	int alpha = std::numeric_limits<int>::min();
+	const int beta = std::numeric_limits<int>::max();
 
 	for (const t_cell& move : rootMoves)
 	{
 		SearchPosition<Traits> newPosition = position;
+
+		LOG_DEBUG("ROOT", "[findBestMove] making move (" + std::to_string(move.x) + "," + std::to_string(move.y) + ")");
 		
 		newPosition.makeMove(move.x, move.y, colorToCell(position.sideToMove()));
 
 		int score = minimax(newPosition, move, _maxDepth - 1,
-		                    std::numeric_limits<int>::min(),
-		                    std::numeric_limits<int>::max(), false);
-
-		// if (_timeExceeded)
-		// {
-		// 	LOG_DEBUG("AI", "[findBestMove] time limit reached — returning best so far");
-		// 	break;
-		// }
+		                    alpha, beta, false);
 
 		const std::string marker = (score > bestScore) ? " ← best" : "";
 		const std::string macro  = scoreMacroLabel(score);
-		LOG_DEBUG("AI", "  root (" + std::to_string(move.x) + ","
-		              + std::to_string(move.y) + ")  score =  " + std::to_string(score) + macro + marker);
+		
+		LOG_DEBUG("AI", "[findBestMove] move (" + std::to_string(move.x) + "," + std::to_string(move.y) + ")  score =  " + std::to_string(score) + macro + marker);
 
 		if (score > bestScore)
 		{
 			bestScore = score;
 			bestMove  = move;
 		}
+
+		if (bestScore >= WIN_SCORE - 1)
+			break;
+
+		alpha = std::max(alpha, bestScore);
 	}
 
 	_stats.bestScore = bestScore;
@@ -203,22 +215,20 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 	if (depth == 0)
 	{
 		++_stats.nodesEvaluated;
-		if (lastPlayed == Color::Black)
+		if (lastPlayed == Color::Black) {
 			return evaluateBlackPosition(position, cell);
+		}	
 		return evaluateWhitePosition(position, cell);
-		// return evaluatePosition(position, cell);
 	}
 
-	const std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
+	std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
 	
-
 	if (moves.empty())
 	{
 		++_stats.nodesEvaluated;
 		if (lastPlayed == Color::Black)
 			return evaluateBlackPosition(position, cell);
 		return evaluateWhitePosition(position, cell);
-		// return evaluatePosition(position, cell);
 	}
 
 	const uint64_t ttKey = position.zobristHash();
@@ -272,8 +282,6 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 				break;
 			}
 		}
-
-		// return maxEval;
 	}
 	else
 	{
