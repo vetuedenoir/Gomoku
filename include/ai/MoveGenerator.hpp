@@ -20,6 +20,7 @@ class MoveGenerator
 								typename Traits::Bitboard& legalMovesMask) const;
 
 		std::vector<t_cell> generateMoves(const t_BWBoard<Traits>& board, const Color color) const;
+		size_t	generateMovesT(const t_BWBoard<Traits>& board, const Color color, std::array<t_cell, 200>& movesArray) const;
 
 		bool isLegalMove(const t_BWBoard<Traits>& board, int col, int row, const Color color) const;
 
@@ -77,6 +78,28 @@ std::vector<t_cell>	MoveGenerator<Traits>::generateMoves(const t_BWBoard<Traits>
 	}
 
 	return zoneMoves;
+}
+
+template<typename Traits>
+size_t MoveGenerator<Traits>::generateMovesT(const t_BWBoard<Traits>& board, const Color color, std::array<t_cell, 200>& movesArray) const
+{
+    ActiveZone<Traits> zone(_activeZoneRadius);
+    zone.initialize(board);
+
+    std::array<t_cell, 200> tmpMoves;
+    size_t tmpCount = zone.generateZoneMovesT(tmpMoves);
+
+    size_t moveCount = 0;
+
+    for (size_t i = 0; i < tmpCount; ++i)
+    {
+        if (isLegalMove(board, tmpMoves[i].x, tmpMoves[i].y, color))
+        {
+            movesArray[moveCount++] = tmpMoves[i];
+        }
+    }
+
+    return moveCount;
 }
 
 using MoveGenerator19 = MoveGenerator<BoardTraits<19>>;

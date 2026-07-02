@@ -227,9 +227,12 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 		return evaluateWhitePosition(position, cell);
 	}
 
-	std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
+	// std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
 	
-	if (moves.empty())
+	std::array<t_cell, 200> movesArray;
+	size_t moveCount = _moveGenerator.generateMovesT(position.board(), position.sideToMove(), movesArray);
+
+	if (moveCount == 0)
 	{
 		++_stats.nodesEvaluated;
 		if (lastPlayed == Color::Black)
@@ -268,12 +271,27 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 
 	int bestEval = 0;
 
+	// Pour trier les coups, nous avons besoins du scores des coups.
+	// Pour avoir le score des coups, il faut qu'il est etee evalue precedament.
+	// les coups evaluees sont stockes dans la table de transposition.
+	// Pour les recupere, il faut le hash du coup.
+	// le hash comprend la positions des pierres sur le board, et le nombre de captures.
+	// mais c'est la fonctions make move qui creer le hash, modifie le board et le nombre de captures.
+	// Ils faut donc faire un make move pour avoir le hash du coup, puis recuperer le score du coup dans la table de transposition.
+	// Mais le make move modifie le board et le nombre de captures, donc il faut faire un undo move pour revenir a la position initiale.
+	// ce qui n'est pas optimal. ils faut donc un calculateur de hash qui ne modifie pas le board ni le nombre de captures.
+	// on fait une copie de positions qui comprend le hash, le board et le nombre de captures, on fait un make move modifier sur la copie.
+	// On recupere le hash du coup et on recupere le score du coup si il est dans la table de transpositions.
+	// Ensuite on trie les coups par score decroissant.
+
+
 	if (isMaximizing)
 	{ 
 		bestEval = std::numeric_limits<int>::min();
 
-		for (const t_cell& move : moves)
+		for (size_t i = 0; i < moveCount; ++i)
 		{
+			const t_cell& move = movesArray[i];
 			const CellStatus stone = colorToCell(position.sideToMove());
 			//ne gere pas les captures.
 			position.makeMove(move.x, move.y, stone);
@@ -301,8 +319,9 @@ int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 	{
 		bestEval = std::numeric_limits<int>::max();
 
-		for (const t_cell& move : moves)
+		for (size_t i = 0; i < moveCount; ++i)
 		{
+			const t_cell& move = movesArray[i];
 			const CellStatus stone = colorToCell(position.sideToMove());
 			
 			position.makeMove(move.x, move.y, stone);

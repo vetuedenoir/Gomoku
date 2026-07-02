@@ -5,6 +5,24 @@
 #include "game/contracts/contracts.hpp"
 #include <vector>
 
+struct MoveList
+{
+    std::array<t_cell, 200> moves;
+    uint16_t count = 0;
+
+    void clear() { count = 0; }
+
+    void push(t_cell m)
+    {
+        moves[count++] = m;
+    }
+
+    t_cell& operator[](size_t i)
+    {
+        return moves[i];
+    }
+};
+
 template<typename Traits>
 class ActiveZone
 {
@@ -28,6 +46,7 @@ class ActiveZone
 		int getRadius() const noexcept;
 
 		std::vector<t_cell> generateZoneMoves();
+		size_t generateZoneMovesT(std::array<t_cell, 200>& movesArray);
 
 	private:
 		typename Traits::Bitboard _candidateMask;
@@ -147,6 +166,26 @@ std::vector<t_cell> ActiveZone<Traits>::generateZoneMoves()
 		}
 	}
 	return moves;
+}
+
+
+template<typename Traits>
+size_t ActiveZone<Traits>::generateZoneMovesT(std::array<t_cell, 200>& movesArray)
+{
+    size_t count = 0;
+
+    for (int y = 0; y < Traits::BOARD_SIZE && count < movesArray.size(); ++y)
+    {
+        for (int x = 0; x < Traits::BOARD_SIZE && count < movesArray.size(); ++x)
+        {
+            if (contains(x, y))
+            {
+                movesArray[count++] = {x, y};
+            }
+        }
+    }
+
+    return count;
 }
 
 #endif // ACTIVEZONE_HPP
