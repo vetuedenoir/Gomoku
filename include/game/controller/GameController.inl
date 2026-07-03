@@ -287,7 +287,10 @@ std::optional<Move> GameController<Traits>::requestAIMove()
     if (_phase == GamePhase::Standard)
     {
         SearchPosition<Traits> pos = SearchPosition<Traits>::fromBoard(*_board);
+        _tracker.start();
         auto [col, row] = _masterAI.findBestMove(pos, currentColor());
+        _tracker.stop();
+
         if (col == -1)
         {
             Logger::warn("AI", "requestAIMove — no standard move found");
@@ -359,4 +362,16 @@ template<typename Traits>
 int GameController<Traits>::captureCount(const Color c) const
 {
     return (c == Color::Black) ? _capturesBlack : _capturesWhite;
+}
+
+template<typename Traits>
+double GameController<Traits>::aiMoveLastMs() const
+{
+    return _tracker.last();
+}
+
+template<typename Traits>
+double GameController<Traits>::aiMoveAverageMs() const
+{
+    return _tracker.average();
 }

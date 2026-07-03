@@ -34,6 +34,9 @@ class IGameController
 
         virtual Actor                playerActor()      const = 0;
         virtual Actor                aiActor()          const = 0;
+
+        virtual double               aiMoveLastMs()     const = 0;
+        virtual double               aiMoveAverageMs()  const = 0;
 };
 
 std::unique_ptr<IGameController> makeGameController(const GameConfig& config);

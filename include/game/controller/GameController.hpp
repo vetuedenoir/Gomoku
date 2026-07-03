@@ -6,7 +6,8 @@
 #include "game/validation/MoveValidator.hpp"
 #include "game/turn/TurnController.hpp"
 #include "ai/MasterAI.hpp"
-#include <memory>
+#include "tracker/Tracker.hpp"
+
 
 template<typename Traits>
 class GameController : public IGameController
@@ -36,6 +37,9 @@ class GameController : public IGameController
         std::optional<Color> getColorFromWinningActor() const override;
         int                  captureCount(const Color c) const override;
 
+        double               aiMoveLastMs()    const override;
+        double               aiMoveAverageMs() const override;
+
     private:
         ValidationContext validationContext() const;
         void assignColorsAfterChoice(bool swapped);
@@ -56,6 +60,7 @@ class GameController : public IGameController
         MoveValidator<Traits>      _validator;
         TurnController<Traits>     _turnController;
         MasterAI<Traits>           _masterAI;
+        Tracker                    _tracker;
         std::optional<Color>       _winner;
         int                        _capturesBlack = 0;
         int                        _capturesWhite = 0;
