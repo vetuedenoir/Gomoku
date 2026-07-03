@@ -144,6 +144,21 @@ bool Gomoku::isAITurn() const
     return _controller->currentActor().seat == _controller->aiActor().seat;
 }
 
+bool Gomoku::isGameOver()
+{
+    const auto winner = _controller->getColorFromWinningActor();
+    
+    if (!winner.has_value())
+        return false;
+
+    buildWinScreenPage(winner.value(),
+                       _controller->captureCount(Color::Black),
+                       _controller->captureCount(Color::White));
+    navigateTo(AppState::GameOver);
+    
+    return true;
+}
+
 void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
 {
     if (event.type == sf::Event::Closed)
@@ -171,10 +186,11 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
         {
             int col = _board->getHoveredCol();
             int row = _board->getHoveredRow();
+            
             if (col < 0 || row < 0)
                 break;
 
-            if (!_controller->handleOpeningClick(col, row))
+            if (!_controller->submitOpeningMove(col, row))
                 break;
 
             if (_controller->phase() == GamePhase::ColorChoice)
@@ -197,17 +213,8 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
             if (col < 0 || row < 0)
                 break;
 
-            auto result = _controller->submitMove(col, row);
-            
-            if (result == MoveResult::Win)
-            {
-                buildWinScreenPage(_controller->getColorFromWinningActor().value(),
-                                   _controller->captureCount(Color::Black),
-                                   _controller->captureCount(Color::White));
-                navigateTo(AppState::GameOver);
-            }
-
-
+            _controller->submitMove(col, row);
+            isGameOver();
             break;
         }
     }
@@ -229,9 +236,13 @@ void Gomoku::update(sf::Vector2f mouse)
     }
 
     if (_config.aiOpponent && _states.top() == AppState::Game && isAITurn())
-    {
-        LOG_INFO("AI DEBUG", "AI turn");
-       _controller->requestAIMove();
+    { 
+        _controller->requestAIMove();
+
+        if (_controller->phase() == GamePhase::ColorChoice)
+            buildColorChoicePage();
+
+        isGameOver();
     }
 }
 

@@ -1,4 +1,3 @@
-#include "game/validation/rules/OpeningRules.hpp"
 #include "bitboard/bitboard.hpp"
 #include "logger/Logger.hpp"
 #include <random>
@@ -16,7 +15,7 @@ GameController<Traits>::GameController(const GameConfig& config)
     
     _masterAI.setAIColor(aiColor());
 
-    _phase = _opening.openingSteps.empty() ? GamePhase::Standard : GamePhase::Opening;
+    _phase = _opening.isComplete() ? GamePhase::Standard : GamePhase::Opening;
 
     _currentSeat = Seat::First;
 
@@ -143,12 +142,14 @@ Color GameController<Traits>::currentColor() const
 }
 
 template<typename Traits>
-bool GameController<Traits>::handleOpeningClick(int col, int row)
+bool GameController<Traits>::submitOpeningMove(int col, int row)
 {
-    const CellStatus forced = _opening.nextOpeningColor();
+    const CellStatus forced = _opening.nextColor();
+    
     const Move       m{ col, row, forced };
 
-    const OpeningCommitResult result = commitOpeningMove(_opening, *_board, m);
+    const OpeningCommitResult result = _opening.commit(*_board, m);
+    
     if (!result.success)
         return false;
 
@@ -176,7 +177,7 @@ template<typename Traits>
 void GameController<Traits>::continueOpeningPlacement()
 {
     const GamePhase prev = _phase;
-    _opening.continueOpeningPlacement();
+    _opening.continuePlacement();
     _phase = GamePhase::Opening;
 
     // The seat that places the extra stones is dictated by the current opening step, not a literal.
@@ -196,7 +197,7 @@ MoveResult GameController<Traits>::submitMove(int col, int row)
     const Color moverColor = currentColor();
     const Move  move{ col, row, colorToCell(moverColor) };
 
-    if (!_validator.isLegal(validationContext(), _phase, moverColor, move))
+    if (!_validator.isLegal(*_board, moverColor, move))
         return MoveResult::Illegal;
 
     t_BWBoard<Traits> bb = GameBoard_to_bitboard<Traits>(*_board);
@@ -310,19 +311,19 @@ Actor GameController<Traits>::currentActor() const
 template<typename Traits>
 CellStatus GameController<Traits>::nextOpeningColor() const
 {
-    return _opening.nextOpeningColor();
+    return _opening.nextColor();
 }
 
 template<typename Traits>
 OpeningProtocol GameController<Traits>::openingProtocol() const
 {
-    return _opening.openingProtocol;
+    return _opening.protocol();
 }
 
 template<typename Traits>
 int GameController<Traits>::stepIdx() const
 {
-    return _opening.stepIdx;
+    return _opening.stepIndex();
 }
 
 template<typename Traits>

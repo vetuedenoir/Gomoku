@@ -10,18 +10,26 @@ template<typename Traits>
 class StandardRules
 {
     public:
-        bool isLegal(const t_BWBoard<Traits>& board, int col, int row, const Color color) const;
+        bool isLegal(const t_BWBoard<Traits>& board, int col, int row, const Color color,
+                     const char** reason = nullptr) const;
 };
 
 template<typename Traits>
-bool StandardRules<Traits>::isLegal(const t_BWBoard<Traits>& board, int col, int row, const Color color) const
+bool StandardRules<Traits>::isLegal(const t_BWBoard<Traits>& board, int col, int row, const Color color,
+                                    const char** reason) const
 {
-    if (!in_board_generic<Traits>(col, row))
+    const auto reject = [&](const char* why) {
+        if (reason)
+            *reason = why;
         return false;
+    };
+
+    if (!in_board_generic<Traits>(col, row))
+        return reject("out of board");
 
     if (get_bb_generic<Traits>(board.black, col, row) ||
         get_bb_generic<Traits>(board.white, col, row))
-        return false;
+        return reject("cell occupied");
 
     /*Create a copy of the board to simulate the move*/
     t_BWBoard<Traits> simulatedBoard = board;
@@ -41,7 +49,7 @@ bool StandardRules<Traits>::isLegal(const t_BWBoard<Traits>& board, int col, int
     {
         typename Traits::Bitboard captureMask = {};
         if (!detect_captures<Traits>(simulatedBoard, col, row, color, captureMask))
-            return false;
+            return reject("double-three");
     }
 
     return true;

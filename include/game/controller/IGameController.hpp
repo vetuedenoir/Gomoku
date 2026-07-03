@@ -16,7 +16,7 @@ class IGameController
         virtual MoveResult submitMove(int col, int row) = 0;
 
         // todo: uniform this name ?
-        virtual bool handleOpeningClick(int col, int row) = 0;
+        virtual bool submitOpeningMove(int col, int row) = 0;
         virtual void resolveColorChoice(bool swapped) = 0;
         virtual void continueOpeningPlacement() = 0;
 

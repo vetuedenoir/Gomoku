@@ -2,7 +2,7 @@
 # define GAMECONTROLLER_HPP
 
 #include "game/controller/IGameController.hpp"
-#include "game/OpeningRuntime.hpp"
+#include "game/OpeningEngine.hpp"
 #include "game/validation/MoveValidator.hpp"
 #include "game/turn/TurnController.hpp"
 #include "ai/MasterAI.hpp"
@@ -17,7 +17,7 @@ class GameController : public IGameController
 
         MoveResult submitMove(int col, int row) override;
 
-        bool handleOpeningClick(int col, int row) override;
+        bool submitOpeningMove(int col, int row) override;
         void resolveColorChoice(bool swapped) override;
         void continueOpeningPlacement() override;
 
@@ -41,7 +41,6 @@ class GameController : public IGameController
         double               aiMoveAverageMs() const override;
 
     private:
-        ValidationContext validationContext() const;
         void assignColorsAfterChoice(bool swapped);
         void applyOpeningResult(const OpeningCommitResult& result);
         void enterStandardPhase();
@@ -56,7 +55,7 @@ class GameController : public IGameController
         Color playerColor() const;
 
         std::unique_ptr<GameBoard> _board;
-        OpeningRuntime             _opening;
+        OpeningEngine              _opening;
         GamePhase                  _phase;
         MoveValidator<Traits>      _validator;
         TurnController<Traits>     _turnController;
