@@ -37,7 +37,7 @@ TEST_CASE("[TT] transposition: different move orders share hash and TT entry")
 	MasterAI19 ai = MasterAI19(2, 1, Color::Black);
 
 	Access::ttMutable(ai).store(p1.zobristHash(), 777, 5, TTFlag::Exact,
-	                            { -1, -1, CellStatus::Empty });
+	                            { -1, -1 });
 
 	const TTEntry* hit = Access::tt(ai).probe(p2.zobristHash());
 	REQUIRE(hit != nullptr);

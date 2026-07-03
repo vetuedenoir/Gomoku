@@ -17,7 +17,7 @@ TEST_CASE("[TT] collision: mismatching key in the same slot returns nullptr")
 	const uint64_t keyA = 0x0123456789ABCDEFull;
 	const uint64_t keyB = keyA ^ (1ull << 63); // même slot (bit 63 hors du masque), clé différente
 
-	tt.store(keyA, 42, 3, TTFlag::Exact, { -1, -1, CellStatus::Empty });
+	tt.store(keyA, 42, 3, TTFlag::Exact, { -1, -1 });
 
 	// 1. La clé stockée se relit correctement.
 	const TTEntry* a = tt.probe(keyA);
@@ -28,7 +28,7 @@ TEST_CASE("[TT] collision: mismatching key in the same slot returns nullptr")
 	CHECK(tt.probe(keyB) == nullptr);
 
 	// 3. Écrire keyB écrase le slot ; keyA n'est alors plus retrouvée.
-	tt.store(keyB, 99, 3, TTFlag::Exact, { -1, -1, CellStatus::Empty });
+	tt.store(keyB, 99, 3, TTFlag::Exact, { -1, -1 });
 	CHECK(tt.probe(keyA) == nullptr);
 	const TTEntry* bptr = tt.probe(keyB);
 	REQUIRE(bptr != nullptr);

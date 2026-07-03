@@ -249,9 +249,18 @@ std::optional<Move> GameController<Traits>::requestAIMove()
     {
         _tracker.start();
 
-        const std::vector<Move> candidates = getLegalOpeningMoves(_opening, *_board);
 
-        return m;
+        const std::vector<Move> candidates = _opening.legalMoves(*_board);
+
+        static std::mt19937 rng{std::random_device{}()};
+        
+        std::uniform_int_distribution<std::size_t> pick(0, candidates.size() - 1);
+        
+        const Move m = candidates[pick(rng)];
+
+        submitOpeningMove(m.col, m.row);
+
+        return Move{ m.col, m.row, colorToCell(currentColor()) };
     }
 
     if (_phase == GamePhase::Standard)
