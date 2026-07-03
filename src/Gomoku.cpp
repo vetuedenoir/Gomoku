@@ -248,6 +248,7 @@ void Gomoku::render()
     else if (_states.top() == AppState::Game)
     {
         _renderer.renderGame(_window, *_board, *_controller, computeGhostColor());
+        _renderer.renderStats(_window, _font, *_controller);
         if (_controller->phase() == GamePhase::ColorChoice)
             _renderer.renderColorChoice(_window, _colorChoice);
     }

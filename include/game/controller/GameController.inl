@@ -268,12 +268,9 @@ std::optional<Move> GameController<Traits>::requestAIMove()
 
     if (_phase == GamePhase::Opening)
     {
+        _tracker.start();
+
         const std::vector<Move> candidates = getLegalOpeningMoves(_opening, *_board);
-        if (candidates.empty())
-        {
-            Logger::warn("AI", "requestAIMove — no legal opening moves");
-            return std::nullopt;
-        }
 
         const Move& m = candidates.front();
         if (!handleOpeningClick(m.col, m.row))
@@ -281,6 +278,9 @@ std::optional<Move> GameController<Traits>::requestAIMove()
             Logger::warn("AI", "requestAIMove — opening click rejected");
             return std::nullopt;
         }
+
+        _tracker.stop();
+
         return m;
     }
 
@@ -289,6 +289,7 @@ std::optional<Move> GameController<Traits>::requestAIMove()
         SearchPosition<Traits> pos = SearchPosition<Traits>::fromBoard(*_board);
         _tracker.start();
         auto [col, row] = _masterAI.findBestMove(pos, currentColor());
+       
         _tracker.stop();
 
         if (col == -1)
