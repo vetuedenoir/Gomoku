@@ -1,7 +1,7 @@
 #ifndef CONFIG_HPP
 # define CONFIG_HPP
 
-// # define GOMOKU_DEBUG  // comment out for benchmark mode
+# define GOMOKU_DEBUG  // comment out for benchmark mode
 
 # ifdef GOMOKU_DEBUG
 #   define LOG_DEBUG(tag, msg) Logger::debug(tag, msg)

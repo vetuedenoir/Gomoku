@@ -80,4 +80,65 @@ struct TurnOutcome {
   typename Traits::Bitboard capturedMask{};
 };
 
+
+
+template<typename T, std::size_t N>
+struct MoveList
+{
+    std::array<T, N> moves;
+    std::size_t count = 0;
+
+    void clear() noexcept
+    {
+        count = 0;
+    }
+
+    void push(const T& m) noexcept
+    {
+        moves[count++] = m;
+    }
+
+    void pop() noexcept
+    {
+        --count;
+    }
+
+    T& top() noexcept
+    {
+        return moves[count - 1];
+    }
+
+    const T& top() const noexcept
+    {
+        return moves[count - 1];
+    }
+
+    T& operator[](std::size_t i) noexcept
+    {
+        return moves[i];
+    }
+
+    const T& operator[](std::size_t i) const noexcept
+    {
+        return moves[i];
+    }
+
+    std::size_t size() const noexcept
+    {
+        return count;
+    }
+
+    bool empty() const noexcept
+    {
+        return count == 0;
+    }
+
+    T* begin() noexcept { return moves.data(); }
+    T* end()   noexcept { return moves.data() + count; }  // ← count, pas N !
+    
+    const T* begin() const noexcept { return moves.data(); }
+    const T* end()   const noexcept { return moves.data() + count; }
+};
+
+
 #endif

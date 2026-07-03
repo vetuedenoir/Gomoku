@@ -32,6 +32,14 @@ struct SearchStats
 
 template <typename T> struct MasterAITestAccess;
 
+struct sort_move_t
+{
+	t_cell			move;
+	const TTEntry*		hit;
+	position_hash_t	pos_hash;
+};
+
+
 template<typename Traits>
 class MasterAI
 {
@@ -78,13 +86,23 @@ class MasterAI
 
 		int minimax(
 			SearchPosition<Traits>& position, t_cell cell,
-			int depth, int alpha, int beta, bool isMaximizing);
+			int depth, int alpha, int beta);
 		
 		int evaluatePosition(const SearchPosition<Traits>& position, t_cell cell);
 
 		int evaluateBlackPosition(const SearchPosition<Traits>& position, t_cell cell);
 		int evaluateWhitePosition(const SearchPosition<Traits>& position, t_cell cell);
 };
+
+
+
+static int getMoveScore(const sort_move_t& sm) {
+    if (sm.hit == nullptr) return 0;
+    if (sm.hit->flag == TTFlag::Exact)      return sm.hit->score + 1000000;
+    if (sm.hit->flag == TTFlag::LowerBound) return sm.hit->score + 500000;
+    return sm.hit->score;
+}
+
 
 using MasterAI19 = MasterAI<BoardTraits<19>>;
 using MasterAI15 = MasterAI<BoardTraits<15>>;
