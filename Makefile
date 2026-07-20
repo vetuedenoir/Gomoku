@@ -15,7 +15,7 @@ ifeq ($(UNAME_S),Linux)
 else ifeq ($(UNAME_S),Darwin)
 	NPROC := $(shell sysctl -n hw.ncpu)
 	CXX         := clang++
-	CXXFLAGS_OS := -arch arm64 -I$(SFML_ROOT)/include
+	CXXFLAGS_OS := -arch arm64 -isystem $(SFML_ROOT)/include
 	LDFLAGS_OS  := -L$(SFML_ROOT)/build/lib \
 	               -Wl,-rpath,$(SFML_ROOT)/build/lib \
 	               -framework Cocoa \
