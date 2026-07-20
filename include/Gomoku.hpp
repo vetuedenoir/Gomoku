@@ -56,6 +56,7 @@ class Gomoku
 
         CellStatus computeGhostColor() const;
         bool       isAITurn() const;
+        bool       isGameOver();
 
         void handleEvent(const sf::Event &event, sf::Vector2f mouse);
         void render();

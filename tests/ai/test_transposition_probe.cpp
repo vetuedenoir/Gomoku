@@ -84,7 +84,7 @@ TEST_CASE("[Minimax] TT: shallow entry is rejected, full search runs")
 
 	const int sentinel = 123456; // valeur que la vraie recherche ne produit jamais
 	Access::ttMutable(ai).store(pos.zobristHash(), sentinel, 2, TTFlag::Exact,
-	                            { -1, -1, CellStatus::Empty });
+	                            { -1, -1 });
 
 	// 3. Recherche à depth = 4 : l'entrée depth = 2 doit être rejetée.
 	const int value = Access::search(ai, pos, previousHarmlessMove, 4, NEG_INF, POS_INF, true);

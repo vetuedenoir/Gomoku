@@ -16,7 +16,7 @@ class IGameController
         virtual MoveResult submitMove(int col, int row) = 0;
 
         // todo: uniform this name ?
-        virtual bool handleOpeningClick(int col, int row) = 0;
+        virtual bool submitOpeningMove(int col, int row) = 0;
         virtual void resolveColorChoice(bool swapped) = 0;
         virtual void continueOpeningPlacement() = 0;
 
@@ -34,6 +34,9 @@ class IGameController
 
         virtual Actor                playerActor()      const = 0;
         virtual Actor                aiActor()          const = 0;
+
+        virtual double               aiMoveLastMs()     const = 0;
+        virtual double               aiMoveAverageMs()  const = 0;
 };
 
 std::unique_ptr<IGameController> makeGameController(const GameConfig& config);

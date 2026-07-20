@@ -12,9 +12,10 @@ template<typename Traits>
 class StandardMovePolicy
 {
 public:
-    bool isLegal(const GameBoard& board, int col, int row, Color color) const
+    bool isLegal(const GameBoard& board, int col, int row, Color color,
+                 const char** reason = nullptr) const
     {
-        return _rules.isLegal(boardFrom(board), col, row, color);
+        return _rules.isLegal(boardFrom(board), col, row, color, reason);
     }
 
     std::vector<Move> legalMoves(const GameBoard& board, Color color) const

@@ -1,4 +1,3 @@
-#include "game/validation/rules/OpeningRules.hpp"
 #include "bitboard/bitboard.hpp"
 #include "logger/Logger.hpp"
 #include <random>
@@ -9,41 +8,46 @@ GameController<Traits>::GameController(const GameConfig& config)
     : _board(std::make_unique<GameBoard>(config.boardSize, Color::Black)),
       _opening(config.openingProtocol)
 {
-    if (config.playerColor == Color::Black)
-    {
-        _aiActor.color = Color::White;
-        _aiActor.seat = Seat::Second;
-        _playerActor.color = Color::Black;
-        _playerActor.seat = Seat::First;
-        _masterAI.setAIColor(Color::White);
-    }
-    else
-    {
-        _aiActor.color = Color::Black;
-        _aiActor.seat = Seat::First;
-        _playerActor.color = Color::White;
-        _playerActor.seat = Seat::Second;
-        _masterAI.setAIColor(Color::Black);
-    }
+    // Colours are bound to seats and never move: First is always Black, Second always White.
+    _colorBySeat = { Color::Black, Color::White };
+    // The human picked their colour at game creation; the AI takes the opposite seat.
+    _aiSeat = (config.playerColor == Color::Black) ? Seat::Second : Seat::First;
+    
+    _masterAI.setAIColor(aiColor());
 
-    _phase = _opening.openingSteps.empty() ? GamePhase::Standard : GamePhase::Opening;
+    _phase = _opening.isComplete() ? GamePhase::Standard : GamePhase::Opening;
 
-    if (_phase == GamePhase::Standard)
-        _currentActor = actorWithColor(Color::Black);
-    else
-        setCurrentActorForSeat(Seat::First);
+    _currentSeat = Seat::First;
 
     Logger::info("CONTROLLER",
         std::string("phase=") + (_phase == GamePhase::Standard ? "Standard"
             : _phase == GamePhase::Opening ? "Opening" : "ColorChoice")
-        + "  current=" + seatStr(_currentActor.seat)
-        + " (" + (_currentActor.color == Color::Black ? "Black" : "White") + ")");
+        + "  current=" + seatStr(_currentSeat)
+        + " (" + (colorOf(_currentSeat) == Color::Black ? "Black" : "White") + ")");
 }
 
 template<typename Traits>
-ValidationContext GameController<Traits>::validationContext() const
+Color GameController<Traits>::colorOf(Seat s) const
 {
-    return { *_board, _opening };
+    return _colorBySeat[static_cast<int>(s)];
+}
+
+template<typename Traits>
+Seat GameController<Traits>::seatOf(Color c) const
+{
+    return (colorOf(Seat::First) == c) ? Seat::First : Seat::Second;
+}
+
+template<typename Traits>
+Color GameController<Traits>::aiColor() const
+{
+    return colorOf(_aiSeat);
+}
+
+template<typename Traits>
+Color GameController<Traits>::playerColor() const
+{
+    return colorOf(otherSeat(_aiSeat));
 }
 
 template<typename Traits>
@@ -64,59 +68,29 @@ void GameController<Traits>::logPhaseTransition(GamePhase from, GamePhase to) co
 template<typename Traits>
 void GameController<Traits>::assignColorsAfterChoice(bool swapped)
 {
+    // A swap only trades which seat the AI occupies; colours stay bound to seats.
     if (swapped)
     {
-        std::swap(_playerActor.color, _aiActor.color);
-        std::swap(_playerActor.seat, _aiActor.seat);
-        _masterAI.setAIColor(_aiActor.color);
+        _aiSeat = otherSeat(_aiSeat);
+        _masterAI.setAIColor(aiColor());
     }
 
     Logger::info("RESOLVE",
-        "Player → " + seatStr(_playerActor.seat)
-        + "  |  AI → " + seatStr(_aiActor.seat)
+        "Player → " + seatStr(otherSeat(_aiSeat))
+        + "  |  AI → " + seatStr(_aiSeat)
         + "  |  swapped=" + (swapped ? "true" : "false"));
-}
-
-template<typename Traits>
-Actor GameController<Traits>::actorWithColor(Color color) const
-{
-    return (_playerActor.color == color) ? _playerActor : _aiActor;
-}
-
-template<typename Traits>
-Color GameController<Traits>::colorForSeat(Seat seat) const
-{
-    return (seat == _playerActor.seat) ? _playerActor.color : _aiActor.color;
-}
-
-template<typename Traits>
-void GameController<Traits>::setCurrentActorForSeat(Seat seat)
-{
-    _currentActor = { seat, colorForSeat(seat) };
-}
-
-template<typename Traits>
-void GameController<Traits>::syncCurrentActorColor()
-{
-    _currentActor.color = colorForSeat(_currentActor.seat);
-}
-
-template<typename Traits>
-void GameController<Traits>::syncBoardCurrentColor()
-{
-    _board->setCurrentColor(_currentActor.color);
 }
 
 template<typename Traits>
 void GameController<Traits>::beginNormalPlay()
 {
-    syncBoardCurrentColor();
+    _board->setCurrentColor(colorOf(_currentSeat));
 
     Logger::info("PHASE BEGIN NORMAL PLAY",
-        std::string("Standard — Player=") + seatStr(_playerActor.seat)
-        + "  AI=" + seatStr(_aiActor.seat)
-        + "  to move=" + seatStr(_currentActor.seat)
-        + " (" + (_currentActor.color == Color::Black ? "Black" : "White") + ")");
+        std::string("Standard — Player=") + seatStr(otherSeat(_aiSeat))
+        + "  AI=" + seatStr(_aiSeat)
+        + "  to move=" + seatStr(_currentSeat)
+        + " (" + (colorOf(_currentSeat) == Color::Black ? "Black" : "White") + ")");
 }
 
 template<typename Traits>
@@ -132,7 +106,7 @@ template<typename Traits>
 void GameController<Traits>::applyOpeningResult(const OpeningCommitResult& result)
 {
     if (result.nextSeat.has_value())
-        setCurrentActorForSeat(*result.nextSeat);
+        _currentSeat = *result.nextSeat;
 
     switch (result.event)
     {
@@ -157,27 +131,30 @@ void GameController<Traits>::applyOpeningResult(const OpeningCommitResult& resul
 template<typename Traits>
 void GameController<Traits>::passTurn()
 {
-    _currentActor = (_currentActor.seat == _playerActor.seat) ? _aiActor : _playerActor;
-    syncBoardCurrentColor();
+    _currentSeat = otherSeat(_currentSeat);
+    _board->setCurrentColor(colorOf(_currentSeat));
 }
 
 template<typename Traits>
 Color GameController<Traits>::currentColor() const
 {
-    return _currentActor.color;
+    return colorOf(_currentSeat);
 }
 
 template<typename Traits>
-bool GameController<Traits>::handleOpeningClick(int col, int row)
+bool GameController<Traits>::submitOpeningMove(int col, int row)
 {
-    const CellStatus forced = _opening.nextOpeningColor();
+    const CellStatus forced = _opening.nextColor();
+    
     const Move       m{ col, row, forced };
 
-    const OpeningCommitResult result = commitOpeningMove(_opening, *_board, m);
+    const OpeningCommitResult result = _opening.commit(*_board, m);
+    
     if (!result.success)
         return false;
 
     applyOpeningResult(result);
+
     return true;
 }
 
@@ -185,16 +162,14 @@ template<typename Traits>
 void GameController<Traits>::resolveColorChoice(bool swapped)
 {
     Logger::info("CHOICE",
-        seatStr(_currentActor.seat)
+        seatStr(_currentSeat)
         + (swapped ? " swapped → takes opposite colour"
                    : " keeps default colour"));
 
-    // Swap interverts player/ai actors, not currentActor seat.
     assignColorsAfterChoice(swapped);
-    syncCurrentActorColor();
 
-    // Chooser finished their action → pass to opposite colour for first Standard move.
-    passTurn();
+    _currentSeat = seatOf(Color::White);
+   
     enterStandardPhase();
 }
 
@@ -202,9 +177,12 @@ template<typename Traits>
 void GameController<Traits>::continueOpeningPlacement()
 {
     const GamePhase prev = _phase;
-    _opening.continueOpeningPlacement();
+    _opening.continuePlacement();
     _phase = GamePhase::Opening;
-    setCurrentActorForSeat(Seat::Second);
+
+    // The seat that places the extra stones is dictated by the current opening step, not a literal.
+    _currentSeat = _opening.currentStep().actor;
+
     logPhaseTransition(prev, _phase);
 }
 
@@ -219,7 +197,7 @@ MoveResult GameController<Traits>::submitMove(int col, int row)
     const Color moverColor = currentColor();
     const Move  move{ col, row, colorToCell(moverColor) };
 
-    if (!_validator.isLegal(validationContext(), _phase, moverColor, move))
+    if (!_validator.isLegal(*_board, moverColor, move))
         return MoveResult::Illegal;
 
     t_BWBoard<Traits> bb = GameBoard_to_bitboard<Traits>(*_board);
@@ -227,6 +205,7 @@ MoveResult GameController<Traits>::submitMove(int col, int row)
         _turnController.play(bb, move, _capturesBlack, _capturesWhite);
 
     _board->placeStoneOfColor(move.col, move.row, move.forcedColor);
+    
     bb_for_each_bit<Traits>(outcome.capturedMask, [this](int x, int y) {
         _board->clearCell(x, y);
     });
@@ -268,34 +247,41 @@ std::optional<Move> GameController<Traits>::requestAIMove()
 
     if (_phase == GamePhase::Opening)
     {
-        const std::vector<Move> candidates = getLegalOpeningMoves(_opening, *_board);
-        if (candidates.empty())
-        {
-            Logger::warn("AI", "requestAIMove — no legal opening moves");
-            return std::nullopt;
-        }
+        _tracker.start();
 
-        const Move& m = candidates.front();
-        if (!handleOpeningClick(m.col, m.row))
-        {
-            Logger::warn("AI", "requestAIMove — opening click rejected");
-            return std::nullopt;
-        }
-        return m;
+
+        const std::vector<Move> candidates = _opening.legalMoves(*_board);
+
+        static std::mt19937 rng{std::random_device{}()};
+        
+        std::uniform_int_distribution<std::size_t> pick(0, candidates.size() - 1);
+        
+        const Move m = candidates[pick(rng)];
+
+        submitOpeningMove(m.col, m.row);
+
+        return Move{ m.col, m.row, colorToCell(currentColor()) };
     }
 
     if (_phase == GamePhase::Standard)
     {
         SearchPosition<Traits> pos = SearchPosition<Traits>::fromBoard(*_board);
+        
+        _tracker.start();
+        
         auto [col, row] = _masterAI.findBestMove(pos, currentColor());
+       
+        _tracker.stop();
+
         if (col == -1)
         {
             Logger::warn("AI", "requestAIMove — no standard move found");
             return std::nullopt;
         }
-        const Move m{ col, row, colorToCell(currentColor()) };
+        
         submitMove(col, row);
-        return m;
+        
+        return Move{ col, row, colorToCell(currentColor()) };
     }
 
     return std::nullopt;
@@ -316,37 +302,37 @@ GamePhase GameController<Traits>::phase() const
 template<typename Traits>
 Actor GameController<Traits>::playerActor() const
 {
-    return _playerActor;
+    return { otherSeat(_aiSeat), playerColor() };
 }
 
 template<typename Traits>
 Actor GameController<Traits>::aiActor() const
 {
-    return _aiActor;
+    return { _aiSeat, aiColor() };
 }
 
 template<typename Traits>
 Actor GameController<Traits>::currentActor() const
 {
-    return _currentActor;
+    return { _currentSeat, colorOf(_currentSeat) };
 }
 
 template<typename Traits>
 CellStatus GameController<Traits>::nextOpeningColor() const
 {
-    return _opening.nextOpeningColor();
+    return _opening.nextColor();
 }
 
 template<typename Traits>
 OpeningProtocol GameController<Traits>::openingProtocol() const
 {
-    return _opening.openingProtocol;
+    return _opening.protocol();
 }
 
 template<typename Traits>
 int GameController<Traits>::stepIdx() const
 {
-    return _opening.stepIdx;
+    return _opening.stepIndex();
 }
 
 template<typename Traits>
@@ -359,4 +345,16 @@ template<typename Traits>
 int GameController<Traits>::captureCount(const Color c) const
 {
     return (c == Color::Black) ? _capturesBlack : _capturesWhite;
+}
+
+template<typename Traits>
+double GameController<Traits>::aiMoveLastMs() const
+{
+    return _tracker.last();
+}
+
+template<typename Traits>
+double GameController<Traits>::aiMoveAverageMs() const
+{
+    return _tracker.average();
 }

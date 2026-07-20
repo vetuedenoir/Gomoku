@@ -15,7 +15,7 @@ ifeq ($(UNAME_S),Linux)
 else ifeq ($(UNAME_S),Darwin)
 	NPROC := $(shell sysctl -n hw.ncpu)
 	CXX         := clang++
-	CXXFLAGS_OS := -arch arm64 -I$(SFML_ROOT)/include
+	CXXFLAGS_OS := -arch arm64 -isystem $(SFML_ROOT)/include
 	LDFLAGS_OS  := -L$(SFML_ROOT)/build/lib \
 	               -Wl,-rpath,$(SFML_ROOT)/build/lib \
 	               -framework Cocoa \
@@ -135,7 +135,8 @@ TEST_GAME_SRCS := $(wildcard $(SRC_DIR)/game/*.cpp) \
                   $(wildcard $(SRC_DIR)/ai/*.cpp) \
                   $(wildcard $(SRC_DIR)/logger/*.cpp) \
                   $(wildcard $(SRC_DIR)/optimization/*.cpp) \
-                  $(wildcard $(SRC_DIR)/bitboard/*.cpp)
+                  $(wildcard $(SRC_DIR)/bitboard/*.cpp) \
+				  $(wildcard $(SRC_DIR)/tracker/*.cpp)
 TEST_SRCS      := $(wildcard $(TEST_DIR)/*.cpp) $(wildcard $(TEST_DIR)/patterns/*.cpp) $(wildcard $(TEST_DIR)/move_generator/*.cpp) $(wildcard $(TEST_DIR)/ai/*.cpp) $(wildcard $(TEST_DIR)/performance/*.cpp)
 
 TEST_GAME_OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(TEST_OBJ_DIR)/%.o,$(TEST_GAME_SRCS))

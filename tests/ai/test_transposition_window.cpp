@@ -43,7 +43,7 @@ TEST_CASE("[Minimax] TT: LowerBound raises alpha and cuts instantly")
 	MasterAI19 ai = MasterAI19(2, 1, Color::Black);
 
 	Access::ttMutable(ai).store(pos.zobristHash(), 15, 2, TTFlag::LowerBound,
-	                            { -1, -1, CellStatus::Empty });
+	                            { -1, -1 });
 
 	const int value = Access::search(ai, pos, previousHarmlessMove, 2, 5, 10, true);
 
@@ -69,7 +69,7 @@ TEST_CASE("[Minimax] TT: UpperBound lowers beta and cuts instantly")
 	MasterAI19 ai = MasterAI19(2, 1, Color::Black);
 
 	Access::ttMutable(ai).store(pos.zobristHash(), 2, 2, TTFlag::UpperBound,
-	                            { -1, -1, CellStatus::Empty });
+	                            { -1, -1 });
 
 	const int value = Access::search(ai, pos, previousHarmlessMove, 2, 5, 10, true);
 
@@ -114,7 +114,7 @@ TEST_CASE("[Minimax] TT: UpperBound shrinks window and enables a later beta-cuto
 	MasterAI19 ai = MasterAI19(1, 1, Color::Black);
 
 	Access::ttMutable(ai).store(pos.zobristHash(), injectedUpper, 1, TTFlag::UpperBound,
-	                            { -1, -1, CellStatus::Empty });
+	                            { -1, -1 });
 	const int value = Access::search(ai, pos, previousHarmlessMove, 1, 0, wideBeta, true);
 
 	const SearchStats& stats = ai.lastSearchStats();

@@ -20,6 +20,9 @@ public:
     void renderGame       (sf::RenderWindow& w, Board& board,
                            const IGameController& ctrl, CellStatus ghost);
 
+    void renderStats      (sf::RenderWindow& w, const sf::Font& font,
+                           const IGameController& ctrl);
+
     void renderColorChoice(sf::RenderWindow& w, MenuPage& colorChoice);
 
     void renderWinScreen  (sf::RenderWindow& w, MenuPage& winScreen);
