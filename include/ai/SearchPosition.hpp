@@ -194,20 +194,21 @@ void SearchPosition<Traits>::undoMove(int col, int row, Color color)
 	{
 		_hash ^= _hasher.captureHash(Color::White, _whiteCaptures >> 1);
 		_whiteCaptures -= state.whiteCaptures;
-		for (auto it = state.capturedStones.begin(); it != state.capturedStones.end(); it++)
+		// Restaure uniquement les vraies pierres capturees (borne au compteur).
+		for (int k = 0; k < state.whiteCaptures; ++k)
 		{
-			set_bb_generic<Traits>(_board.white, it->x, it->y);
-			_hash ^= _hasher.key(it->x, it->y, Color::White);
+			set_bb_generic<Traits>(_board.white, state.capturedStones[k].x, state.capturedStones[k].y);
+			_hash ^= _hasher.key(state.capturedStones[k].x, state.capturedStones[k].y, Color::White);
 		}
 	}	
     else if (state.blackCaptures > 0)
 	{
 		_hash ^= _hasher.captureHash(Color::Black, _blackCaptures >> 1);
 		_blackCaptures -= state.blackCaptures;
-		for (auto it = state.capturedStones.begin(); it != state.capturedStones.end(); it++)
+		for (int k = 0; k < state.blackCaptures; ++k)
 		{
-			set_bb_generic<Traits>(_board.black, it->x, it->y);
-			_hash ^= _hasher.key(it->x, it->y, Color::Black);
+			set_bb_generic<Traits>(_board.black, state.capturedStones[k].x, state.capturedStones[k].y);
+			_hash ^= _hasher.key(state.capturedStones[k].x, state.capturedStones[k].y, Color::Black);
 		}
     }
 
@@ -240,18 +241,17 @@ void SearchPosition<Traits>::makeMove(int col, int row, Color color, position_ha
     if (ph.state.whiteCaptures > 0)
     {
         _whiteCaptures += ph.state.whiteCaptures;
-        for (auto it = ph.state.capturedStones.begin(); it != ph.state.capturedStones.end(); it++)
-        {
-            clear_bit_generic<Traits>(_board.white, it->x, it->y);
-        }
+        // Seules les whiteCaptures premieres entrees sont valides ; le reste du
+        // tableau vaut {0,0} et ne doit PAS etre touche (sinon corruption en (0,0)).
+        for (int k = 0; k < ph.state.whiteCaptures; ++k)
+            clear_bit_generic<Traits>(_board.white, ph.state.capturedStones[k].x, ph.state.capturedStones[k].y);
     }
     else if (ph.state.blackCaptures > 0)
     {
         _blackCaptures += ph.state.blackCaptures;
-        for (auto it = ph.state.capturedStones.begin(); it != ph.state.capturedStones.end(); it++)
-        {
-            set_bb_generic<Traits>(_board.black, it->x, it->y);
-        }
+        // Victimes noires : il faut les RETIRER (clear), pas les poser.
+        for (int k = 0; k < ph.state.blackCaptures; ++k)
+            clear_bit_generic<Traits>(_board.black, ph.state.capturedStones[k].x, ph.state.capturedStones[k].y);
     }
 
 
