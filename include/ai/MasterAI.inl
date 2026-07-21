@@ -133,22 +133,22 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	_stats.maxDepthSeen   = 0;
 
 	// std::vector<t_cell> rootMoves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
-	MoveList<t_cell, 200> rootMoves;
-	_moveGenerator.generateMovesT(position.board(), position.sideToMove(), rootMoves);
+	MoveList<t_cell, MAX_BOARD_MOVES<Traits>> rootMovesList;
+	_moveGenerator.generateMovesByBitboard(position.board(), position.sideToMove(), rootMovesList);
 	LOG_DEBUG("AI", "[findBestMove] depth=" + std::to_string(_maxDepth)
-	              + "  root candidates=" + std::to_string(rootMoves.size()));
+	              + "  root candidates=" + std::to_string(rootMovesList.size()));
 
-	if (rootMoves.empty())
+	if (rootMovesList.empty())
 		return {-1, -1};
 
 	t_cell bestMove = {-1, -1};
 
 
-	MoveList<sort_move_t, 200> sort_list;
-	for (size_t i = 0; i < rootMoves.size(); i++)
+	MoveList<sort_move_t, MAX_BOARD_MOVES<Traits>> sort_list;
+	for (size_t i = 0; i < rootMovesList.size(); i++)
 	{
 		sort_move_t	 mhph;
-		mhph.move = rootMoves[i];
+		mhph.move = rootMovesList[i];
 		mhph.pos_hash = position.gethash(mhph.move.x, mhph.move.y, position.sideToMove());
 		mhph.hit = _tt.probe(mhph.pos_hash.hash);
 		sort_list.push(mhph);
@@ -269,8 +269,8 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     }
 
     // 5. Génération des coups
-    MoveList<t_cell, 200> movesArray;
-    _moveGenerator.generateMovesT(position.board(), position.sideToMove(), movesArray);
+    MoveList<t_cell, MAX_BOARD_MOVES<Traits>> movesArray;
+    _moveGenerator.generateMovesByBitboard(position.board(), position.sideToMove(), movesArray);
 
     if (movesArray.empty())
     {
@@ -343,193 +343,6 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 
     return bestEval;
 }
-
-// template <typename Traits>
-// int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
-// 	int depth, int alpha, int beta)
-// {
-// 	const int currentDepth = _maxDepth - depth;
-// 	if (currentDepth > _stats.maxDepthSeen)
-// 		_stats.maxDepthSeen = currentDepth;
-
-// 	const uint64_t ttKey = position.zobristHash();
-// 	const TTEntry* ttHit = _tt.probe(ttKey);
-
-// 	if (ttHit && ttHit->depth >= depth)
-// 	{
-// 		++_stats.ttHits;
-// 		const int ttScore = ttScoreFromEntry(ttHit->score, currentDepth);
-// 		if (ttHit->flag == TTFlag::Exact) {
-// 			++_stats.ttCutoffs;
-// 			return ttScore;
-// 		}
-// 		if (ttHit->flag == TTFlag::LowerBound)
-// 			alpha = std::max(alpha, ttScore);
-// 		else if (ttHit->flag == TTFlag::UpperBound)
-// 			beta = std::min(beta, ttScore);
-
-// 		if (alpha >= beta) {
-// 			++_stats.ttCutoffs;
-// 			return ttScore;
-// 		}
-// 	}
-// 	++_stats.nodesVisited;
-
-
-// 	// TODO: who does the flip ?
-// 	// The side that just played is the opponent of sideToMove() (makeMove flipped it).
-// 	const Color lastPlayed = (position.sideToMove() == Color::Black) ? Color::White : Color::Black;
-// 	bool isMaximizing = (position.sideToMove() == _aiColor);
-
-
-// 	// ne verifie pas les captures gagnantes, seulement les alignements de 5
-// 	if (isWinAfterMove<Traits>(position.board(), lastPlayed, cell.x, cell.y))
-// 	{
-// 		++_stats.nodesEvaluated;
-// 		// Score relatif à la racine : un mat plus proche (currentDepth petit)
-// 		// vaut plus, pour préférer la victoire la plus rapide / retarder la défaite.
-// 		const int mate = WIN_SCORE - currentDepth;
-// 		return (lastPlayed == _aiColor) ? mate : -mate;
-// 	}
-
-// 	if (depth == 0)
-// 	{
-// 		++_stats.nodesEvaluated;
-// 		if (lastPlayed == Color::Black) {
-// 			return evaluateBlackPosition(position, cell);
-// 		}	
-// 		return evaluateWhitePosition(position, cell);
-// 	}
-
-// 	// std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
-	
-// 	MoveList<t_cell, 200> movesArray;
-// 	_moveGenerator.generateMovesT(position.board(), position.sideToMove(), movesArray);
-
-// 	if (movesArray.empty())
-// 	{
-// 		++_stats.nodesEvaluated;
-// 		if (lastPlayed == Color::Black)
-// 			return evaluateBlackPosition(position, cell);
-// 		return evaluateWhitePosition(position, cell);
-// 	}
-
-
-// 	MoveList<sort_move_t, 200> sort_list;
-// 	for (size_t i = 0; i < movesArray.size(); i++)
-// 	{
-// 		sort_move_t	 mhph;
-// 		mhph.move = movesArray[i];
-// 		mhph.pos_hash = position.gethash(mhph.move.x, mhph.move.y, position.sideToMove());
-// 		mhph.hit = _tt.probe(mhph.pos_hash.hash);
-// 		sort_list.push(mhph);
-// 	}
-	
-
-// // Tri de sort_list (adapte selon ton MoveList)
-// 	std::sort(sort_list.begin(), sort_list.end(),
-//     [](const sort_move_t& a, const sort_move_t& b) {
-//         return getMoveScore(a) > getMoveScore(b);  // appel direct, pas de capture
-//     });
-// 	// // TT move first
-	
-
-// 	// Classic minimax loop
-// 	int alphaSearch = alpha;
-// 	int betaSearch = beta;
-// 	t_cell bestMove = {-1, -1};
-
-// 	int bestEval = 0;
-
-// 	// Pour trier les coups, nous avons besoins du scores des coups.
-// 	// Pour avoir le score des coups, il faut qu'il est etee evalue precedament.
-// 	// les coups evaluees sont stockes dans la table de transposition.
-// 	// Pour les recupere, il faut le hash du coup.
-// 	// le hash comprend la positions des pierres sur le board, et le nombre de captures.
-// 	// mais c'est la fonctions make move qui creer le hash, modifie le board et le nombre de captures.
-// 	// Ils faut donc faire un make move pour avoir le hash du coup, puis recuperer le score du coup dans la table de transposition.
-// 	// Mais le make move modifie le board et le nombre de captures, donc il faut faire un undo move pour revenir a la position initiale.
-// 	// ce qui n'est pas optimal. ils faut donc un calculateur de hash qui ne modifie pas le board ni le nombre de captures.
-// 	// on fait une copie de positions qui comprend le hash, le board et le nombre de captures, on fait un make move modifier sur la copie.
-// 	// On recupere le hash du coup et on recupere le score du coup si il est dans la table de transpositions.
-// 	// Ensuite on trie les coups par score decroissant.
-
-
-// 	if (isMaximizing)
-// 	{ 
-// 		bestEval = std::numeric_limits<int>::min();
-
-// 		for (size_t i = 0; i < sort_list.size(); ++i)
-// 		{
-// 			const t_cell& move = sort_list[i].move;
-// 			//ne gere pas les captures.
-// 			position.makeMove(move.x, move.y, position.sideToMove(), sort_list[i].pos_hash);
-			
-// 			int eval = minimax(position, move, depth - 1, alpha, beta);
-			
-// 			position.undoMove(move.x, move.y, position.sideToMove());
-
-// 			if (eval > bestEval)
-// 			{
-// 				bestEval = eval;
-// 				bestMove = move;
-// 			}
-
-// 			alpha = std::max(alpha, eval);
-			
-// 			if (beta <= alpha)
-// 			{
-// 				++_stats.nodesPruned;
-// 				break;
-// 			}
-// 		}
-// 	}
-// 	else
-// 	{
-// 		bestEval = std::numeric_limits<int>::max();
-
-// 		for (size_t i = 0; i < sort_list.size(); ++i)
-// 		{
-// 			const t_cell& move = sort_list[i].move;
-			
-// 			position.makeMove(move.x, move.y, position.sideToMove(), sort_list[i].pos_hash);
-			
-// 			int eval = minimax(position, move, depth - 1, alpha, beta);
-
-// 			position.undoMove(move.x, move.y, position.sideToMove());
-
-// 			if (eval < bestEval)
-// 			{
-// 				bestEval = eval;
-// 				bestMove = move;
-// 			}
-
-// 			beta = std::min(beta, eval);
-			
-// 			if (beta <= alpha)
-// 			{
-// 				++_stats.nodesPruned;
-// 				break;
-// 			}
-// 		}
-
-// 	}
-
-// 	// When storing a LowerBound or UpperBound, we are storing knowledge about a cutoff that already happened.
-// 	TTFlag flag;
-
-// 	if (bestEval <= alphaSearch)        // Fail-low : on n'a pas dépassé alpha
-// 		flag = TTFlag::UpperBound;
-// 	else if (bestEval >= betaSearch)    // Fail-high : coupure
-// 		flag = TTFlag::LowerBound;
-// 	else
-// 		flag = TTFlag::Exact;            // alphaSearch < bestEval < betaSearch
-	
-// 	_tt.store(position.zobristHash(), ttScoreToEntry(bestEval, currentDepth), depth, flag, {bestMove.x, bestMove.y});
-// 	++_stats.ttStores;
-
-// 	return bestEval;
-// }
 
 // les coups impliquant des captures doivent toujours etre mieux evalues que les coups sans capture.
 

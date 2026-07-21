@@ -30,7 +30,7 @@ class ActiveZone
 		int getRadius() const noexcept;
 
 		std::vector<t_cell> generateZoneMoves();
-		void	generateZoneMovesT(MoveList<t_cell, 200>& movesArray);
+		void	generateZoneMovesByBitboard(MoveList<t_cell, MAX_BOARD_MOVES<Traits>>& movesArray);
 
 	private:
 		typename Traits::Bitboard _candidateMask;
@@ -154,20 +154,11 @@ std::vector<t_cell> ActiveZone<Traits>::generateZoneMoves()
 
 
 template<typename Traits>
-void	ActiveZone<Traits>::generateZoneMovesT(MoveList<t_cell, 200>& movesArray)
+void ActiveZone<Traits>::generateZoneMovesByBitboard(MoveList<t_cell, MAX_BOARD_MOVES<Traits>>& movesArray)
 {
-
-
-    for (int y = 0; y < Traits::BOARD_SIZE; ++y)
-    {
-        for (int x = 0; x < Traits::BOARD_SIZE; ++x)
-        {
-            if (contains(x, y))
-            {
-                movesArray.push({x, y});
-            }
-        }
-    }
+	bb_for_each_bit<Traits>(_candidateMask, [&movesArray](int x, int y) {
+		movesArray.push({x, y});
+	});
 }
 
 #endif // ACTIVEZONE_HPP
