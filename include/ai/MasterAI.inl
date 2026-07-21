@@ -132,9 +132,9 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	_stats.nodesPruned    = 0;
 	_stats.maxDepthSeen   = 0;
 
-	// std::vector<t_cell> rootMoves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
 	MoveList<t_cell, MAX_BOARD_MOVES<Traits>> rootMovesList;
 	_moveGenerator.generateMovesByBitboard(position.board(), position.sideToMove(), rootMovesList);
+	
 	LOG_DEBUG("AI", "[findBestMove] depth=" + std::to_string(_maxDepth)
 	              + "  root candidates=" + std::to_string(rootMovesList.size()));
 
@@ -268,9 +268,11 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
             : evaluateWhitePosition(position, cell);
     }
 
-    // 5. Génération des coups
+    // 5. Génération des coups (pseudo-légale : cases vides de la zone active,
+    //    SANS vérifier la règle du double-trois. La légalité complète est
+    //    vérifiée paresseusement dans la boucle, uniquement sur les coups joués.)
     MoveList<t_cell, MAX_BOARD_MOVES<Traits>> movesArray;
-    _moveGenerator.generateMovesByBitboard(position.board(), position.sideToMove(), movesArray);
+    _moveGenerator.generatePseudoLegalT(position.board(), movesArray);
 
     if (movesArray.empty())
     {
@@ -304,6 +306,7 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
                      ? std::numeric_limits<int>::min()
                      : std::numeric_limits<int>::max();
 
+    int legalMovesSearched = 0;
     for (size_t i = 0; i < sort_list.size(); ++i)
     {
         const t_cell&         move      = sort_list[i].move;
@@ -311,6 +314,13 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 
         // Sauvegarde la couleur AVANT makeMove
         const Color colorBeforeMove = position.sideToMove();
+
+        // Légalité vérifiée paresseusement : on ignore les coups pseudo-légaux
+        // réellement illégaux (double-trois sans capture) seulement ici, au
+        // moment de les jouer.
+        if (!_moveGenerator.isLegalMove(position.board(), move.x, move.y, colorBeforeMove))
+            continue;
+        ++legalMovesSearched;
 
         position.makeMove(move.x, move.y, colorBeforeMove, pos_hash);
         int eval = minimax(position, move, depth - 1, alpha, beta);
@@ -329,6 +339,15 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
             beta = std::min(beta, eval);
             if (beta <= alpha) { ++_stats.nodesPruned; break; }
         }
+    }
+
+    // Aucun coup pseudo-légal n'était réellement légal → feuille de facto.
+    if (legalMovesSearched == 0)
+    {
+        ++_stats.nodesEvaluated;
+        return (lastPlayed == Color::Black)
+            ? evaluateBlackPosition(position, cell)
+            : evaluateWhitePosition(position, cell);
     }
 
     // 8. Stockage TT
