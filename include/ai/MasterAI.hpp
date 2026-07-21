@@ -95,16 +95,6 @@ class MasterAI
 		int evaluateWhitePosition(const SearchPosition<Traits>& position, t_cell cell);
 };
 
-
-
-// static int getMoveScore(const MoveSorted& ms) {
-//     if (ms.hit == nullptr) return 0;
-//     if (ms.hit->flag == TTFlag::Exact)      return ms.hit->score + 1000000;
-//     if (ms.hit->flag == TTFlag::LowerBound) return ms.hit->score + 500000;
-//     return ms.hit->score;
-// }
-
-
 using MasterAI19 = MasterAI<BoardTraits<19>>;
 using MasterAI15 = MasterAI<BoardTraits<15>>;
 
