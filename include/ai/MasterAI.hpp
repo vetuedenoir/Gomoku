@@ -32,11 +32,11 @@ struct SearchStats
 
 template <typename T> struct MasterAITestAccess;
 
-struct sort_move_t
+struct MoveSorted
 {
-	t_cell			move;
+	t_cell			    move;
 	const TTEntry*		hit;
-	position_hash_t	pos_hash;
+	MoveStateHash		stateHash;
 };
 
 
@@ -96,12 +96,12 @@ class MasterAI
 
 
 
-static int getMoveScore(const sort_move_t& sm) {
-    if (sm.hit == nullptr) return 0;
-    if (sm.hit->flag == TTFlag::Exact)      return sm.hit->score + 1000000;
-    if (sm.hit->flag == TTFlag::LowerBound) return sm.hit->score + 500000;
-    return sm.hit->score;
-}
+// static int getMoveScore(const MoveSorted& ms) {
+//     if (ms.hit == nullptr) return 0;
+//     if (ms.hit->flag == TTFlag::Exact)      return ms.hit->score + 1000000;
+//     if (ms.hit->flag == TTFlag::LowerBound) return ms.hit->score + 500000;
+//     return ms.hit->score;
+// }
 
 
 using MasterAI19 = MasterAI<BoardTraits<19>>;

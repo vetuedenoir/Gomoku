@@ -19,15 +19,10 @@ class MoveGenerator
 		void getMaskOfLegalMoves(const t_BWBoard<Traits>& board, const Color color,
 								typename Traits::Bitboard& legalMovesMask) const;
 
-		std::vector<t_cell> generateMoves(const t_BWBoard<Traits>& board, const Color color) const;
-		void	generateMovesByBitboard(const t_BWBoard<Traits>& board, const Color color, MoveList<t_cell, MAX_BOARD_MOVES<Traits>>& movesArray) const;
-
-		// Coups pseudo-legaux : cases vides de la zone active, SANS verifier la
-		// regle du double-trois. La legalite complete est verifiee paresseusement
-		// par l'appelant, juste avant de jouer le coup (cf. minimax).
-		void	generatePseudoLegalT(const t_BWBoard<Traits>& board, MoveList<t_cell, MAX_BOARD_MOVES<Traits>>& movesArray) const;
-
 		bool isLegalMove(const t_BWBoard<Traits>& board, int col, int row, const Color color) const;
+
+		void generateEmptyMoves(const t_BWBoard<Traits>& board, MoveList<t_cell, MAX_BOARD_MOVES<Traits>>& movesArray) const;
+
 
 	private:
 		int                 _activeZoneRadius;
@@ -65,47 +60,16 @@ void MoveGenerator<Traits>::getMaskOfLegalMoves(const t_BWBoard<Traits>& board, 
     }
 }
 
-
 template<typename Traits>
-std::vector<t_cell>	MoveGenerator<Traits>::generateMoves(const t_BWBoard<Traits>& board, const Color color) const
+void MoveGenerator<Traits>::generateEmptyMoves(const t_BWBoard<Traits>& board, MoveList<t_cell, MAX_BOARD_MOVES<Traits>>& movesArray) const
 {
-	ActiveZone<Traits> zone(_activeZoneRadius);
+    ActiveZone<Traits> zone(_activeZoneRadius);
+    
 	zone.initialize(board);
 
-	std::vector<t_cell> zoneMoves = zone.generateZoneMoves();
-
-	for (auto it = zoneMoves.begin(); it != zoneMoves.end(); )
-	{
-		if (!isLegalMove(board, it->x, it->y, color))
-			it = zoneMoves.erase(it);
-		else
-			++it;
-	}
-
-	return zoneMoves;
-}
-
-template<typename Traits>
-void MoveGenerator<Traits>::generateMovesByBitboard(const t_BWBoard<Traits>& board, const Color color, MoveList<t_cell, MAX_BOARD_MOVES<Traits>>& movesArray) const
-{
-    ActiveZone<Traits> zone(_activeZoneRadius);
-    zone.initialize(board);
-
     bb_for_each_bit<Traits>(zone.getCandidateMask(), [&](int x, int y) {
-        if (isLegalMove(board, x, y, color))
-            movesArray.push({x, y});
+        movesArray.push({x, y});
     });
-}
-
-template<typename Traits>
-void MoveGenerator<Traits>::generatePseudoLegalT(const t_BWBoard<Traits>& board, MoveList<t_cell, MAX_BOARD_MOVES<Traits>>& movesArray) const
-{
-    // Le masque de zone exclut deja les cases occupees, donc chaque bit est une
-    // case vide voisine d'une pierre : c'est deja "pseudo-legal". Aucune verif de
-    // legalite ici (deferree a l'appelant).
-    ActiveZone<Traits> zone(_activeZoneRadius);
-    zone.initialize(board);
-    zone.generateZoneMovesByBitboard(movesArray);
 }
 
 using MoveGenerator19 = MoveGenerator<BoardTraits<19>>;

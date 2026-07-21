@@ -132,48 +132,51 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	_stats.nodesPruned    = 0;
 	_stats.maxDepthSeen   = 0;
 
-	MoveList<t_cell, MAX_BOARD_MOVES<Traits>> rootMovesList;
-	_moveGenerator.generateMovesByBitboard(position.board(), position.sideToMove(), rootMovesList);
+	MoveList<t_cell, MAX_BOARD_MOVES<Traits>> rootMoves;
+	
+	_moveGenerator.generateEmptyMoves(position.board(), rootMoves);
 	
 	LOG_DEBUG("AI", "[findBestMove] depth=" + std::to_string(_maxDepth)
-	              + "  root candidates=" + std::to_string(rootMovesList.size()));
+	              + "  root candidates=" + std::to_string(rootMoves.size()));
 
-	if (rootMovesList.empty())
+	if (rootMoves.empty())
 		return {-1, -1};
 
 	t_cell bestMove = {-1, -1};
 
 
-	MoveList<sort_move_t, MAX_BOARD_MOVES<Traits>> sort_list;
-	for (size_t i = 0; i < rootMovesList.size(); i++)
-	{
-		sort_move_t	 mhph;
-		mhph.move = rootMovesList[i];
-		mhph.pos_hash = position.gethash(mhph.move.x, mhph.move.y, position.sideToMove());
-		mhph.hit = _tt.probe(mhph.pos_hash.hash);
-		sort_list.push(mhph);
-	}
+// 	MoveList<sort_move_t, MAX_BOARD_MOVES<Traits>> sort_list;
+// 	for (size_t i = 0; i < rootMovesList.size(); i++)
+// 	{
+// 		sort_move_t	 mhph;
+// 		mhph.move = rootMovesList[i];
+// 		mhph.pos_hash = position.gethash(mhph.move.x, mhph.move.y, position.sideToMove());
+// 		mhph.hit = _tt.probe(mhph.pos_hash.hash);
+// 		sort_list.push(mhph);
+// 	}
 
-// Tri de sort_list (adapte selon ton MoveList)
-	std::sort(sort_list.begin(), sort_list.end(),
-    [](const sort_move_t& a, const sort_move_t& b) {
-        return getMoveScore(a) > getMoveScore(b);  // appel direct, pas de capture
-    });
+// // Tri de sort_list (adapte selon ton MoveList)
+// 	std::sort(sort_list.begin(), sort_list.end(),
+//     [](const sort_move_t& a, const sort_move_t& b) {
+//         return getMoveScore(a) > getMoveScore(b);  // appel direct, pas de capture
+//     });
 	
 	int bestScore = std::numeric_limits<int>::min();
 	int alpha = std::numeric_limits<int>::min();
 	const int beta = std::numeric_limits<int>::max();
 
-	for (const auto& hmove : sort_list)
+	for (const auto& move : rootMoves)
 	{
 		SearchPosition<Traits> newPosition = position;
-		t_cell move = hmove.move;
+
 		if (isWinAfterMove<Traits>(position.board(), position.sideToMove(), move.x, move.y))
 		{
 			return move;
 		}
+
+		MoveStateHash moveHash = newPosition.buildMoveHash(move.x, move.y, newPosition.sideToMove());
 		
-		newPosition.makeMove(move.x, move.y, position.sideToMove(), hmove.pos_hash);
+		newPosition.makeMove(move.x, move.y, newPosition.sideToMove(), moveHash);
 
 		int score = minimax(newPosition, move, _maxDepth - 1,
 		                    alpha, beta);
@@ -272,7 +275,7 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     //    SANS vérifier la règle du double-trois. La légalité complète est
     //    vérifiée paresseusement dans la boucle, uniquement sur les coups joués.)
     MoveList<t_cell, MAX_BOARD_MOVES<Traits>> movesArray;
-    _moveGenerator.generatePseudoLegalT(position.board(), movesArray);
+    _moveGenerator.generateEmptyMoves(position.board(), movesArray);
 
     if (movesArray.empty())
     {
@@ -283,19 +286,19 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     }
 
     // 6. Tri via TT
-    MoveList<sort_move_t, 200> sort_list;
-    for (size_t i = 0; i < movesArray.size(); i++)
-    {
-        sort_move_t mhph;
-        mhph.move     = movesArray[i];
-        mhph.pos_hash = position.gethash(mhph.move.x, mhph.move.y, position.sideToMove());
-        mhph.hit      = _tt.probe(mhph.pos_hash.hash);
-        sort_list.push(mhph);
-    }
-    std::sort(sort_list.begin(), sort_list.end(),
-        [](const sort_move_t& a, const sort_move_t& b) {
-            return getMoveScore(a) > getMoveScore(b);
-        });
+    // MoveList<sort_move_t, 200> sort_list;
+    // for (size_t i = 0; i < movesArray.size(); i++)
+    // {
+    //     sort_move_t mhph;
+    //     mhph.move     = movesArray[i];
+    //     mhph.pos_hash = position.gethash(mhph.move.x, mhph.move.y, position.sideToMove());
+    //     mhph.hit      = _tt.probe(mhph.pos_hash.hash);
+    //     sort_list.push(mhph);
+    // }
+    // std::sort(sort_list.begin(), sort_list.end(),
+    //     [](const sort_move_t& a, const sort_move_t& b) {
+    //         return getMoveScore(a) > getMoveScore(b);
+    //     });
 
     // 7. sideToMove AVANT makeMove → pour undoMove
     const bool isMaximizing = (position.sideToMove() == _aiColor);
@@ -307,10 +310,10 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
                      : std::numeric_limits<int>::max();
 
     int legalMovesSearched = 0;
-    for (size_t i = 0; i < sort_list.size(); ++i)
+    for (size_t i = 0; i < movesArray.size(); ++i)
     {
-        const t_cell&         move      = sort_list[i].move;
-        const position_hash_t pos_hash  = sort_list[i].pos_hash;
+        const t_cell&         move      = movesArray[i];
+        const MoveStateHash moveHash  = position.buildMoveHash(move.x, move.y, position.sideToMove());
 
         // Sauvegarde la couleur AVANT makeMove
         const Color colorBeforeMove = position.sideToMove();
@@ -322,8 +325,9 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
             continue;
         ++legalMovesSearched;
 
-        position.makeMove(move.x, move.y, colorBeforeMove, pos_hash);
-        int eval = minimax(position, move, depth - 1, alpha, beta);
+        position.makeMove(move.x, move.y, colorBeforeMove, moveHash);
+        
+		int eval = minimax(position, move, depth - 1, alpha, beta);
         // Restaure avec la couleur sauvegardée
         position.undoMove(move.x, move.y, colorBeforeMove);  // ✅
 
