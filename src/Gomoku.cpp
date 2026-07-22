@@ -152,8 +152,8 @@ bool Gomoku::isGameOver()
         return false;
 
     buildWinScreenPage(winner.value(),
-                       _controller->captureCount(Color::Black),
-                       _controller->captureCount(Color::White));
+                       _controller->blackCaptureCount(),
+                       _controller->whiteCaptureCount());
     navigateTo(AppState::GameOver);
     
     return true;
@@ -259,7 +259,7 @@ void Gomoku::render()
     else if (_states.top() == AppState::Game)
     {
         _renderer.renderGame(_window, *_board, *_controller, computeGhostColor());
-        _renderer.renderStats(_window, _font, *_controller);
+        _renderer.renderStats(_window, _font, *_board, *_controller);
         if (_controller->phase() == GamePhase::ColorChoice)
             _renderer.renderColorChoice(_window, _colorChoice);
     }
