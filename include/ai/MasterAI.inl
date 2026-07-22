@@ -170,8 +170,20 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 		for (size_t i = 0; i < rootMoves.size(); ++i)
 		{
 			dataMove scoredMove = rawShapeScore(position.board(), rootMoves[i], color);
+			
 			if (scoredMove.isLegal)
+			{
+				if (scoredMove.score >= WIN_SCORE)
+				{
+					return scoredMove.move;
+				}
+				else if (scoredMove.capturedStones.size() + position.getCapturesForside() >= 10)
+				{
+					LOG_DEBUG("AI", "[findBestMove] found winning capture at root: (" + std::to_string(scoredMove.move.x) + "," + std::to_string(scoredMove.move.y) + ")");
+					return scoredMove.move;
+				}
 				orderedRoot.push(scoredMove);
+			}
 		}
 		std::sort(orderedRoot.begin(), orderedRoot.end(),
 			[](const dataMove& a, const dataMove& b) { return a.score > b.score; });
@@ -181,18 +193,18 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	int alpha = std::numeric_limits<int>::min();
 	const int beta = std::numeric_limits<int>::max();
 
-	for (const auto& scored : orderedRoot)
+	for (size_t i = 0; i < orderedRoot.size() && i < MAX_CANDIDATES; ++i)
 	{
-		const t_cell& move = scored.move;
+		const t_cell& move = orderedRoot[i].move;
 
 		SearchPosition<Traits> newPosition = position;
 
-		if (isWinAfterMove<Traits>(position.board(), position.sideToMove(), move.x, move.y))
-		{
-			return move;
-		}
+		// if (isWinAfterMove<Traits>(position.board(), position.sideToMove(), move.x, move.y))
+		// {
+		// 	return move;
+		// }
 
-		MoveStateHash moveHash = newPosition.buildMoveHash(move.x, move.y, newPosition.sideToMove());
+		MoveStateHash moveHash = newPosition.buildMoveHash(orderedRoot[i], newPosition.sideToMove());
 		
 		newPosition.makeMove(move.x, move.y, newPosition.sideToMove(), moveHash);
 
@@ -210,7 +222,7 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 			bestMove  = move;
 		}
 
-		if (bestScore >= WIN_SCORE - 1)
+		if (bestScore >= WIN_SCORE - 10) // coup gagnant trouvé → pas besoin de continuer
 			break;
 
 		alpha = std::max(alpha, bestScore);
@@ -273,12 +285,12 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
                            ? Color::White : Color::Black;
 
     // 3. Check victoire du coup qui vient d'être joué
-    if (isWinAfterMove<Traits>(position.board(), lastPlayed, cell.x, cell.y))
-    {
-        ++_stats.nodesEvaluated;
-        const int mate = WIN_SCORE - currentDepth;
-        return (lastPlayed == _aiColor) ? mate : -mate;
-    }
+    // if (isWinAfterMove<Traits>(position.board(), lastPlayed, cell.x, cell.y))
+    // {
+    //     ++_stats.nodesEvaluated;
+    //     const int mate = WIN_SCORE - currentDepth;
+    //     return (lastPlayed == _aiColor) ? mate : -mate;
+    // }
 
     // 4. Profondeur 0 → évaluation statique
     if (depth == 0)
@@ -308,13 +320,26 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     //    MAX_CANDIDATES meilleurs coups légaux (plafond top-N, forward pruning).
     MoveList<dataMove, MAX_BOARD_MOVES<Traits>> ordered;
     {
-        const Color nodeSide = position.sideToMove();
         for (size_t i = 0; i < movesArray.size(); ++i)
 		{
-
-			dataMove scoredMove = rawShapeScore(position.board(), movesArray[i], nodeSide);
+			Color themover = position.sideToMove();
+			dataMove scoredMove = rawShapeScore(position.board(), movesArray[i], themover);
 			if (scoredMove.isLegal)
-            	ordered.push(scoredMove);
+			{
+				if (scoredMove.score >= WIN_SCORE)
+				{
+					++_stats.nodesEvaluated;
+					const int mate = scoredMove.score - currentDepth;
+					return (themover == _aiColor) ? mate : -mate;
+				}
+				else if (scoredMove.capturedStones.size() + position.getCapturesForColor(themover) >= 10)
+				{
+					++_stats.nodesEvaluated;
+					const int mate = scoredMove.score - currentDepth;
+					return (themover == _aiColor) ? mate : -mate;
+				}
+				ordered.push(scoredMove);
+			}
 	}
 		
 		std::sort(ordered.begin(), ordered.end(),
@@ -338,7 +363,7 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
             break;
 
         const t_cell&         move      = ordered[i].move;
-        const MoveStateHash moveHash  = position.buildMoveHash(move.x, move.y, position.sideToMove());
+        const MoveStateHash moveHash  = position.buildMoveHash(ordered[i], lastPlayed);
 
         // Sauvegarde la couleur AVANT makeMove
         const Color colorBeforeMove = position.sideToMove();
@@ -346,8 +371,8 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
         // Légalité vérifiée paresseusement : on ignore les coups pseudo-légaux
         // réellement illégaux (double-trois sans capture) seulement ici, au
         // moment de les jouer.
-        if (!_moveGenerator.isLegalMove(position.board(), move.x, move.y, colorBeforeMove))
-            continue;
+        // if (!_moveGenerator.isLegalMove(position.board(), move.x, move.y, colorBeforeMove))
+        //     continue;
         ++legalMovesSearched;
 
         position.makeMove(move.x, move.y, colorBeforeMove, moveHash);
@@ -368,6 +393,9 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
             beta = std::min(beta, eval);
             if (beta <= alpha) { ++_stats.nodesPruned; break; }
         }
+
+		if (bestEval >= WIN_SCORE - 10) // coup gagnant trouvé → pas besoin de continuer
+			break;
     }
 
     // Aucun coup pseudo-légal n'était réellement légal → feuille de facto.
