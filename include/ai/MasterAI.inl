@@ -181,6 +181,11 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	{
 		const t_cell& move = scored.move;
 
+		if (!_moveGenerator.isLegalMove(position.board(), move.x, move.y, position.sideToMove())) {
+			LOG_WARN("AI", "[findBestMove] move (" + std::to_string(move.x) + "," + std::to_string(move.y) + ") is not legal, skipping...");
+			continue;
+		}
+
 		SearchPosition<Traits> newPosition = position;
 
 		if (isWinAfterMove<Traits>(position.board(), position.sideToMove(), move.x, move.y))
