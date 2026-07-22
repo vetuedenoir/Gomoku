@@ -9,7 +9,25 @@ static constexpr int WIN_SCORE      = 1000000;
 static constexpr int MATE_THRESHOLD = 900000;
 static constexpr int CAPTURE_SCORE = 202;
 
+// Plafond top-N (forward pruning) : nombre max de coups LÉGAUX explorés par
+// nœud interne de minimax. Les coups étant triés best-first, on ne garde que
+// les N meilleurs. Réduit le facteur de branchement effectif. À tuner via le
+// benchmark [PERF][BENCH].
+static constexpr int MAX_CANDIDATES = 16;
 
+// Coup accompagné de sa clé de tri statique (heuristique indépendante de la TT).
+struct ScoredMove
+{
+	t_cell move;
+	int    key;
+};
+
+// Ordonnancement statique des coups (après cross_score / score_open_three dont il dépend).
+// Score TOUJOURS positif = meilleur, du point de vue du camp au trait `side` : offense + défense (blocage) + captures.
+template <typename Traits>
+static int rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color);
+template <typename Traits>
+static int staticMoveScore(const t_BWBoard<Traits>& board, t_cell cell, Color side);
 
 
 // "depuis le nœud" -> "depuis la racine" (au probe TT)
@@ -132,9 +150,10 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	_stats.nodesPruned    = 0;
 	_stats.maxDepthSeen   = 0;
 
-	// std::vector<t_cell> rootMoves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
-	MoveList<t_cell, 200> rootMoves;
-	_moveGenerator.generateMovesT(position.board(), position.sideToMove(), rootMoves);
+	MoveList<t_cell, MAX_BOARD_MOVES<Traits>> rootMoves;
+	
+	_moveGenerator.generateEmptyMoves(position.board(), rootMoves);
+	
 	LOG_DEBUG("AI", "[findBestMove] depth=" + std::to_string(_maxDepth)
 	              + "  root candidates=" + std::to_string(rootMoves.size()));
 
@@ -143,37 +162,40 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 
 	t_cell bestMove = {-1, -1};
 
-
-	MoveList<sort_move_t, 200> sort_list;
-	for (size_t i = 0; i < rootMoves.size(); i++)
+	// Tri statique des coups racine (heuristique indépendante de la TT) :
+	// offense + défense + captures, du point de vue du camp au trait.
+	MoveList<ScoredMove, MAX_BOARD_MOVES<Traits>> orderedRoot;
 	{
-		sort_move_t	 mhph;
-		mhph.move = rootMoves[i];
-		mhph.pos_hash = position.gethash(mhph.move.x, mhph.move.y, position.sideToMove());
-		mhph.hit = _tt.probe(mhph.pos_hash.hash);
-		sort_list.push(mhph);
+		const Color rootSide = position.sideToMove();
+		for (const auto& m : rootMoves)
+			orderedRoot.push({ m, staticMoveScore<Traits>(position.board(), m, rootSide) });
+		std::sort(orderedRoot.begin(), orderedRoot.end(),
+			[](const ScoredMove& a, const ScoredMove& b) { return a.key > b.key; });
 	}
 
-// Tri de sort_list (adapte selon ton MoveList)
-	std::sort(sort_list.begin(), sort_list.end(),
-    [](const sort_move_t& a, const sort_move_t& b) {
-        return getMoveScore(a) > getMoveScore(b);  // appel direct, pas de capture
-    });
-	
 	int bestScore = std::numeric_limits<int>::min();
 	int alpha = std::numeric_limits<int>::min();
 	const int beta = std::numeric_limits<int>::max();
 
-	for (const auto& hmove : sort_list)
+	for (const auto& scored : orderedRoot)
 	{
+		const t_cell& move = scored.move;
+
+		if (!_moveGenerator.isLegalMove(position.board(), move.x, move.y, position.sideToMove())) {
+			LOG_WARN("AI", "[findBestMove] move (" + std::to_string(move.x) + "," + std::to_string(move.y) + ") is not legal, skipping...");
+			continue;
+		}
+
 		SearchPosition<Traits> newPosition = position;
-		t_cell move = hmove.move;
+
 		if (isWinAfterMove<Traits>(position.board(), position.sideToMove(), move.x, move.y))
 		{
 			return move;
 		}
+
+		MoveStateHash moveHash = newPosition.buildMoveHash(move.x, move.y, newPosition.sideToMove());
 		
-		newPosition.makeMove(move.x, move.y, position.sideToMove(), hmove.pos_hash);
+		newPosition.makeMove(move.x, move.y, newPosition.sideToMove(), moveHash);
 
 		int score = minimax(newPosition, move, _maxDepth - 1,
 		                    alpha, beta);
@@ -268,9 +290,11 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
             : evaluateWhitePosition(position, cell);
     }
 
-    // 5. Génération des coups
-    MoveList<t_cell, 200> movesArray;
-    _moveGenerator.generateMovesT(position.board(), position.sideToMove(), movesArray);
+    // 5. Génération des coups (pseudo-légale : cases vides de la zone active,
+    //    SANS vérifier la règle du double-trois. La légalité complète est
+    //    vérifiée paresseusement dans la boucle, uniquement sur les coups joués.)
+    MoveList<t_cell, MAX_BOARD_MOVES<Traits>> movesArray;
+    _moveGenerator.generateEmptyMoves(position.board(), movesArray);
 
     if (movesArray.empty())
     {
@@ -280,20 +304,18 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
             : evaluateWhitePosition(position, cell);
     }
 
-    // 6. Tri via TT
-    MoveList<sort_move_t, 200> sort_list;
-    for (size_t i = 0; i < movesArray.size(); i++)
+    // 6. Tri statique des coups (heuristique indépendante de la TT), du point de
+    //    vue du camp au trait à ce nœud. On n'explorera ensuite que les
+    //    MAX_CANDIDATES meilleurs coups légaux (plafond top-N, forward pruning).
+    MoveList<ScoredMove, MAX_BOARD_MOVES<Traits>> ordered;
     {
-        sort_move_t mhph;
-        mhph.move     = movesArray[i];
-        mhph.pos_hash = position.gethash(mhph.move.x, mhph.move.y, position.sideToMove());
-        mhph.hit      = _tt.probe(mhph.pos_hash.hash);
-        sort_list.push(mhph);
+        const Color nodeSide = position.sideToMove();
+        for (size_t i = 0; i < movesArray.size(); ++i)
+            ordered.push({ movesArray[i],
+                           staticMoveScore<Traits>(position.board(), movesArray[i], nodeSide) });
+        std::sort(ordered.begin(), ordered.end(),
+            [](const ScoredMove& a, const ScoredMove& b) { return a.key > b.key; });
     }
-    std::sort(sort_list.begin(), sort_list.end(),
-        [](const sort_move_t& a, const sort_move_t& b) {
-            return getMoveScore(a) > getMoveScore(b);
-        });
 
     // 7. sideToMove AVANT makeMove → pour undoMove
     const bool isMaximizing = (position.sideToMove() == _aiColor);
@@ -304,16 +326,29 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
                      ? std::numeric_limits<int>::min()
                      : std::numeric_limits<int>::max();
 
-    for (size_t i = 0; i < sort_list.size(); ++i)
+    int legalMovesSearched = 0;
+    for (size_t i = 0; i < ordered.size(); ++i)
     {
-        const t_cell&         move      = sort_list[i].move;
-        const position_hash_t pos_hash  = sort_list[i].pos_hash;
+        // Plafond top-N : on a déjà exploré les N meilleurs coups légaux.
+        if (legalMovesSearched >= MAX_CANDIDATES)
+            break;
+
+        const t_cell&         move      = ordered[i].move;
+        const MoveStateHash moveHash  = position.buildMoveHash(move.x, move.y, position.sideToMove());
 
         // Sauvegarde la couleur AVANT makeMove
         const Color colorBeforeMove = position.sideToMove();
 
-        position.makeMove(move.x, move.y, colorBeforeMove, pos_hash);
-        int eval = minimax(position, move, depth - 1, alpha, beta);
+        // Légalité vérifiée paresseusement : on ignore les coups pseudo-légaux
+        // réellement illégaux (double-trois sans capture) seulement ici, au
+        // moment de les jouer.
+        if (!_moveGenerator.isLegalMove(position.board(), move.x, move.y, colorBeforeMove))
+            continue;
+        ++legalMovesSearched;
+
+        position.makeMove(move.x, move.y, colorBeforeMove, moveHash);
+        
+		int eval = minimax(position, move, depth - 1, alpha, beta);
         // Restaure avec la couleur sauvegardée
         position.undoMove(move.x, move.y, colorBeforeMove);  // ✅
 
@@ -331,6 +366,15 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
         }
     }
 
+    // Aucun coup pseudo-légal n'était réellement légal → feuille de facto.
+    if (legalMovesSearched == 0)
+    {
+        ++_stats.nodesEvaluated;
+        return (lastPlayed == Color::Black)
+            ? evaluateBlackPosition(position, cell)
+            : evaluateWhitePosition(position, cell);
+    }
+
     // 8. Stockage TT
     TTFlag flag;
     if      (bestEval <= alphaOrig) flag = TTFlag::UpperBound;
@@ -343,193 +387,6 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 
     return bestEval;
 }
-
-// template <typename Traits>
-// int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
-// 	int depth, int alpha, int beta)
-// {
-// 	const int currentDepth = _maxDepth - depth;
-// 	if (currentDepth > _stats.maxDepthSeen)
-// 		_stats.maxDepthSeen = currentDepth;
-
-// 	const uint64_t ttKey = position.zobristHash();
-// 	const TTEntry* ttHit = _tt.probe(ttKey);
-
-// 	if (ttHit && ttHit->depth >= depth)
-// 	{
-// 		++_stats.ttHits;
-// 		const int ttScore = ttScoreFromEntry(ttHit->score, currentDepth);
-// 		if (ttHit->flag == TTFlag::Exact) {
-// 			++_stats.ttCutoffs;
-// 			return ttScore;
-// 		}
-// 		if (ttHit->flag == TTFlag::LowerBound)
-// 			alpha = std::max(alpha, ttScore);
-// 		else if (ttHit->flag == TTFlag::UpperBound)
-// 			beta = std::min(beta, ttScore);
-
-// 		if (alpha >= beta) {
-// 			++_stats.ttCutoffs;
-// 			return ttScore;
-// 		}
-// 	}
-// 	++_stats.nodesVisited;
-
-
-// 	// TODO: who does the flip ?
-// 	// The side that just played is the opponent of sideToMove() (makeMove flipped it).
-// 	const Color lastPlayed = (position.sideToMove() == Color::Black) ? Color::White : Color::Black;
-// 	bool isMaximizing = (position.sideToMove() == _aiColor);
-
-
-// 	// ne verifie pas les captures gagnantes, seulement les alignements de 5
-// 	if (isWinAfterMove<Traits>(position.board(), lastPlayed, cell.x, cell.y))
-// 	{
-// 		++_stats.nodesEvaluated;
-// 		// Score relatif à la racine : un mat plus proche (currentDepth petit)
-// 		// vaut plus, pour préférer la victoire la plus rapide / retarder la défaite.
-// 		const int mate = WIN_SCORE - currentDepth;
-// 		return (lastPlayed == _aiColor) ? mate : -mate;
-// 	}
-
-// 	if (depth == 0)
-// 	{
-// 		++_stats.nodesEvaluated;
-// 		if (lastPlayed == Color::Black) {
-// 			return evaluateBlackPosition(position, cell);
-// 		}	
-// 		return evaluateWhitePosition(position, cell);
-// 	}
-
-// 	// std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
-	
-// 	MoveList<t_cell, 200> movesArray;
-// 	_moveGenerator.generateMovesT(position.board(), position.sideToMove(), movesArray);
-
-// 	if (movesArray.empty())
-// 	{
-// 		++_stats.nodesEvaluated;
-// 		if (lastPlayed == Color::Black)
-// 			return evaluateBlackPosition(position, cell);
-// 		return evaluateWhitePosition(position, cell);
-// 	}
-
-
-// 	MoveList<sort_move_t, 200> sort_list;
-// 	for (size_t i = 0; i < movesArray.size(); i++)
-// 	{
-// 		sort_move_t	 mhph;
-// 		mhph.move = movesArray[i];
-// 		mhph.pos_hash = position.gethash(mhph.move.x, mhph.move.y, position.sideToMove());
-// 		mhph.hit = _tt.probe(mhph.pos_hash.hash);
-// 		sort_list.push(mhph);
-// 	}
-	
-
-// // Tri de sort_list (adapte selon ton MoveList)
-// 	std::sort(sort_list.begin(), sort_list.end(),
-//     [](const sort_move_t& a, const sort_move_t& b) {
-//         return getMoveScore(a) > getMoveScore(b);  // appel direct, pas de capture
-//     });
-// 	// // TT move first
-	
-
-// 	// Classic minimax loop
-// 	int alphaSearch = alpha;
-// 	int betaSearch = beta;
-// 	t_cell bestMove = {-1, -1};
-
-// 	int bestEval = 0;
-
-// 	// Pour trier les coups, nous avons besoins du scores des coups.
-// 	// Pour avoir le score des coups, il faut qu'il est etee evalue precedament.
-// 	// les coups evaluees sont stockes dans la table de transposition.
-// 	// Pour les recupere, il faut le hash du coup.
-// 	// le hash comprend la positions des pierres sur le board, et le nombre de captures.
-// 	// mais c'est la fonctions make move qui creer le hash, modifie le board et le nombre de captures.
-// 	// Ils faut donc faire un make move pour avoir le hash du coup, puis recuperer le score du coup dans la table de transposition.
-// 	// Mais le make move modifie le board et le nombre de captures, donc il faut faire un undo move pour revenir a la position initiale.
-// 	// ce qui n'est pas optimal. ils faut donc un calculateur de hash qui ne modifie pas le board ni le nombre de captures.
-// 	// on fait une copie de positions qui comprend le hash, le board et le nombre de captures, on fait un make move modifier sur la copie.
-// 	// On recupere le hash du coup et on recupere le score du coup si il est dans la table de transpositions.
-// 	// Ensuite on trie les coups par score decroissant.
-
-
-// 	if (isMaximizing)
-// 	{ 
-// 		bestEval = std::numeric_limits<int>::min();
-
-// 		for (size_t i = 0; i < sort_list.size(); ++i)
-// 		{
-// 			const t_cell& move = sort_list[i].move;
-// 			//ne gere pas les captures.
-// 			position.makeMove(move.x, move.y, position.sideToMove(), sort_list[i].pos_hash);
-			
-// 			int eval = minimax(position, move, depth - 1, alpha, beta);
-			
-// 			position.undoMove(move.x, move.y, position.sideToMove());
-
-// 			if (eval > bestEval)
-// 			{
-// 				bestEval = eval;
-// 				bestMove = move;
-// 			}
-
-// 			alpha = std::max(alpha, eval);
-			
-// 			if (beta <= alpha)
-// 			{
-// 				++_stats.nodesPruned;
-// 				break;
-// 			}
-// 		}
-// 	}
-// 	else
-// 	{
-// 		bestEval = std::numeric_limits<int>::max();
-
-// 		for (size_t i = 0; i < sort_list.size(); ++i)
-// 		{
-// 			const t_cell& move = sort_list[i].move;
-			
-// 			position.makeMove(move.x, move.y, position.sideToMove(), sort_list[i].pos_hash);
-			
-// 			int eval = minimax(position, move, depth - 1, alpha, beta);
-
-// 			position.undoMove(move.x, move.y, position.sideToMove());
-
-// 			if (eval < bestEval)
-// 			{
-// 				bestEval = eval;
-// 				bestMove = move;
-// 			}
-
-// 			beta = std::min(beta, eval);
-			
-// 			if (beta <= alpha)
-// 			{
-// 				++_stats.nodesPruned;
-// 				break;
-// 			}
-// 		}
-
-// 	}
-
-// 	// When storing a LowerBound or UpperBound, we are storing knowledge about a cutoff that already happened.
-// 	TTFlag flag;
-
-// 	if (bestEval <= alphaSearch)        // Fail-low : on n'a pas dépassé alpha
-// 		flag = TTFlag::UpperBound;
-// 	else if (bestEval >= betaSearch)    // Fail-high : coupure
-// 		flag = TTFlag::LowerBound;
-// 	else
-// 		flag = TTFlag::Exact;            // alphaSearch < bestEval < betaSearch
-	
-// 	_tt.store(position.zobristHash(), ttScoreToEntry(bestEval, currentDepth), depth, flag, {bestMove.x, bestMove.y});
-// 	++_stats.ttStores;
-
-// 	return bestEval;
-// }
 
 // les coups impliquant des captures doivent toujours etre mieux evalues que les coups sans capture.
 
@@ -638,6 +495,69 @@ static int score_open_three(int threeResult)
     }
 }
 
+// Score "brut" (non signé par rapport à l'IA) de la forme créée en posant
+// `color` en `cell`. Les barèmes sont ceux de evaluatePosition, mais ici la
+// pierre est posée de façon hypothétique dans une copie du plan de couleur
+// (les masques des check_* incluent la case et exigent la pierre présente).
+template <typename Traits>
+static int rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color)
+{
+	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
+
+	typename Traits::Bitboard own =
+		(color == Color::Black) ? board.black : board.white;
+	const typename Traits::Bitboard& opp =
+		(color == Color::Black) ? board.white : board.black;
+
+	set_bb_generic<Traits>(own, cell.x, cell.y); // pose hypothétique (copie locale)
+
+	if (tool.is_five_in_a_row(own, cell.x, cell.y))
+		return 1000000;
+
+	int r = tool.check_open_four(own, opp, cell.x, cell.y);
+	if (r == 2) return 500000;
+	if (r == 1) return 5000;
+
+	if (tool.check_super_four(own, opp, cell.x, cell.y))
+		return 60000;
+
+	if (tool.check_broken_four(own, opp, cell.x, cell.y))
+		return 6000;
+
+	r = tool.check_cross(own, opp, cell.x, cell.y);
+	if (r) return cross_score(r);
+
+	r = tool.check_open_three(own, opp, cell.x, cell.y);
+	if (r) return score_open_three(r);
+
+	return 0;
+}
+
+// Clé de tri d'un candidat, du point de vue du camp au trait `side`.
+// Variante complète : offense (ce que JE crée) + défense/2 (ce que l'adversaire
+// créerait ici, donc valeur de blocage) + bonus de capture.
+// Variante allégée (GOMOKU_LIGHT_MOVE_ORDER) : offense + captures uniquement,
+// on économise un rawShapeScore par candidat.
+// resolveCaptures n'exige pas la pierre posée (detect_captures lit
+// victime-victime-attaquant depuis la case).
+template <typename Traits>
+static int staticMoveScore(const t_BWBoard<Traits>& board, t_cell cell, Color side)
+{
+	const int off = rawShapeScore<Traits>(board, cell, side);
+
+	t_BWBoard<Traits> tmp = board;
+	const int caps =
+		BitboardTool<Traits>::instance().resolveCaptures(tmp, cell.x, cell.y, side).count;
+
+#ifdef GOMOKU_LIGHT_MOVE_ORDER
+	return off + caps * CAPTURE_SCORE;
+#else
+	const Color opp = (side == Color::Black) ? Color::White : Color::Black;
+	const int def = rawShapeScore<Traits>(board, cell, opp);
+	return off + def / 2 + caps * CAPTURE_SCORE;
+#endif
+}
+
 template <typename Traits>
 int	MasterAI<Traits>::signedFromAi(Color side, int raw) const
 {
@@ -656,7 +576,6 @@ int	MasterAI<Traits>::evaluatePosition(const SearchPosition<Traits>& position, t
 	const Color side = (position.sideToMove() == Color::Black) ? Color::White : Color::Black;
 
 	
-
 	// ne verifie pas les captures gagnantes, seulement les alignements de 5
 	if (isWinAfterMove<Traits>(board, side, cell.x, cell.y))
 		return signedFromAi(side, 1000000);

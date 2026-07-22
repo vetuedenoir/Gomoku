@@ -19,10 +19,10 @@ class MoveGenerator
 		void getMaskOfLegalMoves(const t_BWBoard<Traits>& board, const Color color,
 								typename Traits::Bitboard& legalMovesMask) const;
 
-		std::vector<t_cell> generateMoves(const t_BWBoard<Traits>& board, const Color color) const;
-		void	generateMovesT(const t_BWBoard<Traits>& board, const Color color, MoveList<t_cell, 200>& movesArray) const;
-
 		bool isLegalMove(const t_BWBoard<Traits>& board, int col, int row, const Color color) const;
+
+		void generateEmptyMoves(const t_BWBoard<Traits>& board, MoveList<t_cell, MAX_BOARD_MOVES<Traits>>& movesArray) const;
+
 
 	private:
 		int                 _activeZoneRadius;
@@ -60,42 +60,16 @@ void MoveGenerator<Traits>::getMaskOfLegalMoves(const t_BWBoard<Traits>& board, 
     }
 }
 
-
 template<typename Traits>
-std::vector<t_cell>	MoveGenerator<Traits>::generateMoves(const t_BWBoard<Traits>& board, const Color color) const
-{
-	ActiveZone<Traits> zone(_activeZoneRadius);
-	zone.initialize(board);
-
-	std::vector<t_cell> zoneMoves = zone.generateZoneMoves();
-
-	for (auto it = zoneMoves.begin(); it != zoneMoves.end(); )
-	{
-		if (!isLegalMove(board, it->x, it->y, color))
-			it = zoneMoves.erase(it);
-		else
-			++it;
-	}
-
-	return zoneMoves;
-}
-
-template<typename Traits>
-void MoveGenerator<Traits>::generateMovesT(const t_BWBoard<Traits>& board, const Color color, MoveList<t_cell, 200>& movesArray) const
+void MoveGenerator<Traits>::generateEmptyMoves(const t_BWBoard<Traits>& board, MoveList<t_cell, MAX_BOARD_MOVES<Traits>>& movesArray) const
 {
     ActiveZone<Traits> zone(_activeZoneRadius);
-    zone.initialize(board);
+    
+	zone.initialize(board);
 
-    MoveList<t_cell, 200> tmpMoves;
-    zone.generateZoneMovesT(tmpMoves);
-
-    for (size_t i = 0; i < tmpMoves.size(); ++i)
-    {
-        if (isLegalMove(board, tmpMoves[i].x, tmpMoves[i].y, color))
-        {
-            movesArray.push(tmpMoves[i]);
-        }
-    }
+    bb_for_each_bit<Traits>(zone.getCandidateMask(), [&](int x, int y) {
+        movesArray.push({x, y});
+    });
 }
 
 using MoveGenerator19 = MoveGenerator<BoardTraits<19>>;

@@ -13,18 +13,16 @@
 // - side to move,
 // - hash,
 // - reversible incremental mutations.
-
-
-struct MoveState_t {
+struct MoveState {
     int      blackCaptures;
     int      whiteCaptures;
     std::array<t_cell, 16> capturedStones; // PIERRES RETIRÉES (à restaurer)
 };
 
-struct position_hash_t
+struct MoveStateHash
 {
     uint64_t		hash;
-    MoveState_t		state;
+    MoveState		state;
 };
 
 
@@ -44,7 +42,7 @@ class SearchPosition
         Color                          _sideToMove;
         const ZobristHasher<Traits>&   _hasher;
         
-        MoveList<MoveState_t, 10>	_history; // stock tout utile pour remetre les pierres captures sur le board
+        MoveList<MoveState, 10>	_history; // stock tout utile pour remetre les pierres captures sur le board
 
     public:
         static SearchPosition fromBoard(const GameBoard& src);
@@ -71,10 +69,10 @@ class SearchPosition
         uint64_t                 zobristHash() const;
         Color                    sideToMove()  const;
 
-        position_hash_t gethash(int col, int row, Color color) const;
-        int detect_and_hash_capture(const t_BWBoard<Traits>& board, int col, int row, const Color attackerColor, position_hash_t& ph) const;
+        MoveStateHash buildMoveHash(int col, int row, Color color) const;
+        int detect_and_hash_capture(const t_BWBoard<Traits>& board, int col, int row, const Color attackerColor, MoveStateHash& stateHash) const;
         
-        void makeMove(int col, int row, Color color, position_hash_t ph);
+        void makeMove(int col, int row, Color color, MoveStateHash stateHash);
 };
 
 template<typename Traits>
@@ -187,27 +185,28 @@ void SearchPosition<Traits>::undoMove(int col, int row, Color color)
     _hash ^= _hasher.sideKey(); 
     _hash ^= _hasher.key(col, row, color);
 
-    MoveState_t state = _history.top();
+    MoveState state = _history.top();
     _history.pop();
 
     if (state.whiteCaptures > 0)
 	{
 		_hash ^= _hasher.captureHash(Color::White, _whiteCaptures >> 1);
 		_whiteCaptures -= state.whiteCaptures;
-		for (auto it = state.capturedStones.begin(); it != state.capturedStones.end(); it++)
+		// Restaure uniquement les vraies pierres capturees (borne au compteur).
+		for (int k = 0; k < state.whiteCaptures; ++k)
 		{
-			set_bb_generic<Traits>(_board.white, it->x, it->y);
-			_hash ^= _hasher.key(it->x, it->y, Color::White);
+			set_bb_generic<Traits>(_board.white, state.capturedStones[k].x, state.capturedStones[k].y);
+			_hash ^= _hasher.key(state.capturedStones[k].x, state.capturedStones[k].y, Color::White);
 		}
 	}	
     else if (state.blackCaptures > 0)
 	{
 		_hash ^= _hasher.captureHash(Color::Black, _blackCaptures >> 1);
 		_blackCaptures -= state.blackCaptures;
-		for (auto it = state.capturedStones.begin(); it != state.capturedStones.end(); it++)
+		for (int k = 0; k < state.blackCaptures; ++k)
 		{
-			set_bb_generic<Traits>(_board.black, it->x, it->y);
-			_hash ^= _hasher.key(it->x, it->y, Color::Black);
+			set_bb_generic<Traits>(_board.black, state.capturedStones[k].x, state.capturedStones[k].y);
+			_hash ^= _hasher.key(state.capturedStones[k].x, state.capturedStones[k].y, Color::Black);
 		}
     }
 
@@ -234,36 +233,32 @@ Color SearchPosition<Traits>::sideToMove() const
 
 
 template<typename Traits>
-void SearchPosition<Traits>::makeMove(int col, int row, Color color, position_hash_t ph)
+void SearchPosition<Traits>::makeMove(int col, int row, Color color, MoveStateHash stateHash)
 {
     set_bb_generic<Traits>(bitboardForColor(_board, color), col, row);
-    if (ph.state.whiteCaptures > 0)
+    if (stateHash.state.whiteCaptures > 0)
     {
-        _whiteCaptures += ph.state.whiteCaptures;
-        for (auto it = ph.state.capturedStones.begin(); it != ph.state.capturedStones.end(); it++)
-        {
-            clear_bit_generic<Traits>(_board.white, it->x, it->y);
-        }
+        _whiteCaptures += stateHash.state.whiteCaptures;
+        for (int k = 0; k < stateHash.state.whiteCaptures; ++k)
+            clear_bit_generic<Traits>(_board.white, stateHash.state.capturedStones[k].x, stateHash.state.capturedStones[k].y);
     }
-    else if (ph.state.blackCaptures > 0)
+    else if (stateHash.state.blackCaptures > 0)
     {
-        _blackCaptures += ph.state.blackCaptures;
-        for (auto it = ph.state.capturedStones.begin(); it != ph.state.capturedStones.end(); it++)
-        {
-            set_bb_generic<Traits>(_board.black, it->x, it->y);
-        }
+        _blackCaptures += stateHash.state.blackCaptures;
+        for (int k = 0; k < stateHash.state.blackCaptures; ++k)
+            clear_bit_generic<Traits>(_board.black, stateHash.state.capturedStones[k].x, stateHash.state.capturedStones[k].y);
     }
 
+    _history.push(stateHash.state);
 
-    _history.push(ph.state);
+    _hash = stateHash.hash;
 
-    _hash = ph.hash;
     _sideToMove = (_sideToMove == Color::Black) ? Color::White : Color::Black;
 }
 
 
 template<typename Traits>
-int SearchPosition<Traits>::detect_and_hash_capture(const t_BWBoard<Traits>& board, int col, int row, const Color attackerColor, position_hash_t& ph) const
+int SearchPosition<Traits>::detect_and_hash_capture(const t_BWBoard<Traits>& board, int col, int row, const Color attackerColor, MoveStateHash& stateHash) const
 {
 	const typename Traits::Bitboard& attacker = bitboardForColor(board, attackerColor);
 	const Color victimColor = (attackerColor == Color::Black) ? Color::White : Color::Black;
@@ -289,10 +284,10 @@ int SearchPosition<Traits>::detect_and_hash_capture(const t_BWBoard<Traits>& boa
 				get_bb_generic<Traits>(victime, x2, y2) &&
 				get_bb_generic<Traits>(attacker, x3, y3))
 			{
-                ph.hash ^= _hasher.key(x1, y1, victimColor);
-                ph.hash ^= _hasher.key(x2, y2, victimColor);
-                ph.state.capturedStones[captured] = {x1, y1};
-                ph.state.capturedStones[captured + 1] = {x2, y2};
+                stateHash.hash ^= _hasher.key(x1, y1, victimColor);
+                stateHash.hash ^= _hasher.key(x2, y2, victimColor);
+                stateHash.state.capturedStones[captured] = {x1, y1};
+                stateHash.state.capturedStones[captured + 1] = {x2, y2};
 				captured += 2;
 			}
 		}
@@ -302,33 +297,31 @@ int SearchPosition<Traits>::detect_and_hash_capture(const t_BWBoard<Traits>& boa
 
 
 template<typename Traits>
-position_hash_t SearchPosition<Traits>::gethash(int col, int row, Color color) const
+MoveStateHash SearchPosition<Traits>::buildMoveHash(int col, int row, Color color) const
 {
-    position_hash_t ph = {};
+    MoveStateHash stateHash = {};
 
-    ph.hash = _hash;
-    ph.hash ^= _hasher.key(col, row, color);
-    ph.hash ^= _hasher.sideKey();
+    stateHash.hash = _hash;
+    stateHash.hash ^= _hasher.key(col, row, color);
+    stateHash.hash ^= _hasher.sideKey();
 
     
-    int caps = detect_and_hash_capture(_board, col, row, color, ph);
+    int caps = detect_and_hash_capture(_board, col, row, color, stateHash);
     if (caps > 0)
     {
-        if (color == Color::Black) // couleur de l'attaquant
+        if (color == Color::Black)
         {
-            ph.state.whiteCaptures = caps;
-            ph.hash ^= _hasher.captureHash(Color::White, (_whiteCaptures + caps) >> 1);
+            stateHash.state.whiteCaptures = caps;
+            stateHash.hash ^= _hasher.captureHash(Color::White, (_whiteCaptures + caps) >> 1);
         }
         else
         {
-            ph.state.blackCaptures = caps;
-            ph.hash ^= _hasher.captureHash(Color::Black, (_blackCaptures + caps) >> 1);
+            stateHash.state.blackCaptures = caps;
+            stateHash.hash ^= _hasher.captureHash(Color::Black, (_blackCaptures + caps) >> 1);
         }
     }
-    return ph;
+    return stateHash;
 }
-
-
 
 
 using SearchPosition19 = SearchPosition<BoardTraits<19>>;

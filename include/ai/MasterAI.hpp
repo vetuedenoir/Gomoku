@@ -14,6 +14,7 @@
 #include <limits>
 #include <vector>
 #include <chrono>
+#include <algorithm>
 
 using t_BWBoard_variant = std::variant<t_BWBoard19, t_BWBoard15>;
 
@@ -32,11 +33,11 @@ struct SearchStats
 
 template <typename T> struct MasterAITestAccess;
 
-struct sort_move_t
+struct MoveSorted
 {
-	t_cell			move;
+	t_cell			    move;
 	const TTEntry*		hit;
-	position_hash_t	pos_hash;
+	MoveStateHash		stateHash;
 };
 
 
@@ -46,7 +47,7 @@ class MasterAI
 	template <typename T> friend struct MasterAITestAccess;
 
 	public:
-		explicit MasterAI(int depth = 5, int activeZoneRadius = 1, Color aiColor = Color::Black);
+		explicit MasterAI(int depth = 8, int activeZoneRadius = 1, Color aiColor = Color::Black);
 		
 		t_cell findBestMove(
 			const SearchPosition<Traits>& position,
@@ -93,16 +94,6 @@ class MasterAI
 		int evaluateBlackPosition(const SearchPosition<Traits>& position, t_cell cell);
 		int evaluateWhitePosition(const SearchPosition<Traits>& position, t_cell cell);
 };
-
-
-
-static int getMoveScore(const sort_move_t& sm) {
-    if (sm.hit == nullptr) return 0;
-    if (sm.hit->flag == TTFlag::Exact)      return sm.hit->score + 1000000;
-    if (sm.hit->flag == TTFlag::LowerBound) return sm.hit->score + 500000;
-    return sm.hit->score;
-}
-
 
 using MasterAI19 = MasterAI<BoardTraits<19>>;
 using MasterAI15 = MasterAI<BoardTraits<15>>;
