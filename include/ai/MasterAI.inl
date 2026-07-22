@@ -13,7 +13,7 @@ static constexpr int CAPTURE_SCORE = 202;
 // nœud interne de minimax. Les coups étant triés best-first, on ne garde que
 // les N meilleurs. Réduit le facteur de branchement effectif. À tuner via le
 // benchmark [PERF][BENCH].
-static constexpr int MAX_CANDIDATES = 16;
+static constexpr int MAX_CANDIDATES = 300;
 
 // Coup accompagné de sa clé de tri statique (heuristique indépendante de la TT).
 struct ScoredMove
@@ -213,8 +213,7 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 		
 		newPosition.makeMove(move.x, move.y, newPosition.sideToMove(), moveHash);
 
-		int score = minimax(newPosition, move, _maxDepth - 1,
-		                    alpha, beta);
+		int score = minimax(newPosition, move, _maxDepth - 1, alpha, beta);
 
 		const std::string marker = (score > bestScore) ? " ← best" : "";
 		const std::string macro  = scoreMacroLabel(score);
@@ -290,12 +289,13 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
                            ? Color::White : Color::Black;
 
     // 3. Check victoire du coup qui vient d'être joué
-    // if (isWinAfterMove<Traits>(position.board(), lastPlayed, cell.x, cell.y))
-    // {
-    //     ++_stats.nodesEvaluated;
-    //     const int mate = WIN_SCORE - currentDepth;
-    //     return (lastPlayed == _aiColor) ? mate : -mate;
-    // }
+    if (isWinAfterMove<Traits>(position.board(), lastPlayed, cell.x, cell.y) ||
+		position.getCapturesForside() >= 10)
+    {
+        ++_stats.nodesEvaluated;
+        const int mate = WIN_SCORE - currentDepth;
+        return (lastPlayed == _aiColor) ? mate : -mate;
+    }
 
     // 4. Profondeur 0 → évaluation statique
     if (depth == 0)
@@ -331,18 +331,22 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 			dataMove scoredMove = rawShapeScore(position.board(), movesArray[i], themover);
 			if (scoredMove.isLegal)
 			{
-				if (scoredMove.score >= WIN_SCORE)
-				{
-					++_stats.nodesEvaluated;
-					const int mate = scoredMove.score - currentDepth;
-					return (themover == _aiColor) ? mate : -mate;
-				}
-				else if (scoredMove.capturedStones.size() + position.getCapturesForColor(themover) >= 10)
-				{
-					++_stats.nodesEvaluated;
-					const int mate = scoredMove.score - currentDepth;
-					return (themover == _aiColor) ? mate : -mate;
-				}
+				// if (scoredMove.score >= WIN_SCORE)
+				// {
+				// 	++_stats.nodesEvaluated;
+				// 	const int mate = scoredMove.score - currentDepth;
+				// 	int cc = (themover == Color::Black) ? 1 : 2;
+				// 	LOG_DEBUG("IA_MINIMAX", "retour grace a victoir par capture. score = " + std::to_string((themover == _aiColor) ? mate : -mate));
+				// 	LOG_DEBUG("IA_MINI", "color= " + std::to_string(cc));
+				// 	return (themover == _aiColor) ? mate : -mate;
+				// }
+				// else if (scoredMove.capturedStones.size() + position.getCapturesForColor(themover) >= 10)
+				// {
+				// 	LOG_DEBUG("IA MINIMAX", "retour grace a victoir par capture.");
+				// 	++_stats.nodesEvaluated;
+				// 	const int mate = scoredMove.score - currentDepth;
+				// 	return (themover == _aiColor) ? mate : -mate;
+				// }
 				ordered.push(scoredMove);
 			}
 	}
@@ -368,16 +372,12 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
             break;
 
         const t_cell&         move      = ordered[i].move;
-        const MoveStateHash moveHash  = position.buildMoveHash(ordered[i], lastPlayed);
+        const MoveStateHash moveHash  = position.buildMoveHash(ordered[i], position.sideToMove());
 
         // Sauvegarde la couleur AVANT makeMove
         const Color colorBeforeMove = position.sideToMove();
 
-        // Légalité vérifiée paresseusement : on ignore les coups pseudo-légaux
-        // réellement illégaux (double-trois sans capture) seulement ici, au
-        // moment de les jouer.
-        // if (!_moveGenerator.isLegalMove(position.board(), move.x, move.y, colorBeforeMove))
-        //     continue;
+
         ++legalMovesSearched;
 
         position.makeMove(move.x, move.y, colorBeforeMove, moveHash);
@@ -399,8 +399,6 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
             if (beta <= alpha) { ++_stats.nodesPruned; break; }
         }
 
-		if (bestEval >= WIN_SCORE - 10) // coup gagnant trouvé → pas besoin de continuer
-			break;
     }
 
     // Aucun coup pseudo-légal n'était réellement légal → feuille de facto.

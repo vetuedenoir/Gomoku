@@ -41,15 +41,13 @@ struct MoveSorted
 };
 
 
-
-
 template<typename Traits>
 class MasterAI
 {
 	template <typename T> friend struct MasterAITestAccess;
 
 	public:
-		explicit MasterAI(int depth = 12, int activeZoneRadius = 1, Color aiColor = Color::Black);
+		explicit MasterAI(int depth = 8, int activeZoneRadius = 1, Color aiColor = Color::Black);
 		
 		t_cell findBestMove(
 			const SearchPosition<Traits>& position,
