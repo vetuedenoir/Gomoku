@@ -6,6 +6,8 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include <sstream>
+#include <iomanip>
 
 
 #ifdef __APPLE__
@@ -362,6 +364,14 @@ void Gomoku::buildWinScreenPage(const Color winner, int capturesBlack, int captu
     score.setPosition(CX, WIN_H * 0.431f);
     _winScreen.addText("score", score);
 
+    std::ostringstream avgStream;
+    avgStream << std::fixed << std::setprecision(1)
+              << "AI avg: " << _controller->aiMoveAverageMs() << " ms";
+    sf::Text aiAvg = makeText(avgStream.str(), _font, FONT_MD, GOLD);
+    aiAvg.setStyle(sf::Text::Bold);
+    aiAvg.setPosition(CX, WIN_H * 0.478f);
+    _winScreen.addText("aiAvg", aiAvg);
+
     _winScreen.addItem("again", FonctionItem(
         Item("Play Again", _font, CX, WIN_H * 0.5375f),
         [this]() { resetToMainMenu(); }
@@ -374,6 +384,7 @@ void Gomoku::buildWinScreenPage(const Color winner, int capturesBlack, int captu
     _winScreen.setDrawFunction([](MenuPage& page, sf::RenderWindow& win) {
         if (auto *t  = page.getText("title"))  win.draw(*t);
         if (auto *t  = page.getText("score"))  win.draw(*t);
+        if (auto *t  = page.getText("aiAvg"))  win.draw(*t);
         if (auto *fi = page.getItem("again"))  fi->item.draw(win);
         if (auto *fi = page.getItem("quit"))   fi->item.draw(win);
     });
