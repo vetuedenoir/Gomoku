@@ -45,7 +45,6 @@ class BitboardTool
 	void add_pattern_super4(t_super4<Traits>* pattern, int start_x, int start_y, int dir);
 	void add_pattern_cross_to_lookup(t_cross* pattern);
 
-	static bool isDoubleThreeScore(int score);
 
 public:
 	BitboardTool() { buildAll(); }
@@ -70,6 +69,7 @@ public:
 	bool is_double_three_at(const typename Traits::Bitboard& stones,
 	                        const typename Traits::Bitboard& opponent, int col, int row) const;
 
+	bool isDoubleThreeScore(const int score) const;
 
 	CaptureResult<Traits> resolveCaptures(t_BWBoard<Traits>& bb, int col,
                                                               int row, const Color color) const;

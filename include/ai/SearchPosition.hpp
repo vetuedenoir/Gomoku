@@ -62,6 +62,11 @@ class SearchPosition
         int  getTotalblackCaptures() const { return _blackCaptures; }
         int  getTotalwhiteCaptures() const { return _whiteCaptures; }
 
+        int getCapturesForside() const
+        {
+            return (sideToMove() == Color::Black) ? getTotalblackCaptures() : getTotalwhiteCaptures();
+        }
+
         int getBlackCaptures() const { return _history.empty() ? 0 : _history.top().blackCaptures; }
         int getWhiteCaptures() const { return _history.empty() ? 0 : _history.top().whiteCaptures; }
     
