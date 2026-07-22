@@ -35,10 +35,12 @@ class GameController : public IGameController
         OpeningProtocol      openingProtocol()  const override;
         int                  stepIdx()          const override;
         std::optional<Color> getColorFromWinningActor() const override;
-        int                  captureCount(const Color c) const override;
 
         double               aiMoveLastMs()    const override;
         double               aiMoveAverageMs() const override;
+
+        int                  blackCaptureCount() const override;
+        int                  whiteCaptureCount() const override;
 
     private:
         void assignColorsAfterChoice(bool swapped);
