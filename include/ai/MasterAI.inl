@@ -13,7 +13,7 @@ static constexpr int CAPTURE_SCORE = 202;
 // nœud interne de minimax. Les coups étant triés best-first, on ne garde que
 // les N meilleurs. Réduit le facteur de branchement effectif. À tuner via le
 // benchmark [PERF][BENCH].
-static constexpr int MAX_CANDIDATES = 300;
+static constexpr int MAX_CANDIDATES = 30;
 
 // Coup accompagné de sa clé de tri statique (heuristique indépendante de la TT).
 struct ScoredMove
@@ -166,22 +166,16 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	// offense + défense + captures, du point de vue du camp au trait.
 	MoveList<dataMove, MAX_BOARD_MOVES<Traits>> orderedRoot;
 	{
-		// const Color rootSide = position.sideToMove();
 		for (size_t i = 0; i < rootMoves.size(); ++i)
 		{
 			dataMove scoredMove = rawShapeScore(position.board(), rootMoves[i], color);
 			
 			if (scoredMove.isLegal)
 			{
-				if (scoredMove.score >= WIN_SCORE)
-				{
+				if (scoredMove.score >= WIN_SCORE ||
+					scoredMove.capturedStones.size() + position.getCapturesForside() >= 10)
 					return scoredMove.move;
-				}
-				else if (scoredMove.capturedStones.size() + position.getCapturesForside() >= 10)
-				{
-					LOG_DEBUG("AI", "[findBestMove] found winning capture at root: (" + std::to_string(scoredMove.move.x) + "," + std::to_string(scoredMove.move.y) + ")");
-					return scoredMove.move;
-				}
+
 				orderedRoot.push(scoredMove);
 			}
 		}
@@ -203,11 +197,6 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 		}
 
 		SearchPosition<Traits> newPosition = position;
-
-		// if (isWinAfterMove<Traits>(position.board(), position.sideToMove(), move.x, move.y))
-		// {
-		// 	return move;
-		// }
 
 		MoveStateHash moveHash = newPosition.buildMoveHash(orderedRoot[i], newPosition.sideToMove());
 		
@@ -330,25 +319,7 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 			Color themover = position.sideToMove();
 			dataMove scoredMove = rawShapeScore(position.board(), movesArray[i], themover);
 			if (scoredMove.isLegal)
-			{
-				// if (scoredMove.score >= WIN_SCORE)
-				// {
-				// 	++_stats.nodesEvaluated;
-				// 	const int mate = scoredMove.score - currentDepth;
-				// 	int cc = (themover == Color::Black) ? 1 : 2;
-				// 	LOG_DEBUG("IA_MINIMAX", "retour grace a victoir par capture. score = " + std::to_string((themover == _aiColor) ? mate : -mate));
-				// 	LOG_DEBUG("IA_MINI", "color= " + std::to_string(cc));
-				// 	return (themover == _aiColor) ? mate : -mate;
-				// }
-				// else if (scoredMove.capturedStones.size() + position.getCapturesForColor(themover) >= 10)
-				// {
-				// 	LOG_DEBUG("IA MINIMAX", "retour grace a victoir par capture.");
-				// 	++_stats.nodesEvaluated;
-				// 	const int mate = scoredMove.score - currentDepth;
-				// 	return (themover == _aiColor) ? mate : -mate;
-				// }
 				ordered.push(scoredMove);
-			}
 	}
 		
 		std::sort(ordered.begin(), ordered.end(),

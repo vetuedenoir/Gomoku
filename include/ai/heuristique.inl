@@ -114,8 +114,6 @@ static int score_open_three(int threeResult)
 // (les masques des check_* incluent la case et exigent la pierre présente).
 
 
-
-
 template<typename Traits>
 void detect_and_stock_capture(const t_BWBoard<Traits>& board, int col, int row, const Color attackerColor, MoveList<t_cell, 16>& capturedStones)
 {
@@ -148,21 +146,6 @@ void detect_and_stock_capture(const t_BWBoard<Traits>& board, int col, int row, 
 	}
 }
 
-// template<typename Traits>
-// bool BitboardTool<Traits>::isDoubleThreeScore(int score)
-// {
-// 	if (score <= 0)
-// 		return false;
-// 	if (score < SCORE_3_FULL)
-// 		return true;
-// 	if (score >= SCORE_DOUBLE_FULL_FULL_EXTERN
-// 	    && score <= SCORE_DOUBLE_HOLE_HOLE_EXTERN)
-// 		return true;
-// 	// if (score == SCORE_3_FULL || score == SCORE_3_HOLE || score >= SCORE_FULL_EXTERN)
-// 	// 	return false;
-// 	return false;
-// }
-
 template <typename Traits>
 dataMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color)
 {
@@ -179,8 +162,9 @@ dataMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_cell 
 	detect_and_stock_capture(board, cell.x, cell.y, color, data.capturedStones);
 	int caps = data.capturedStones.size();
 
-	const int captureScore = caps * CAPTURE_SCORE;
+	const int captureScore = caps * CAPTURE_SCORE * 2;
 
+	data.score = captureScore + 89;
 	if (tool.is_five_in_a_row(own, cell.x, cell.y))
 	{
 		data.score = 1000000 + captureScore;
@@ -198,11 +182,11 @@ dataMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_cell 
 		return data;
 	}
 
-	if (tool.check_super_four(own, opp, cell.x, cell.y))
-	{
-		data.score = 60000 + captureScore;
-		return data;
-	}
+	// if (tool.check_super_four(own, opp, cell.x, cell.y))
+	// {
+	// 	data.score = 60000 + captureScore;
+	// 	return data;
+	// }
 	if (tool.check_broken_four(own, opp, cell.x, cell.y))
 	{
 		data.score = 6000 + captureScore;
