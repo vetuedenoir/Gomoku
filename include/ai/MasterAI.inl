@@ -164,11 +164,11 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 
 	// Tri statique des coups racine (heuristique indépendante de la TT) :
 	// offense + défense + captures, du point de vue du camp au trait.
-	MoveList<dataMove, MAX_BOARD_MOVES<Traits>> orderedRoot;
+	MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>> orderedRoot;
 	{
 		for (size_t i = 0; i < rootMoves.size(); ++i)
 		{
-			dataMove scoredMove = rawShapeScore(position.board(), rootMoves[i], color);
+			EvaluatedMove scoredMove = rawShapeScore(position.board(), rootMoves[i], color);
 			
 			if (scoredMove.isLegal)
 			{
@@ -180,7 +180,7 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 			}
 		}
 		std::sort(orderedRoot.begin(), orderedRoot.end(),
-			[](const dataMove& a, const dataMove& b) { return a.score > b.score; });
+			[](const EvaluatedMove& a, const EvaluatedMove& b) { return a.score > b.score; });
 	}
 
 	int bestScore = std::numeric_limits<int>::min();
@@ -312,18 +312,18 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     // 6. Tri statique des coups (heuristique indépendante de la TT), du point de
     //    vue du camp au trait à ce nœud. On n'explorera ensuite que les
     //    MAX_CANDIDATES meilleurs coups légaux (plafond top-N, forward pruning).
-    MoveList<dataMove, MAX_BOARD_MOVES<Traits>> ordered;
+    MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>> ordered;
     {
         for (size_t i = 0; i < movesArray.size(); ++i)
 		{
 			Color themover = position.sideToMove();
-			dataMove scoredMove = rawShapeScore(position.board(), movesArray[i], themover);
+			EvaluatedMove scoredMove = rawShapeScore(position.board(), movesArray[i], themover);
 			if (scoredMove.isLegal)
 				ordered.push(scoredMove);
 	}
 		
 		std::sort(ordered.begin(), ordered.end(),
-            [](const dataMove& a, const dataMove& b) { return a.score > b.score; });
+            [](const EvaluatedMove& a, const EvaluatedMove& b) { return a.score > b.score; });
     }
 
     // 7. sideToMove AVANT makeMove → pour undoMove

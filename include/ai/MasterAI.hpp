@@ -94,7 +94,7 @@ class MasterAI
 		int evaluateBlackPosition(const SearchPosition<Traits>& position, t_cell cell);
 		int evaluateWhitePosition(const SearchPosition<Traits>& position, t_cell cell);
 		// int	staticMoveScore(const t_BWBoard<Traits>& board, t_cell cell, Color side);
-		dataMove rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color);
+		EvaluatedMove rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color);
 };
 
 using MasterAI19 = MasterAI<BoardTraits<19>>;

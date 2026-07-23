@@ -147,7 +147,7 @@ void detect_and_stock_capture(const t_BWBoard<Traits>& board, int col, int row, 
 }
 
 template <typename Traits>
-dataMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color)
+EvaluatedMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color)
 {
 	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
 
@@ -156,7 +156,7 @@ dataMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_cell 
 
 	set_bb_generic<Traits>(own, cell.x, cell.y); // pose hypothétique (copie locale)
 
-	dataMove data {};
+	EvaluatedMove data {};
 	data.isLegal = true;
 	data.move = cell;
 	detect_and_stock_capture(board, cell.x, cell.y, color, data.capturedStones);
