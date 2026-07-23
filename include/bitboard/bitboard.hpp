@@ -49,7 +49,7 @@ struct BoardTraits<19>
 
 
 template<typename Traits>
-inline constexpr std::size_t MAX_BOARD_MOVES = Traits::BOARD_SIZE * Traits::BOARD_SIZE - (Traits::BOARD_SIZE * Traits::BOARD_SIZE) / 7;
+inline constexpr std::size_t MAX_BOARD_MOVES = Traits::BOARD_SIZE * Traits::BOARD_SIZE;
 
 template<typename Traits>
 struct t_BWBoard

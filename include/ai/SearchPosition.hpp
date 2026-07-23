@@ -79,8 +79,7 @@ class SearchPosition
         uint64_t                 zobristHash() const;
         Color                    sideToMove()  const;
 
-        // MoveStateHash buildMoveHash(int col, int row, Color color) const;
-        MoveStateHash buildMoveHash(dataMove move, Color color) const;
+        MoveStateHash buildMoveHash(const EvaluatedMove& move, Color color) const;
 
         int detect_and_hash_capture(const t_BWBoard<Traits>& board, int col, int row, const Color attackerColor, MoveStateHash& stateHash) const;
         
@@ -308,36 +307,8 @@ int SearchPosition<Traits>::detect_and_hash_capture(const t_BWBoard<Traits>& boa
 }
 
 
-// template<typename Traits>
-// MoveStateHash SearchPosition<Traits>::buildMoveHash(int col, int row, Color color) const
-// {
-//     MoveStateHash stateHash = {};
-
-//     stateHash.hash = _hash;
-//     stateHash.hash ^= _hasher.key(col, row, color);
-//     stateHash.hash ^= _hasher.sideKey();
-
-    
-//     int caps = detect_and_hash_capture(_board, col, row, color, stateHash);
-//     if (caps > 0)
-//     {
-//         if (color == Color::Black)
-//         {
-//             stateHash.state.whiteCaptures = caps;
-//             stateHash.hash ^= _hasher.captureHash(Color::White, (_whiteCaptures + caps) >> 1);
-//         }
-//         else
-//         {
-//             stateHash.state.blackCaptures = caps;
-//             stateHash.hash ^= _hasher.captureHash(Color::Black, (_blackCaptures + caps) >> 1);
-//         }
-//     }
-//     return stateHash;
-// }
-
-
 template<typename Traits>
-MoveStateHash SearchPosition<Traits>::buildMoveHash(dataMove move, Color color) const
+MoveStateHash SearchPosition<Traits>::buildMoveHash(const EvaluatedMove& move, Color color) const
 {
     MoveStateHash stateHash = {};
 
@@ -345,11 +316,22 @@ MoveStateHash SearchPosition<Traits>::buildMoveHash(dataMove move, Color color) 
     stateHash.hash ^= _hasher.key(move.move.x, move.move.y, color);
     stateHash.hash ^= _hasher.sideKey();
 
-    
-    int caps = move.capturedStones.size();
+    const int caps = move.capturedStones.size();
     if (caps > 0)
     {
         stateHash.state.capturedStones = move.capturedStones;
+
+        // Retire du hash zobrist chaque pierre capturée (mêmes clés que celles
+        // posées par detect_and_hash_capture). Indispensable : sans cela, les
+        // positions atteintes via une capture ont un hash incohérent et la TT
+        // renvoie de faux résultats.
+        const Color victimColor = (color == Color::Black) ? Color::White : Color::Black;
+        for (size_t k = 0; k < move.capturedStones.size(); ++k)
+        {
+            const t_cell& stone = move.capturedStones[k];
+            stateHash.hash ^= _hasher.key(stone.x, stone.y, victimColor);
+        }
+
         if (color == Color::Black)
         {
             stateHash.state.whiteCaptures = caps;

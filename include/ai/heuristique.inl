@@ -146,69 +146,91 @@ void detect_and_stock_capture(const t_BWBoard<Traits>& board, int col, int row, 
 	}
 }
 
+int computeCaptureScore(EvaluatedMove& evaluatedMove)
+{
+	return evaluatedMove.capturedStones.size() * CAPTURE_SCORE * 2;
+}
+
 template <typename Traits>
-dataMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color)
+EvaluatedMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color)
 {
 	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
 
 	typename Traits::Bitboard own = (color == Color::Black) ? board.black : board.white;
 	const typename Traits::Bitboard& opp = (color == Color::Black) ? board.white : board.black;
 
-	set_bb_generic<Traits>(own, cell.x, cell.y); // pose hypothétique (copie locale)
+	// Pose hypothétiquement (copie locale)
+	set_bb_generic<Traits>(own, cell.x, cell.y);
 
-	dataMove data {};
-	data.isLegal = true;
-	data.move = cell;
-	detect_and_stock_capture(board, cell.x, cell.y, color, data.capturedStones);
-	int caps = data.capturedStones.size();
+	EvaluatedMove evaluatedMove {};
+	
+	evaluatedMove.isLegal = true;
+	
+	evaluatedMove.move = cell;
+	
+	detect_and_stock_capture(board, cell.x, cell.y, color, evaluatedMove.capturedStones);
+	
+	const int captureScore = computeCaptureScore(evaluatedMove);
 
-	const int captureScore = caps * CAPTURE_SCORE * 2;
+	evaluatedMove.score = captureScore + 89;
 
-	data.score = captureScore + 89;
 	if (tool.is_five_in_a_row(own, cell.x, cell.y))
 	{
-		data.score = 1000000 + captureScore;
-		return data;
+		evaluatedMove.score = 1000000 + captureScore;
+		return evaluatedMove;
 	}
 
 	int r = tool.check_open_four(own, opp, cell.x, cell.y);
+	
 	if (r == 2)
 	{
-		data.score = 500000 + captureScore;
-		return data;
+		evaluatedMove.score = 500000 + captureScore;
+		return evaluatedMove;
 	}
-	if (r == 1) {
-		data.score = 5000 + captureScore;
-		return data;
+	
+	if (r == 1)
+	{
+		evaluatedMove.score = 5000 + captureScore;
+		return evaluatedMove;
 	}
 
-	// if (tool.check_super_four(own, opp, cell.x, cell.y))
-	// {
-	// 	data.score = 60000 + captureScore;
-	// 	return data;
-	// }
-	if (tool.check_broken_four(own, opp, cell.x, cell.y))
+	// Plus de quatre ouvert : la légalité suit la règle du double-trois, évaluée
+	// via check_open_three exactement comme StandardRules::isLegal. Un quatre
+	// brisé prime également sur le double-trois (coup légal) ; une capture lève
+	// aussi l'interdiction du double-trois.
+	const bool brokenFour = tool.check_broken_four(own, opp, cell.x, cell.y);
+	const int  threeScore = brokenFour ? 0 : tool.check_open_three(own, opp, cell.x, cell.y);
+	
+	evaluatedMove.isLegal = brokenFour || !tool.isDoubleThreeScore(threeScore) || evaluatedMove.capturedStones.size() > 0;
+
+	// Tri : super-four (60000) prioritaire sur le quatre brisé (6000), comme
+	// dans l'heuristique de référence.
+	if (tool.check_super_four(own, opp, cell.x, cell.y))
 	{
-		data.score = 6000 + captureScore;
-		return data;
+		evaluatedMove.score = 60000 + captureScore;
+		return evaluatedMove;
+	}
+
+	if (brokenFour)
+	{
+		evaluatedMove.score = 6000 + captureScore;
+		return evaluatedMove;
 	}
 
 	r = tool.check_cross(own, opp, cell.x, cell.y);
-	if (r) 
-	{
-		data.score = cross_score(r) + captureScore;
-		return data;
-	}
-
-	r = tool.check_open_three(own, opp, cell.x, cell.y);
 	if (r)
 	{
-		data.score = score_open_three(r);
-		data.isLegal = !tool.isDoubleThreeScore(r);
-		data.score += captureScore;
-		return data;
+		evaluatedMove.score = cross_score(r) + captureScore;
+		return evaluatedMove;
 	}
-	return data;
+
+	if (threeScore)
+	{
+		evaluatedMove.score = score_open_three(threeScore) + captureScore;
+		return evaluatedMove;
+	}
+
+	return evaluatedMove;
 }
 
 // Clé de tri d'un candidat, du point de vue du camp au trait `side`.

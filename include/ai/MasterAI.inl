@@ -13,22 +13,7 @@ static constexpr int CAPTURE_SCORE = 202;
 // nœud interne de minimax. Les coups étant triés best-first, on ne garde que
 // les N meilleurs. Réduit le facteur de branchement effectif. À tuner via le
 // benchmark [PERF][BENCH].
-static constexpr int MAX_CANDIDATES = 30;
-
-// Coup accompagné de sa clé de tri statique (heuristique indépendante de la TT).
-struct ScoredMove
-{
-	t_cell move;
-	int    key;
-};
-
-// Ordonnancement statique des coups (après cross_score / score_open_three dont il dépend).
-// Score TOUJOURS positif = meilleur, du point de vue du camp au trait `side` : offense + défense (blocage) + captures.
-template <typename Traits>
-static int rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color);
-template <typename Traits>
-static int staticMoveScore(const t_BWBoard<Traits>& board, t_cell cell, Color side);
-
+static constexpr int MAX_CANDIDATES = 16;
 
 // "depuis le nœud" -> "depuis la racine" (au probe TT)
 // ply = currentDepth
@@ -164,23 +149,22 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 
 	// Tri statique des coups racine (heuristique indépendante de la TT) :
 	// offense + défense + captures, du point de vue du camp au trait.
-	MoveList<dataMove, MAX_BOARD_MOVES<Traits>> orderedRoot;
+	MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>> orderedRoot;
 	{
 		for (size_t i = 0; i < rootMoves.size(); ++i)
 		{
-			dataMove scoredMove = rawShapeScore(position.board(), rootMoves[i], color);
-			
+			EvaluatedMove scoredMove = rawShapeScore(position.board(), rootMoves[i], color);
+
 			if (scoredMove.isLegal)
 			{
-				if (scoredMove.score >= WIN_SCORE ||
-					scoredMove.capturedStones.size() + position.getCapturesForside() >= 10)
+				if (scoredMove.score >= WIN_SCORE)
 					return scoredMove.move;
 
 				orderedRoot.push(scoredMove);
 			}
 		}
 		std::sort(orderedRoot.begin(), orderedRoot.end(),
-			[](const dataMove& a, const dataMove& b) { return a.score > b.score; });
+			[](const EvaluatedMove& a, const EvaluatedMove& b) { return a.score > b.score; });
 	}
 
 	int bestScore = std::numeric_limits<int>::min();
@@ -210,7 +194,7 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 			bestMove  = move;
 		}
 
-		if (bestScore >= WIN_SCORE - 10) // coup gagnant trouvé → pas besoin de continuer
+		if (bestScore >= WIN_SCORE - 1) // coup gagnant trouvé → pas besoin de continuer
 			break;
 
 		alpha = std::max(alpha, bestScore);
@@ -273,8 +257,7 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
                            ? Color::White : Color::Black;
 
     // 3. Check victoire du coup qui vient d'être joué
-    if (isWinAfterMove<Traits>(position.board(), lastPlayed, cell.x, cell.y) ||
-		position.getCapturesForside() >= 10)
+    if (isWinAfterMove<Traits>(position.board(), lastPlayed, cell.x, cell.y))
     {
         ++_stats.nodesEvaluated;
         const int mate = WIN_SCORE - currentDepth;
@@ -290,9 +273,10 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
             : evaluateWhitePosition(position, cell);
     }
 
-    // 5. Génération des coups (pseudo-légale : cases vides de la zone active,
-    //    SANS vérifier la règle du double-trois. La légalité complète est
-    //    vérifiée paresseusement dans la boucle, uniquement sur les coups joués.)
+    // 5. Génération des coups (cases vides de la zone active). La règle du
+    //    double-trois est ensuite évaluée lors du scoring statique (rawShapeScore),
+    //    qui produit directement le drapeau isLegal : les coups illégaux sont
+    //    écartés au moment du tri, plus besoin de re-tester dans la boucle.
     MoveList<t_cell, MAX_BOARD_MOVES<Traits>> movesArray;
     _moveGenerator.generateEmptyMoves(position.board(), movesArray);
 
@@ -307,18 +291,18 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     // 6. Tri statique des coups (heuristique indépendante de la TT), du point de
     //    vue du camp au trait à ce nœud. On n'explorera ensuite que les
     //    MAX_CANDIDATES meilleurs coups légaux (plafond top-N, forward pruning).
-    MoveList<dataMove, MAX_BOARD_MOVES<Traits>> ordered;
+    MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>> ordered;
     {
+        const Color nodeSide = position.sideToMove();
         for (size_t i = 0; i < movesArray.size(); ++i)
-		{
-			Color themover = position.sideToMove();
-			dataMove scoredMove = rawShapeScore(position.board(), movesArray[i], themover);
-			if (scoredMove.isLegal)
-				ordered.push(scoredMove);
-	}
-		
-		std::sort(ordered.begin(), ordered.end(),
-            [](const dataMove& a, const dataMove& b) { return a.score > b.score; });
+        {
+            EvaluatedMove scoredMove = rawShapeScore(position.board(), movesArray[i], nodeSide);
+            if (scoredMove.isLegal)
+                ordered.push(scoredMove);
+        }
+
+        std::sort(ordered.begin(), ordered.end(),
+            [](const EvaluatedMove& a, const EvaluatedMove& b) { return a.score > b.score; });
     }
 
     // 7. sideToMove AVANT makeMove → pour undoMove
@@ -342,13 +326,11 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 
         // Sauvegarde la couleur AVANT makeMove
         const Color colorBeforeMove = position.sideToMove();
-
-
         ++legalMovesSearched;
 
         position.makeMove(move.x, move.y, colorBeforeMove, moveHash);
-        
-		int eval = minimax(position, move, depth - 1, alpha, beta);
+
+        int eval = minimax(position, move, depth - 1, alpha, beta);
         // Restaure avec la couleur sauvegardée
         position.undoMove(move.x, move.y, colorBeforeMove);  // ✅
 

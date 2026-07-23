@@ -158,14 +158,16 @@ struct MoveList
 };
 
 
-
-struct dataMove
+// A candidate move together with the result of its static shape evaluation:
+// the ordering score, whether it is legal (double-three rule), and the stones it
+// would capture. Produced by MasterAI::rawShapeScore and used for move ordering,
+// legality filtering, and to feed buildMoveHash without recomputing captures.
+struct EvaluatedMove
 {
-	t_cell					move;
-	int						score;
-	bool					isLegal;
-	MoveList<t_cell, 16>	capturedStones;
+    t_cell                  move;
+    int                     score;
+    bool                    isLegal;
+    MoveList<t_cell, 16>    capturedStones;
 };
-
 
 #endif
