@@ -3,6 +3,7 @@
 #include "game/contracts/contracts.hpp"
 #include "ai/SearchPosition.hpp"
 #include "bitboard/bitboard.hpp"
+#include "game/contracts/contracts.hpp"
 
 static SearchPosition19 emptyPos()
 {
@@ -14,7 +15,7 @@ static SearchPosition19 emptyPos()
 // current position, then apply.
 static void doMove(SearchPosition19& pos, int col, int row, Color color)
 {
-    pos.makeMove(col, row, color, pos.buildMoveHash(col, row, color));
+    pos.makeMove(col, row, color, pos.buildMoveHash(EvaluatedMove{t_cell{col, row}, 0, true, {}}, color));
 }
 
 TEST_CASE("make/undo single move restores hash")
