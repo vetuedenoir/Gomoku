@@ -24,9 +24,13 @@ struct SearchStats
     int    nodesEvaluated = 0;  // leaf nodes reaching evaluatePosition()
     int    nodesPruned    = 0;  // alpha-beta cut-offs
     int    maxDepthSeen   = 0;  // deepest ply actually reached
-    int    ttHits         = 0;  // TT entries reused with sufficient depth
-    int    ttCutoffs      = 0;  // TT bound that produced an immediate cutoff
-    int    ttStores       = 0;  // entries written to the TT
+    int    ttHits         = 0;  // [minimax] TT entries reused with sufficient depth
+    int    ttCutoffs      = 0;  // [minimax] TT bound that produced an immediate cutoff
+    int    ttStores       = 0;  // [minimax] entries written to the TT
+    int    ttOrderingHits = 0;  // [minimax] TT bestMove hoisted to front for ordering
+    int    ttRootHits         = 0;  // [root] probe found a matching entry
+    int    ttRootOrderingHits = 0;  // [root] entry bestMove located & moved to front
+    int    ttRootExactSeeds   = 0;  // [root] EXACT entry (depth>=maxDepth) seeded best move/score
     int    bestScore      = 0;
     t_cell bestMove       = {-1, -1};
 };
@@ -83,18 +87,14 @@ class MasterAI
 	
 		int signedFromAi(Color side, int raw) const;
 
-		void protoTry(std::vector<t_cell>& Moves, const SearchPosition<Traits>& position);
-
-		int minimax(
-			SearchPosition<Traits>& position, t_cell cell,
-			int depth, int alpha, int beta);
+		int minimax(SearchPosition<Traits>& position, t_cell cell, int depth, int alpha, int beta);
 		
 		int evaluatePosition(const SearchPosition<Traits>& position, t_cell cell);
 
 		int evaluateBlackPosition(const SearchPosition<Traits>& position, t_cell cell);
 		int evaluateWhitePosition(const SearchPosition<Traits>& position, t_cell cell);
 		// int	staticMoveScore(const t_BWBoard<Traits>& board, t_cell cell, Color side);
-		dataMove rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color);
+		EvaluatedMove rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color);
 };
 
 using MasterAI19 = MasterAI<BoardTraits<19>>;

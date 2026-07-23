@@ -9,7 +9,7 @@ TEST_CASE("TEST_CASE [19x19] MoveGenerator: empty board has no active-zone legal
     std::cout << TITLE_LINE << "TEST_CASE [19x19] MoveGenerator: empty board has no active-zone legal moves" << RESET << std::endl;
     MoveGenerator19 gen(1);
 
-    auto moves = gen.generateMoves(to_bb(empty_board()), Color::Black);
+    auto moves = legalMovesList(gen, to_bb(empty_board()), Color::Black);
 
     CHECK(moves.size() == 1);
     CHECK(moves[0].x == 9);
@@ -23,7 +23,7 @@ TEST_CASE("TEST_CASE [19x19] MoveGenerator: center stone radius=1 produces eight
     place(b, 9, 9, CellStatus::Black);
 
     MoveGenerator19 gen(1);
-    auto moves = gen.generateMoves(to_bb(b), Color::White);
+    auto moves = legalMovesList(gen, to_bb(b), Color::White);
 
     t_BWBoard19 board = to_bb(b);
     bitboard19 legalMovesMask = {};
@@ -50,7 +50,7 @@ TEST_CASE("TEST_CASE [19x19] MoveGenerator: center stone radius=2 produces twent
     place(b, 9, 9, CellStatus::Black);
 
     MoveGenerator19 gen(2);
-    auto moves = gen.generateMoves(to_bb(b), Color::Black);
+    auto moves = legalMovesList(gen, to_bb(b), Color::Black);
 
     t_BWBoard19 board = to_bb(b);
     bitboard19 legalMovesMask = {};
@@ -77,7 +77,7 @@ TEST_CASE("TEST_CASE [19x19] MoveGenerator: corner stone radius=1 clips to board
     place(b, 0, 0, CellStatus::Black);
 
     MoveGenerator19 gen(1);
-    auto moves = gen.generateMoves(to_bb(b), Color::White);
+    auto moves = legalMovesList(gen, to_bb(b), Color::White);
 
     t_BWBoard19 board = to_bb(b);
     bitboard19 legalMovesMask = {};
@@ -102,7 +102,7 @@ TEST_CASE("TEST_CASE [19x19] MoveGenerator: corner stone radius=2 clips to board
     place(b, 0, 0, CellStatus::Black);
 
     MoveGenerator19 gen(2);
-    auto moves = gen.generateMoves(to_bb(b), Color::Black);
+    auto moves = legalMovesList(gen, to_bb(b), Color::Black);
 
     t_BWBoard19 board = to_bb(b);
     bitboard19 legalMovesMask = {};
@@ -131,7 +131,7 @@ TEST_CASE("TEST_CASE [19x19] MoveGenerator: adjacent occupied cells stay exclude
 
 
     MoveGenerator19 gen(1);
-    auto moves = gen.generateMoves(to_bb(b), Color::Black);
+    auto moves = legalMovesList(gen, to_bb(b), Color::Black);
 
     /*Bitboard 19*/
     t_BWBoard19 board = to_bb(b);
@@ -183,7 +183,7 @@ TEST_CASE("TEST_CASE [19x19] MoveGenerator: double-three move is absent from res
     bitboard19 legalMovesMask = {};
     gen.getMaskOfLegalMoves(board, Color::Black, legalMovesMask);
 
-    auto moves = gen.generateMoves(board, Color::Black);
+    auto moves = legalMovesList(gen, board, Color::Black);
 
     std::cout << "\n[double-three — (5,9) must be absent] Horizontal: (3,9)(4,9), Vertical: (5,7)(5,8)\n";
     print_bb_overlay<BoardTraits<19>>(board, legalMovesMask);
@@ -208,7 +208,7 @@ TEST_CASE("TEST_CASE [19x19] MoveGenerator: single free-three move is present in
     bitboard19 legalMovesMask = {};
     gen.getMaskOfLegalMoves(board, Color::Black, legalMovesMask);
 
-    auto moves = gen.generateMoves(board, Color::Black);
+    auto moves = legalMovesList(gen, board, Color::Black);
 
     std::cout << "\n[single free-three — (5,9) must be present] Horizontal arm: (3,9)(4,9)\n";
     print_bb_overlay<BoardTraits<19>>(board, legalMovesMask);
@@ -239,7 +239,7 @@ TEST_CASE("TEST_CASE [19x19] MoveGenerator: double-three is legal when move also
     bitboard19 legalMovesMask = {};
     gen.getMaskOfLegalMoves(board, Color::Black, legalMovesMask);
 
-    auto moves = gen.generateMoves(board, Color::Black);
+    auto moves = legalMovesList(gen, board, Color::Black);
 
     std::cout << "\n[double-three + capture legal] Board before move — candidate: (5,9) Black\n";
     print_bb_overlay<BoardTraits<19>>(board, legalMovesMask);
@@ -272,7 +272,7 @@ TEST_CASE("TEST_CASE [19x19] MoveGenerator: double-three with vertical arm touch
     bitboard19 legalMovesMask = {};
     gen.getMaskOfLegalMoves(board, Color::Black, legalMovesMask);
 
-    auto moves = gen.generateMoves(board, Color::Black);
+    auto moves = legalMovesList(gen, board, Color::Black);
 
     std::cout << "\n[top-edge double-three illegal] Vertical arm (5,0)-(5,1)-(5,2), horizontal (3,2)-(4,2)-(5,2)\n";
     print_bb_overlay<BoardTraits<19>>(board, legalMovesMask);
@@ -300,7 +300,7 @@ TEST_CASE("[19x19] MoveGenerator: generateMoves: double-three without capture is
 
     bitboard19 legalMovesMask = {};
     gen.getMaskOfLegalMoves(board, Color::Black, legalMovesMask);
-    auto moves = gen.generateMoves(board, Color::Black);
+    auto moves = legalMovesList(gen, board, Color::Black);
 
     std::cout << "\n[double-three, no capture — (5,4) must be absent]\n";
     std::cout << "  Vertical: (5,2)(5,3), Horizontal: (3,4)(4,4), candidate: (5,4)\n";
@@ -334,7 +334,7 @@ TEST_CASE("[19x19] MoveGenerator: generateMoves: double-three with capture is pr
 
     bitboard19 legalMovesMask = {};
     gen.getMaskOfLegalMoves(board, Color::Black, legalMovesMask);
-    auto moves = gen.generateMoves(board, Color::Black);
+    auto moves = legalMovesList(gen, board, Color::Black);
 
     std::cout << "\n[double-three + diagonal capture — (5,4) must be present]\n";
     std::cout << "  Capture: B@(5,4) W@(6,5) W@(7,6) B@(8,7) — diagonal, does not block arms\n";
@@ -368,7 +368,7 @@ TEST_CASE("[19x19] MoveGenerator: double-three with insufficient capture (lone w
 
     bitboard19 legalMovesMask = {};
     gen.getMaskOfLegalMoves(board, Color::Black, legalMovesMask);
-    auto moves = gen.generateMoves(board, Color::Black);
+    auto moves = legalMovesList(gen, board, Color::Black);
 
     std::cout << "\n[double-three, lone W@(18,9) — no anchor → no capture] Candidate: (16,9) Black\n";
     std::cout << "  Capture needs B-W-W-B; only one W present → detect_captures = false\n";

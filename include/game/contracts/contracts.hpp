@@ -160,7 +160,7 @@ struct MoveList
 
 
 
-struct dataMove
+struct EvaluatedMove
 {
 	t_cell					move;
 	int						score;

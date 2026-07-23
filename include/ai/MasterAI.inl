@@ -13,7 +13,7 @@ static constexpr int CAPTURE_SCORE = 202;
 // nœud interne de minimax. Les coups étant triés best-first, on ne garde que
 // les N meilleurs. Réduit le facteur de branchement effectif. À tuner via le
 // benchmark [PERF][BENCH].
-static constexpr int MAX_CANDIDATES = 20;
+static constexpr int MAX_CANDIDATES = 24;
 
 // Coup accompagné de sa clé de tri statique (heuristique indépendante de la TT).
 struct ScoredMove
@@ -149,6 +149,13 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	_stats.nodesEvaluated = 0;
 	_stats.nodesPruned    = 0;
 	_stats.maxDepthSeen   = 0;
+	_stats.ttHits             = 0;
+	_stats.ttCutoffs          = 0;
+	_stats.ttStores           = 0;
+	_stats.ttOrderingHits     = 0;
+	_stats.ttRootHits         = 0;
+	_stats.ttRootOrderingHits = 0;
+	_stats.ttRootExactSeeds   = 0;
 
 	MoveList<t_cell, MAX_BOARD_MOVES<Traits>> rootMoves;
 	
@@ -164,11 +171,11 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 
 	// Tri statique des coups racine (heuristique indépendante de la TT) :
 	// offense + défense + captures, du point de vue du camp au trait.
-	MoveList<dataMove, MAX_BOARD_MOVES<Traits>> orderedRoot;
+	MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>> orderedRoot;
 	{
 		for (size_t i = 0; i < rootMoves.size(); ++i)
 		{
-			dataMove scoredMove = rawShapeScore(position.board(), rootMoves[i], color);
+			EvaluatedMove scoredMove = rawShapeScore(position.board(), rootMoves[i], color);
 			
 			if (scoredMove.isLegal)
 			{
@@ -180,16 +187,54 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 			}
 		}
 		std::sort(orderedRoot.begin(), orderedRoot.end(),
-			[](const dataMove& a, const dataMove& b) { return a.score > b.score; });
+			[](const EvaluatedMove& a, const EvaluatedMove& b) { return a.score > b.score; });
+	}
+
+	// TT probe at the ROOT — used ONLY for move ordering / seeding. We never cut
+	// early here (no LOWER/UPPER return): the root must return the actual best
+	// move, not just a bound. If the entry carries a bestMove, search it first.
+	const TTEntry* rootHit = _tt.probe(position.zobristHash());
+	if (rootHit)
+		++_stats.ttRootHits;
+	if (rootHit && rootHit->bestMove.x >= 0)
+	{
+		for (size_t i = 0; i < orderedRoot.size(); ++i)
+		{
+			if (orderedRoot[i].move.x == rootHit->bestMove.x &&
+			    orderedRoot[i].move.y == rootHit->bestMove.y)
+			{
+				std::rotate(orderedRoot.begin(),
+				            orderedRoot.begin() + i,
+				            orderedRoot.begin() + i + 1);
+				++_stats.ttRootOrderingHits;
+				break;
+			}
+		}
 	}
 
 	int bestScore = std::numeric_limits<int>::min();
 	int alpha = std::numeric_limits<int>::min();
 	const int beta = std::numeric_limits<int>::max();
 
+	// An EXACT root hit from an equally-deep (or deeper) search seeds bestMove
+	// and bestScore, but the loop below still runs in full so ordering and
+	// tie-breaks among the remaining candidates stay correct.
+	if (rootHit && rootHit->flag == TTFlag::Exact && rootHit->depth >= _maxDepth)
+	{
+		bestScore = ttScoreFromEntry(rootHit->score, 0);
+		if (rootHit->bestMove.x >= 0)
+			bestMove = rootHit->bestMove;
+		++_stats.ttRootExactSeeds;
+	}
+
 	for (size_t i = 0; i < orderedRoot.size() && i < MAX_CANDIDATES; ++i)
 	{
 		const t_cell& move = orderedRoot[i].move;
+
+		if (!_moveGenerator.isLegalMove(position.board(), move.x, move.y, position.sideToMove())) {
+			LOG_WARN("AI", "[findBestMove] move (" + std::to_string(move.x) + "," + std::to_string(move.y) + ") is not legal, skipping...");
+			continue;
+		}
 
 		SearchPosition<Traits> newPosition = position;
 
@@ -229,9 +274,13 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 		+ " (" + std::to_string(pruningPct) + "%)"
 		+ "  maxDepth="  + std::to_string(_stats.maxDepthSeen));
 	LOG_SUPPRESS(_stats.nodesVisited, _stats.nodesEvaluated, _stats.nodesPruned, _stats.maxDepthSeen, pruningPct);
-	LOG_DEBUG("AI", "[findBestMove] tt stores=" + std::to_string(_stats.ttStores));
-	LOG_DEBUG("AI", "[findBestMove] tt hits=" + std::to_string(_stats.ttHits));
-	LOG_DEBUG("AI", "[findBestMove] tt cutoffs=" + std::to_string(_stats.ttCutoffs));
+	LOG_DEBUG("AI", "[findBestMove] tt [minimax] stores=" + std::to_string(_stats.ttStores)
+		+ " hits=" + std::to_string(_stats.ttHits)
+		+ " cutoffs=" + std::to_string(_stats.ttCutoffs)
+		+ " orderingHits=" + std::to_string(_stats.ttOrderingHits));
+	LOG_DEBUG("AI", "[findBestMove] tt [root] hits=" + std::to_string(_stats.ttRootHits)
+		+ " orderingHits=" + std::to_string(_stats.ttRootOrderingHits)
+		+ " exactSeeds=" + std::to_string(_stats.ttRootExactSeeds));
 	
 
 	return bestMove;
@@ -307,18 +356,44 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     // 6. Tri statique des coups (heuristique indépendante de la TT), du point de
     //    vue du camp au trait à ce nœud. On n'explorera ensuite que les
     //    MAX_CANDIDATES meilleurs coups légaux (plafond top-N, forward pruning).
-    MoveList<dataMove, MAX_BOARD_MOVES<Traits>> ordered;
+    MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>> ordered;
     {
         for (size_t i = 0; i < movesArray.size(); ++i)
 		{
 			Color themover = position.sideToMove();
-			dataMove scoredMove = rawShapeScore(position.board(), movesArray[i], themover);
+			EvaluatedMove scoredMove = rawShapeScore(position.board(), movesArray[i], themover);
 			if (scoredMove.isLegal)
 				ordered.push(scoredMove);
 	}
 		
 		std::sort(ordered.begin(), ordered.end(),
-            [](const dataMove& a, const dataMove& b) { return a.score > b.score; });
+            [](const EvaluatedMove& a, const EvaluatedMove& b) { return a.score > b.score; });
+    }
+
+    // 6.b Ordonnancement dynamique : si la TT porte un bestMove pour cette
+    //     position (même issu d'une recherche moins profonde), on le place en
+    //     TÊTE de la liste. Deux effets :
+    //       - il est TOUJOURS exploré, en contournant le plafond top-N
+    //         (MAX_CANDIDATES) qui aurait pu l'écarter s'il était mal classé
+    //         par le tri statique ;
+    //       - le meilleur coup connu est essayé en premier → coupures
+    //         alpha-beta plus précoces.
+    //     ttHit a été sondé en début de fonction et reste valide ici (aucun
+    //     store n'a eu lieu entre-temps). Même logique qu'à la racine.
+    if (ttHit && ttHit->bestMove.x >= 0)
+    {
+        for (size_t i = 0; i < ordered.size(); ++i)
+        {
+            if (ordered[i].move.x == ttHit->bestMove.x &&
+                ordered[i].move.y == ttHit->bestMove.y)
+            {
+                std::rotate(ordered.begin(),
+                            ordered.begin() + i,
+                            ordered.begin() + i + 1);
+                ++_stats.ttOrderingHits;
+                break;
+            }
+        }
     }
 
     // 7. sideToMove AVANT makeMove → pour undoMove
@@ -344,6 +419,7 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
         const Color colorBeforeMove = position.sideToMove();
 
 
+		
         ++legalMovesSearched;
 
         position.makeMove(move.x, move.y, colorBeforeMove, moveHash);

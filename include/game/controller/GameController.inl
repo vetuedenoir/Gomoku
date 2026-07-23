@@ -342,9 +342,15 @@ std::optional<Color> GameController<Traits>::getColorFromWinningActor() const
 }
 
 template<typename Traits>
-int GameController<Traits>::captureCount(const Color c) const
+int GameController<Traits>::blackCaptureCount() const
 {
-    return (c == Color::Black) ? _capturesBlack : _capturesWhite;
+    return _capturesBlack;
+}
+
+template<typename Traits>
+int GameController<Traits>::whiteCaptureCount() const
+{
+    return _capturesWhite;
 }
 
 template<typename Traits>

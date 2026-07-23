@@ -80,8 +80,7 @@ class SearchPosition
         uint64_t                 zobristHash() const;
         Color                    sideToMove()  const;
 
-        // MoveStateHash buildMoveHash(int col, int row, Color color) const;
-        MoveStateHash buildMoveHash(dataMove move, Color color) const;
+        MoveStateHash buildMoveHash(EvaluatedMove move, Color color) const;
 
         int detect_and_hash_capture(const t_BWBoard<Traits>& board, int col, int row, const Color attackerColor, MoveStateHash& stateHash) const;
         
@@ -338,7 +337,7 @@ int SearchPosition<Traits>::detect_and_hash_capture(const t_BWBoard<Traits>& boa
 
 
 template<typename Traits>
-MoveStateHash SearchPosition<Traits>::buildMoveHash(dataMove move, Color color) const
+MoveStateHash SearchPosition<Traits>::buildMoveHash(EvaluatedMove move, Color color) const
 {
     MoveStateHash stateHash = {};
 
@@ -351,6 +350,14 @@ MoveStateHash SearchPosition<Traits>::buildMoveHash(dataMove move, Color color) 
     if (caps > 0)
     {
         stateHash.state.capturedStones = move.capturedStones;
+        
+        const Color victimColor = (color == Color::Black) ? Color::White : Color::Black;
+        for (size_t k = 0; k < move.capturedStones.size(); ++k)
+        {
+            const t_cell& stone = move.capturedStones[k];
+            stateHash.hash ^= _hasher.key(stone.x, stone.y, victimColor);
+        }
+
         if (color == Color::Black)
         {
             stateHash.state.whiteCaptures = caps;
