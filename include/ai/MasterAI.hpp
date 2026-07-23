@@ -93,11 +93,14 @@ class MasterAI
 
 		int evaluateBlackPosition(const SearchPosition<Traits>& position, t_cell cell);
 		int evaluateWhitePosition(const SearchPosition<Traits>& position, t_cell cell);
+		// int	staticMoveScore(const t_BWBoard<Traits>& board, t_cell cell, Color side);
+		EvaluatedMove rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color);
 };
 
 using MasterAI19 = MasterAI<BoardTraits<19>>;
 using MasterAI15 = MasterAI<BoardTraits<15>>;
 
 #include "ai/MasterAI.inl"
+#include "ai/heuristique.inl"
 
 #endif

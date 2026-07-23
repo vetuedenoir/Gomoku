@@ -255,7 +255,7 @@ int BitboardTool<Traits>::check_cross(const typename Traits::Bitboard& stones,
 }
 
 template<typename Traits>
-bool BitboardTool<Traits>::isDoubleThreeScore(int score)
+bool BitboardTool<Traits>::isDoubleThreeScore(const int score) const
 {
 	if (score <= 0)
 		return false;
