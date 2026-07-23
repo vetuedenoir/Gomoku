@@ -5,6 +5,8 @@
 #include "game/contracts/contracts.hpp"
 #include <vector>
 
+
+
 template<typename Traits>
 class ActiveZone
 {
@@ -26,8 +28,6 @@ class ActiveZone
 		void setRadius(int radius) noexcept;
 
 		int getRadius() const noexcept;
-
-		std::vector<t_cell> generateZoneMoves();
 
 	private:
 		typename Traits::Bitboard _candidateMask;
@@ -129,24 +129,5 @@ int ActiveZone<Traits>::getRadius() const noexcept
 
 using ActiveZone19 = ActiveZone<BoardTraits<19>>;
 using ActiveZone15 = ActiveZone<BoardTraits<15>>;
-
-
-template<typename Traits>
-std::vector<t_cell> ActiveZone<Traits>::generateZoneMoves()
-{
-	std::vector<t_cell> moves;
-
-	for (int y = 0; y < Traits::BOARD_SIZE; y++)
-	{
-		for (int x = 0; x < Traits::BOARD_SIZE; x++)
-		{
-			if (contains(x, y))
-			{
-				moves.push_back({x, y});
-			}
-		}
-	}
-	return moves;
-}
 
 #endif // ACTIVEZONE_HPP

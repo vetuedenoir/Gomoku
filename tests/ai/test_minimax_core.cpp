@@ -44,11 +44,11 @@ TEST_CASE("[Minimax] core: full-window root returns exact value and stores Exact
 	MasterAI19 ai = MasterAI19(2, 1, Color::Black);
 
 
-	const int value = Access::search(ai, pos, previousHarmlessMove, 2, NEG_INF, POS_INF, true);
+	const int value = Access::search(ai, pos, previousHarmlessMove, 2, NEG_INF, POS_INF);
 
 	// Vérification de la stabilité (déterminisme)
 	MasterAI19 ai2 = MasterAI19(2, 1, Color::Black);
-	const int value2 = Access::search(ai2, pos, previousHarmlessMove, 2, NEG_INF, POS_INF, true);
+	const int value2 = Access::search(ai2, pos, previousHarmlessMove, 2, NEG_INF, POS_INF);
 	CHECK(value == value2);
 
 	// Vérification de la Table de Transposition
@@ -73,12 +73,12 @@ TEST_CASE("[Minimax] core: fail-soft returns true value above beta and stores Lo
 	// 1. Obtenir la vraie valeur sans restriction
 	MasterAI19 aiFull = MasterAI19(1, 1, Color::Black);
 	
-	const int fullValue = Access::search(aiFull, pos, previousHarmlessMove, 1, NEG_INF, POS_INF, true);
+	const int fullValue = Access::search(aiFull, pos, previousHarmlessMove, 1, NEG_INF, POS_INF);
 	CHECK(fullValue > 10); 
 
 	// 2. Chercher avec la fenêtre restreinte [5, 10]
 	MasterAI19 aiNarrow = MasterAI19(1, 1, Color::Black);
-	const int narrowValue = Access::search(aiNarrow, pos, previousHarmlessMove, 1, 5, 10, true);
+	const int narrowValue = Access::search(aiNarrow, pos, previousHarmlessMove, 1, 5, 10);
 
 	// 3. Vérifications du Fail-Soft
 	CHECK(narrowValue > 10);          // Ne plafonne pas à beta (Fail-Soft)

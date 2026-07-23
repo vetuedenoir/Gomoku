@@ -21,7 +21,7 @@ public:
                            const IGameController& ctrl, CellStatus ghost);
 
     void renderStats      (sf::RenderWindow& w, const sf::Font& font,
-                           const IGameController& ctrl);
+                           const Board& board, const IGameController& ctrl);
 
     void renderColorChoice(sf::RenderWindow& w, MenuPage& colorChoice);
 

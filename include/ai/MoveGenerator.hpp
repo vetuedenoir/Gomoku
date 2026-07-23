@@ -19,9 +19,10 @@ class MoveGenerator
 		void getMaskOfLegalMoves(const t_BWBoard<Traits>& board, const Color color,
 								typename Traits::Bitboard& legalMovesMask) const;
 
-		std::vector<t_cell> generateMoves(const t_BWBoard<Traits>& board, const Color color) const;
-
 		bool isLegalMove(const t_BWBoard<Traits>& board, int col, int row, const Color color) const;
+
+		void generateEmptyMoves(const t_BWBoard<Traits>& board, MoveList<t_cell, MAX_BOARD_MOVES<Traits>>& movesArray) const;
+
 
 	private:
 		int                 _activeZoneRadius;
@@ -59,24 +60,16 @@ void MoveGenerator<Traits>::getMaskOfLegalMoves(const t_BWBoard<Traits>& board, 
     }
 }
 
-
 template<typename Traits>
-std::vector<t_cell>	MoveGenerator<Traits>::generateMoves(const t_BWBoard<Traits>& board, const Color color) const
+void MoveGenerator<Traits>::generateEmptyMoves(const t_BWBoard<Traits>& board, MoveList<t_cell, MAX_BOARD_MOVES<Traits>>& movesArray) const
 {
-	ActiveZone<Traits> zone(_activeZoneRadius);
+    ActiveZone<Traits> zone(_activeZoneRadius);
+    
 	zone.initialize(board);
 
-	std::vector<t_cell> zoneMoves = zone.generateZoneMoves();
-
-	for (auto it = zoneMoves.begin(); it != zoneMoves.end(); )
-	{
-		if (!isLegalMove(board, it->x, it->y, color))
-			it = zoneMoves.erase(it);
-		else
-			++it;
-	}
-
-	return zoneMoves;
+    bb_for_each_bit<Traits>(zone.getCandidateMask(), [&](int x, int y) {
+        movesArray.push({x, y});
+    });
 }
 
 using MoveGenerator19 = MoveGenerator<BoardTraits<19>>;

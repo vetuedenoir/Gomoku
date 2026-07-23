@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <string>
+#include <array>
 
 enum class Color { Black = 0, White = 1 };
 enum class GamePhase { Opening, ColorChoice, Standard };
@@ -38,17 +39,16 @@ struct Move {
   }
 };
 
-typedef struct s_cell
+struct t_cell
 {
 	int x;
 	int y;
 
-	bool operator==(const s_cell& other) const
+	bool operator==(const t_cell& other) const
     {
         return x == other.x && y == other.y;
     }
-}	t_cell;
-
+};
 
 // Identifies a physical seat at the table.
 // Stable for the entire game; independent of colour assignment.
@@ -79,5 +79,93 @@ struct TurnOutcome {
   std::optional<Color> winnerByColor;
   typename Traits::Bitboard capturedMask{};
 };
+
+
+template<typename T, std::size_t N>
+struct MoveList
+{
+    std::array<T, N> moves;
+    std::size_t count = 0;
+
+    void clear() noexcept
+    {
+        count = 0;
+    }
+
+    void push(const T& m) noexcept
+    {
+        moves[count++] = m;
+    }
+
+    void pop() noexcept
+    {
+        --count;
+    }
+
+    T& top() noexcept
+    {
+        return moves[count - 1];
+    }
+
+    const T& top() const noexcept
+    {
+        return moves[count - 1];
+    }
+
+    T& operator[](std::size_t i) noexcept
+    {
+        return moves[i];
+    }
+
+    const T& operator[](std::size_t i) const noexcept
+    {
+        return moves[i];
+    }
+
+    std::size_t size() const noexcept
+    {
+        return count;
+    }
+
+    bool empty() const noexcept
+    {
+        return count == 0;
+    }
+ 
+    MoveList& operator=(const MoveList& other) noexcept
+    {
+        if (this != &other)
+        {
+            count = other.count;
+            std::copy(other.moves.begin(), other.moves.begin() + count, moves.begin());
+        }
+        return *this;
+    }
+
+
+    MoveList(const MoveList& other) noexcept
+    {
+        count = other.count;
+        std::copy(other.moves.begin(), other.moves.begin() + count, moves.begin());
+    }
+
+    MoveList() noexcept = default; // à ne pas oublier si tu déclares un constructeur de copie !
+    T* begin() noexcept { return moves.data(); }
+    T* end()   noexcept { return moves.data() + count; }  // ← count, pas N !
+    
+    const T* begin() const noexcept { return moves.data(); }
+    const T* end()   const noexcept { return moves.data() + count; }
+};
+
+
+
+struct EvaluatedMove
+{
+	t_cell					move;
+	int						score;
+	bool					isLegal;
+	MoveList<t_cell, 16>	capturedStones;
+};
+
 
 #endif

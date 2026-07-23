@@ -20,15 +20,15 @@ TEST_CASE("[TT] transposition: different move orders share hash and TT entry")
 	// 1. Même position finale, deux ordres de coups différents (couleurs B,W,B).
 	GameBoard b1(19, Color::Black);
 	SearchPosition19 p1 = SearchPosition19::fromBoard(b1);
-	p1.makeMove(5, 5, CellStatus::Black);
-	p1.makeMove(6, 6, CellStatus::White);
-	p1.makeMove(7, 7, CellStatus::Black);
+	p1.makeMove(5, 5, Color::Black, p1.buildMoveHash(EvaluatedMove{t_cell{5, 5}, 0, true, {}}, Color::Black));
+	p1.makeMove(6, 6, Color::White, p1.buildMoveHash(EvaluatedMove{t_cell{6, 6}, 0, true, {}}, Color::White));
+	p1.makeMove(7, 7, Color::Black, p1.buildMoveHash(EvaluatedMove{t_cell{7, 7}, 0, true, {}}, Color::Black));
 
 	GameBoard b2(19, Color::Black);
 	SearchPosition19 p2 = SearchPosition19::fromBoard(b2);
-	p2.makeMove(7, 7, CellStatus::Black);
-	p2.makeMove(6, 6, CellStatus::White);
-	p2.makeMove(5, 5, CellStatus::Black);
+	p2.makeMove(7, 7, Color::Black, p2.buildMoveHash(EvaluatedMove{t_cell{7, 7}, 0, true, {}}, Color::Black));
+	p2.makeMove(6, 6, Color::White, p2.buildMoveHash(EvaluatedMove{t_cell{6, 6}, 0, true, {}}, Color::White));
+	p2.makeMove(5, 5, Color::Black, p2.buildMoveHash(EvaluatedMove{t_cell{5, 5}, 0, true, {}}, Color::Black));
 
 	// 2. Les hash coïncident : même position, indépendamment de l'ordre.
 	CHECK(p1.zobristHash() == p2.zobristHash());

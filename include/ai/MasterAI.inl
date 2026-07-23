@@ -9,6 +9,27 @@ static constexpr int WIN_SCORE      = 1000000;
 static constexpr int MATE_THRESHOLD = 900000;
 static constexpr int CAPTURE_SCORE = 202;
 
+// Plafond top-N (forward pruning) : nombre max de coups LÉGAUX explorés par
+// nœud interne de minimax. Les coups étant triés best-first, on ne garde que
+// les N meilleurs. Réduit le facteur de branchement effectif. À tuner via le
+// benchmark [PERF][BENCH].
+static constexpr int MAX_CANDIDATES = 24;
+
+// Coup accompagné de sa clé de tri statique (heuristique indépendante de la TT).
+struct ScoredMove
+{
+	t_cell move;
+	int    key;
+};
+
+// Ordonnancement statique des coups (après cross_score / score_open_three dont il dépend).
+// Score TOUJOURS positif = meilleur, du point de vue du camp au trait `side` : offense + défense (blocage) + captures.
+template <typename Traits>
+static int rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color);
+template <typename Traits>
+static int staticMoveScore(const t_BWBoard<Traits>& board, t_cell cell, Color side);
+
+
 // "depuis le nœud" -> "depuis la racine" (au probe TT)
 // ply = currentDepth
 static inline int ttScoreFromEntry(int score, int ply)
@@ -128,9 +149,18 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	_stats.nodesEvaluated = 0;
 	_stats.nodesPruned    = 0;
 	_stats.maxDepthSeen   = 0;
+	_stats.ttHits             = 0;
+	_stats.ttCutoffs          = 0;
+	_stats.ttStores           = 0;
+	_stats.ttOrderingHits     = 0;
+	_stats.ttRootHits         = 0;
+	_stats.ttRootOrderingHits = 0;
+	_stats.ttRootExactSeeds   = 0;
 
-	std::vector<t_cell> rootMoves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
-
+	MoveList<t_cell, MAX_BOARD_MOVES<Traits>> rootMoves;
+	
+	_moveGenerator.generateEmptyMoves(position.board(), rootMoves);
+	
 	LOG_DEBUG("AI", "[findBestMove] depth=" + std::to_string(_maxDepth)
 	              + "  root candidates=" + std::to_string(rootMoves.size()));
 
@@ -138,23 +168,81 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 		return {-1, -1};
 
 	t_cell bestMove = {-1, -1};
-	
+
+	// Tri statique des coups racine (heuristique indépendante de la TT) :
+	// offense + défense + captures, du point de vue du camp au trait.
+	MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>> orderedRoot;
+	{
+		for (size_t i = 0; i < rootMoves.size(); ++i)
+		{
+			EvaluatedMove scoredMove = rawShapeScore(position.board(), rootMoves[i], color);
+			
+			if (scoredMove.isLegal)
+			{
+				if (scoredMove.score >= WIN_SCORE ||
+					scoredMove.capturedStones.size() + position.getCapturesForside() >= 10)
+					return scoredMove.move;
+
+				orderedRoot.push(scoredMove);
+			}
+		}
+		std::sort(orderedRoot.begin(), orderedRoot.end(),
+			[](const EvaluatedMove& a, const EvaluatedMove& b) { return a.score > b.score; });
+	}
+
+	// TT probe at the ROOT — used ONLY for move ordering / seeding. We never cut
+	// early here (no LOWER/UPPER return): the root must return the actual best
+	// move, not just a bound. If the entry carries a bestMove, search it first.
+	const TTEntry* rootHit = _tt.probe(position.zobristHash());
+	if (rootHit)
+		++_stats.ttRootHits;
+	if (rootHit && rootHit->bestMove.x >= 0)
+	{
+		for (size_t i = 0; i < orderedRoot.size(); ++i)
+		{
+			if (orderedRoot[i].move.x == rootHit->bestMove.x &&
+			    orderedRoot[i].move.y == rootHit->bestMove.y)
+			{
+				std::rotate(orderedRoot.begin(),
+				            orderedRoot.begin() + i,
+				            orderedRoot.begin() + i + 1);
+				++_stats.ttRootOrderingHits;
+				break;
+			}
+		}
+	}
+
 	int bestScore = std::numeric_limits<int>::min();
 	int alpha = std::numeric_limits<int>::min();
 	const int beta = std::numeric_limits<int>::max();
 
-	for (const t_cell& move : rootMoves)
+	// An EXACT root hit from an equally-deep (or deeper) search seeds bestMove
+	// and bestScore, but the loop below still runs in full so ordering and
+	// tie-breaks among the remaining candidates stay correct.
+	if (rootHit && rootHit->flag == TTFlag::Exact && rootHit->depth >= _maxDepth)
 	{
-		SearchPosition<Traits> newPosition = position;
-		if (isWinAfterMove<Traits>(position.board(), position.sideToMove(), move.x, move.y))
-		{
-			return move;
-		}
-		
-		newPosition.makeMove(move.x, move.y, colorToCell(position.sideToMove()));
+		bestScore = ttScoreFromEntry(rootHit->score, 0);
+		if (rootHit->bestMove.x >= 0)
+			bestMove = rootHit->bestMove;
+		++_stats.ttRootExactSeeds;
+	}
 
-		int score = minimax(newPosition, move, _maxDepth - 1,
-		                    alpha, beta, false);
+	for (size_t i = 0; i < orderedRoot.size() && i < MAX_CANDIDATES; ++i)
+	{
+		const t_cell& move = orderedRoot[i].move;
+
+		if (!_moveGenerator.isLegalMove(position.board(), move.x, move.y, position.sideToMove())) {
+			LOG_WARN("AI", "[findBestMove] move (" + std::to_string(move.x) + "," + std::to_string(move.y) + ") is not legal, skipping...");
+			continue;
+		}
+
+		SearchPosition<Traits> newPosition = position;
+
+		MoveStateHash moveHash = newPosition.buildMoveHash(orderedRoot[i], newPosition.sideToMove());
+		
+		newPosition.makeMove(move.x, move.y, newPosition.sideToMove(), moveHash);
+
+		int score = minimax(newPosition, move, _maxDepth - 1, alpha, beta);
 
 		const std::string marker = (score > bestScore) ? " ← best" : "";
 		const std::string macro  = scoreMacroLabel(score);
@@ -167,7 +255,7 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 			bestMove  = move;
 		}
 
-		if (bestScore >= WIN_SCORE - 1)
+		if (bestScore >= WIN_SCORE - 10) // coup gagnant trouvé → pas besoin de continuer
 			break;
 
 		alpha = std::max(alpha, bestScore);
@@ -186,421 +274,194 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 		+ " (" + std::to_string(pruningPct) + "%)"
 		+ "  maxDepth="  + std::to_string(_stats.maxDepthSeen));
 	LOG_SUPPRESS(_stats.nodesVisited, _stats.nodesEvaluated, _stats.nodesPruned, _stats.maxDepthSeen, pruningPct);
-	LOG_DEBUG("AI", "[findBestMove] tt stores=" + std::to_string(_stats.ttStores));
-	LOG_DEBUG("AI", "[findBestMove] tt hits=" + std::to_string(_stats.ttHits));
-	LOG_DEBUG("AI", "[findBestMove] tt cutoffs=" + std::to_string(_stats.ttCutoffs));
+	LOG_DEBUG("AI", "[findBestMove] tt [minimax] stores=" + std::to_string(_stats.ttStores)
+		+ " hits=" + std::to_string(_stats.ttHits)
+		+ " cutoffs=" + std::to_string(_stats.ttCutoffs)
+		+ " orderingHits=" + std::to_string(_stats.ttOrderingHits));
+	LOG_DEBUG("AI", "[findBestMove] tt [root] hits=" + std::to_string(_stats.ttRootHits)
+		+ " orderingHits=" + std::to_string(_stats.ttRootOrderingHits)
+		+ " exactSeeds=" + std::to_string(_stats.ttRootExactSeeds));
 	
 
 	return bestMove;
 }
 
 template <typename Traits>
-int	MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
-			int depth, int alpha, int beta, bool isMaximizing)
+int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
+    int depth, int alpha, int beta)
 {
-	++_stats.nodesVisited;
+    const int currentDepth = _maxDepth - depth;
+    if (currentDepth > _stats.maxDepthSeen)
+        _stats.maxDepthSeen = currentDepth;
 
-	const int currentDepth = _maxDepth - depth;
-	if (currentDepth > _stats.maxDepthSeen)
-		_stats.maxDepthSeen = currentDepth;
-
-	// TODO: who does the flip ?
-	// The side that just played is the opponent of sideToMove() (makeMove flipped it).
-	const Color lastPlayed = (position.sideToMove() == Color::Black) ? Color::White : Color::Black;
-
-	// ne verifie pas les captures gagnantes, seulement les alignements de 5
-	if (isWinAfterMove<Traits>(position.board(), lastPlayed, cell.x, cell.y))
-	{
-		++_stats.nodesEvaluated;
-		// Score relatif à la racine : un mat plus proche (currentDepth petit)
-		// vaut plus, pour préférer la victoire la plus rapide / retarder la défaite.
-		const int mate = WIN_SCORE - currentDepth;
-		return (lastPlayed == _aiColor) ? mate : -mate;
-	}
-
-	if (depth == 0)
-	{
-		++_stats.nodesEvaluated;
-		if (lastPlayed == Color::Black) {
-			return evaluateBlackPosition(position, cell);
-		}	
-		return evaluateWhitePosition(position, cell);
-	}
-
-	std::vector<t_cell> moves = _moveGenerator.generateMoves(position.board(), position.sideToMove());
-	
-	if (moves.empty())
-	{
-		++_stats.nodesEvaluated;
-		if (lastPlayed == Color::Black)
-			return evaluateBlackPosition(position, cell);
-		return evaluateWhitePosition(position, cell);
-	}
-
-	// TT move first
-	const uint64_t ttKey = position.zobristHash();
-
-	const TTEntry* ttHit = _tt.probe(ttKey);
-
-	if (ttHit && ttHit->depth >= depth)
-	{
-		++_stats.ttHits;
-		const int ttScore = ttScoreFromEntry(ttHit->score, currentDepth);
-		if (ttHit->flag == TTFlag::Exact) {
-			++_stats.ttCutoffs;
-			return ttScore;
-		}
-		if (ttHit->flag == TTFlag::LowerBound)
-			alpha = std::max(alpha, ttScore);
-		else if (ttHit->flag == TTFlag::UpperBound)
-			beta = std::min(beta, ttScore);
-
-		if (alpha >= beta) {
-			++_stats.ttCutoffs;
-			return ttScore;
-		}
-	}
-
-	// Classic minimax loop
-	int alphaSearch = alpha;
-	int betaSearch = beta;
-	t_cell bestMove = {-1, -1};
-
-	int bestEval = 0;
-
-	if (isMaximizing)
-	{ 
-		bestEval = std::numeric_limits<int>::min();
-
-		for (const t_cell& move : moves)
-		{
-			const CellStatus stone = colorToCell(position.sideToMove());
-			//ne gere pas les captures.
-			position.makeMove(move.x, move.y, stone);
-			
-			int eval = minimax(position, move, depth - 1, alpha, beta, false);
-			
-			position.undoMove(move.x, move.y, stone);
-
-			if (eval > bestEval)
-			{
-				bestEval = eval;
-				bestMove = move;
-			}
-
-			alpha = std::max(alpha, eval);
-			
-			if (beta <= alpha)
-			{
-				++_stats.nodesPruned;
-				break;
-			}
-		}
-	}
-	else
-	{
-		bestEval = std::numeric_limits<int>::max();
-
-		for (const t_cell& move : moves)
-		{
-			const CellStatus stone = colorToCell(position.sideToMove());
-			
-			position.makeMove(move.x, move.y, stone);
-			
-			int eval = minimax(position, move, depth - 1, alpha, beta, true);
-
-			position.undoMove(move.x, move.y, stone);
-
-			if (eval < bestEval)
-			{
-				bestEval = eval;
-				bestMove = move;
-			}
-
-			beta = std::min(beta, eval);
-			
-			if (beta <= alpha)
-			{
-				++_stats.nodesPruned;
-				break;
-			}
-		}
-
-	}
-
-	// When storing a LowerBound or UpperBound, we are storing knowledge about a cutoff that already happened.
-	TTFlag flag;
-
-	if (bestEval <= alphaSearch)        // Fail-low : on n'a pas dépassé alpha
-		flag = TTFlag::UpperBound;
-	else if (bestEval >= betaSearch)    // Fail-high : coupure
-		flag = TTFlag::LowerBound;
-	else
-		flag = TTFlag::Exact;            // alphaSearch < bestEval < betaSearch
-	
-	_tt.store(position.zobristHash(), ttScoreToEntry(bestEval, currentDepth), depth, flag, {bestMove.x, bestMove.y});
-	++_stats.ttStores;
-
-	return bestEval;
-}
-
-// les coups impliquant des captures doivent toujours etre mieux evalues que les coups sans capture.
-
-// 1 MILLIONS = victoir
-// superieur a 100 000 = coups imparables
-// superieur a 10 000 = coups imparable dans les 2 prochains tours,
-//						comme un double three ou une croix
-
-// superieur a 1000 = coups avec 1 chance de parade, broken four
-
-// superieur a 100 = coups avec 2 chances de parade,
-//						comme une croix avec un seul coté ouvert, ou un three ouvert
-
-// inferieur a 100 = coups avec 3 chances de parade ou plus, comme une croix avec les 2 cotés fermés, ou un three demi-ouvert
-
-static int cross_score(int crossResult)
-{
-    switch (crossResult)
+    // 1. TT lookup EN PREMIER
+    const uint64_t ttKey = position.zobristHash();
+    const TTEntry* ttHit = _tt.probe(ttKey);
+    if (ttHit && ttHit->depth >= depth)
     {
-        case CROSS_FULL:
-        case CROSS_FULL_OPP_EXTERN:
-            return 90000;
-
-        case CROSS_DEMI_NO_MID:
-            return 2000;
-
-        case CROSS_DEMI_MID:
-            return 1500;
-
-        case CROSS_FULL_OPP_INTERN:
-            return 9000;
-
-        case CROSS_DEMI_NO_OPP_EXTERN:
-            return 300;
-
-        case CROSS_DEMI_MID_OPP_EXTERN:
-            return 350;
-
-        case CROSS_DEMI_NO_OPP_INTERN:
-            return 150;
-
-        case CROSS_DEMI_MID_OPP_INTERN:
-            return 175;
-
-        default:
-            return 0;
+        ++_stats.ttHits;
+        const int ttScore = ttScoreFromEntry(ttHit->score, currentDepth);
+        if (ttHit->flag == TTFlag::Exact) {
+            ++_stats.ttCutoffs;
+            return ttScore;
+        }
+        if (ttHit->flag == TTFlag::LowerBound)
+            alpha = std::max(alpha, ttScore);
+        else if (ttHit->flag == TTFlag::UpperBound)
+            beta = std::min(beta, ttScore);
+        if (alpha >= beta) {
+            ++_stats.ttCutoffs;
+            return ttScore;
+        }
     }
-}
 
-// Reflechir a enleve les verifications doublons CROSS_FULL et CROSS_FULL_OPP_EXTERN INTERN
-// qui sont pareil que les double three SCORE_DOUBLE_FULL_FULL
+    ++_stats.nodesVisited;
 
-static int score_open_three(int threeResult)
-{
-	// LOG_DEBUG("AI", "[score_open_three] threeResult=" + std::to_string(threeResult));
-    
-	switch (threeResult)
+    // 2. lastPlayed = celui qui vient de jouer (makeMove a flippé sideToMove)
+    const Color lastPlayed = (position.sideToMove() == Color::Black)
+                           ? Color::White : Color::Black;
+
+    // 3. Check victoire du coup qui vient d'être joué
+    if (isWinAfterMove<Traits>(position.board(), lastPlayed, cell.x, cell.y) ||
+		position.getCapturesForside() >= 10)
     {
-        case SCORE_3_FULL:  return 800;
-        case SCORE_3_HOLE:  return 700;
-
-        case SCORE_FULL_EXTERN: return 500;
-        case SCORE_HOLE_EXTERN: return 450;
-
-        case SCORE_FULL_INTERN: return 40;
-		// peut etre meme en dessous de 100, car peut permettre une capture
-        case SCORE_HOLE_INTERN: return 35;
-
-        case SCORE_DOUBLE_FULL_FULL:
-        case SCORE_DOUBLE_FULL_FULL_EXTERN:
-            return 90000;
-
-        case SCORE_DOUBLE_HOLE_FULL:
-        case SCORE_DOUBLE_HOLE_FULL_EXTERN:
-            return 85000;
-
-        case SCORE_DOUBLE_HOLE_HOLE:
-        case SCORE_DOUBLE_HOLE_HOLE_EXTERN:
-            return 80000;
-
-		// Necessite une defense en 3 coups pour etre pare, pas d'erreur possible
-        case SCORE_DOUBLE_FULL_FULL_INTERN:
-            return 9000;
-        case SCORE_DOUBLE_HOLE_FULL_INTERN:
-            return 8500;
-        case SCORE_DOUBLE_HOLE_HOLE_INTERN:
-            return 8000;
-
-		// Necessite une defense en 2 coups pour etre pare, pas d'erreur possible
-        case SCORE_DOUBLE_FULL_FULL_MIXED:
-            return 7500;
-        case SCORE_DOUBLE_HOLE_FULL_MIXED:
-            return 7000;
-        case SCORE_DOUBLE_HOLE_HOLE_MIXED:
-            return 6500;
-
-        case SCORE_DOUBLE_FULL_FULL_INTERN2:
-            return 90;
-        case SCORE_DOUBLE_HOLE_FULL_INTERN2:
-            return 85;
-        case SCORE_DOUBLE_HOLE_HOLE_INTERN2:
-            return 80;
-
-        default:
-            return 0;
+        ++_stats.nodesEvaluated;
+        const int mate = WIN_SCORE - currentDepth;
+        return (lastPlayed == _aiColor) ? mate : -mate;
     }
+
+    // 4. Profondeur 0 → évaluation statique
+    if (depth == 0)
+    {
+        ++_stats.nodesEvaluated;
+        return (lastPlayed == Color::Black)
+            ? evaluateBlackPosition(position, cell)
+            : evaluateWhitePosition(position, cell);
+    }
+
+    // 5. Génération des coups (pseudo-légale : cases vides de la zone active,
+    //    SANS vérifier la règle du double-trois. La légalité complète est
+    //    vérifiée paresseusement dans la boucle, uniquement sur les coups joués.)
+    MoveList<t_cell, MAX_BOARD_MOVES<Traits>> movesArray;
+    _moveGenerator.generateEmptyMoves(position.board(), movesArray);
+
+    if (movesArray.empty())
+    {
+        ++_stats.nodesEvaluated;
+        return (lastPlayed == Color::Black)
+            ? evaluateBlackPosition(position, cell)
+            : evaluateWhitePosition(position, cell);
+    }
+
+    // 6. Tri statique des coups (heuristique indépendante de la TT), du point de
+    //    vue du camp au trait à ce nœud. On n'explorera ensuite que les
+    //    MAX_CANDIDATES meilleurs coups légaux (plafond top-N, forward pruning).
+    MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>> ordered;
+    {
+        for (size_t i = 0; i < movesArray.size(); ++i)
+		{
+			Color themover = position.sideToMove();
+			EvaluatedMove scoredMove = rawShapeScore(position.board(), movesArray[i], themover);
+			if (scoredMove.isLegal)
+				ordered.push(scoredMove);
+	}
+		
+		std::sort(ordered.begin(), ordered.end(),
+            [](const EvaluatedMove& a, const EvaluatedMove& b) { return a.score > b.score; });
+    }
+
+    // 6.b Ordonnancement dynamique : si la TT porte un bestMove pour cette
+    //     position (même issu d'une recherche moins profonde), on le place en
+    //     TÊTE de la liste. Deux effets :
+    //       - il est TOUJOURS exploré, en contournant le plafond top-N
+    //         (MAX_CANDIDATES) qui aurait pu l'écarter s'il était mal classé
+    //         par le tri statique ;
+    //       - le meilleur coup connu est essayé en premier → coupures
+    //         alpha-beta plus précoces.
+    //     ttHit a été sondé en début de fonction et reste valide ici (aucun
+    //     store n'a eu lieu entre-temps). Même logique qu'à la racine.
+    if (ttHit && ttHit->bestMove.x >= 0)
+    {
+        for (size_t i = 0; i < ordered.size(); ++i)
+        {
+            if (ordered[i].move.x == ttHit->bestMove.x &&
+                ordered[i].move.y == ttHit->bestMove.y)
+            {
+                std::rotate(ordered.begin(),
+                            ordered.begin() + i,
+                            ordered.begin() + i + 1);
+                ++_stats.ttOrderingHits;
+                break;
+            }
+        }
+    }
+
+    // 7. sideToMove AVANT makeMove → pour undoMove
+    const bool isMaximizing = (position.sideToMove() == _aiColor);
+    const int alphaOrig = alpha;
+    const int betaOrig  = beta;
+    t_cell bestMove  = {-1, -1};
+    int    bestEval  = isMaximizing
+                     ? std::numeric_limits<int>::min()
+                     : std::numeric_limits<int>::max();
+
+    int legalMovesSearched = 0;
+    for (size_t i = 0; i < ordered.size(); ++i)
+    {
+        // Plafond top-N : on a déjà exploré les N meilleurs coups légaux.
+        if (legalMovesSearched >= MAX_CANDIDATES)
+            break;
+
+        const t_cell&         move      = ordered[i].move;
+        const MoveStateHash moveHash  = position.buildMoveHash(ordered[i], position.sideToMove());
+
+        // Sauvegarde la couleur AVANT makeMove
+        const Color colorBeforeMove = position.sideToMove();
+
+
+		
+        ++legalMovesSearched;
+
+        position.makeMove(move.x, move.y, colorBeforeMove, moveHash);
+        
+		int eval = minimax(position, move, depth - 1, alpha, beta);
+        // Restaure avec la couleur sauvegardée
+        position.undoMove(move.x, move.y, colorBeforeMove);  // ✅
+
+        if (isMaximizing)
+        {
+            if (eval > bestEval) { bestEval = eval; bestMove = move; }
+            alpha = std::max(alpha, eval);
+            if (beta <= alpha) { ++_stats.nodesPruned; break; }
+        }
+        else
+        {
+            if (eval < bestEval) { bestEval = eval; bestMove = move; }
+            beta = std::min(beta, eval);
+            if (beta <= alpha) { ++_stats.nodesPruned; break; }
+        }
+
+    }
+
+    // Aucun coup pseudo-légal n'était réellement légal → feuille de facto.
+    if (legalMovesSearched == 0)
+    {
+        ++_stats.nodesEvaluated;
+        return (lastPlayed == Color::Black)
+            ? evaluateBlackPosition(position, cell)
+            : evaluateWhitePosition(position, cell);
+    }
+
+    // 8. Stockage TT
+    TTFlag flag;
+    if      (bestEval <= alphaOrig) flag = TTFlag::UpperBound;
+    else if (bestEval >= betaOrig)  flag = TTFlag::LowerBound;
+    else                            flag = TTFlag::Exact;
+
+    _tt.store(position.zobristHash(), ttScoreToEntry(bestEval, currentDepth),
+              depth, flag, {bestMove.x, bestMove.y});
+    ++_stats.ttStores;
+
+    return bestEval;
 }
 
-template <typename Traits>
-int	MasterAI<Traits>::signedFromAi(Color side, int raw) const
-{
-	return (side == _aiColor) ? raw : -raw;
-}
-
-template <typename Traits>
-int	MasterAI<Traits>::evaluatePosition(const SearchPosition<Traits>& position, t_cell cell)
-{
-	int	result = 0;
-	BitboardTool<Traits>& bitboardTool = BitboardTool<Traits>::instance();
-	t_BWBoard<Traits> board = position.board();
-
-	// makeMove already flipped sideToMove — the player who just placed at cell
-	// is the OPPONENT of sideToMove().
-	const Color side = (position.sideToMove() == Color::Black) ? Color::White : Color::Black;
-
-	
-
-	// ne verifie pas les captures gagnantes, seulement les alignements de 5
-	if (isWinAfterMove<Traits>(board, side, cell.x, cell.y))
-		return signedFromAi(side, 1000000);
-
-	// n'enrigistre pas le compte de capture et ne modifie pas l'etat du board.
-	// methode bientot obsolete, le nombre de capture sera enregistre dans le SearchPosition.
-	const CaptureResult<Traits> caps = bitboardTool.resolveCaptures(board, cell.x, cell.y, side);
-	if (caps.count)
-		return signedFromAi(side, 200 * caps.count);
-
-	if (side == Color::Black)
-		result = bitboardTool.check_open_four(board.black, board.white, cell.x, cell.y);
-	else
-		result = bitboardTool.check_open_four(board.white, board.black, cell.x, cell.y);
-	if (result == 2) // open four
-		return signedFromAi(side, 500000);
-	else if (result == 1) // half-open four
-		return signedFromAi(side, 5000);
-
-	if (side == Color::Black)
-		result = bitboardTool.check_super_four(board.black, board.white, cell.x, cell.y);
-	else
-		result = bitboardTool.check_super_four(board.white, board.black, cell.x, cell.y);
-	if (result)
-		return signedFromAi(side, 60000);
-
-	if (side == Color::Black)
-		result = bitboardTool.check_broken_four(board.black, board.white, cell.x, cell.y);
-	else
-		result = bitboardTool.check_broken_four(board.white, board.black, cell.x, cell.y);
-	if (result)
-		return signedFromAi(side, 6000);
-
-	if (side == Color::Black)
-		result = bitboardTool.check_cross(board.black, board.white, cell.x, cell.y);
-	else
-		result = bitboardTool.check_cross(board.white, board.black, cell.x, cell.y);
-	if (result)
-		return signedFromAi(side, cross_score(result));
-
-	if (side == Color::Black)
-		result = bitboardTool.check_open_three(board.black, board.white, cell.x, cell.y);
-	else
-		result = bitboardTool.check_open_three(board.white, board.black, cell.x, cell.y);
-	if (result)
-		return signedFromAi(side, score_open_three(result));
-
-	return 0;
-}
-
-template <typename Traits>
-int MasterAI<Traits>::evaluateBlackPosition(
-	const SearchPosition<Traits>& position,
-	t_cell cell)
-{
-	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
-	const auto board = position.board();
-
-	const int totalWhiteCaptures = position.getTotalwhiteCaptures();
-	const int whiteCaptures =  (position.getWhiteCaptures()) ? 2 : 0;
-
-	const int captureScore = whiteCaptures * CAPTURE_SCORE + totalWhiteCaptures;
-
-	if (totalWhiteCaptures >= 10)
-		return signedFromAi(Color::Black, 1100000 + captureScore);
-
-	if (isWinAfterMove<Traits>(board, Color::Black, cell.x, cell.y))
-		return signedFromAi(Color::Black, 1000000 + captureScore);
-
-	int result = tool.check_open_four(board.black, board.white, cell.x, cell.y);
-	if (result == 2)
-		return signedFromAi(Color::Black, 500000 + captureScore);
-	if (result == 1)
-		return signedFromAi(Color::Black, 5000 + captureScore);
-
-	if (tool.check_super_four(board.black, board.white, cell.x, cell.y))
-		return signedFromAi(Color::Black, 60000 + captureScore);
-
-	if (tool.check_broken_four(board.black, board.white, cell.x, cell.y))
-		return signedFromAi(Color::Black, 6000 + captureScore);
-
-	result = tool.check_cross(board.black, board.white, cell.x, cell.y);
-	if (result)
-		return signedFromAi(Color::Black, cross_score(result) + captureScore);
-
-	result = tool.check_open_three(board.black, board.white, cell.x, cell.y);
-	if (result)
-		return signedFromAi(Color::Black, score_open_three(result) + captureScore);
-
-	return captureScore;
-}
-
-
-template <typename Traits>
-int MasterAI<Traits>::evaluateWhitePosition(
-	const SearchPosition<Traits>& position,
-	t_cell cell)
-{
-	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
-	const auto board = position.board();
-
-	const int totalBlackCaptures = position.getTotalblackCaptures();
-	const int blackCaptures = (position.getBlackCaptures()) ? 2 : 0;
-
-	const int captureScore = blackCaptures * CAPTURE_SCORE + totalBlackCaptures;
-
-	if (totalBlackCaptures >= 10)
-		return signedFromAi(Color::White, 1100000 + captureScore);
-
-	if (isWinAfterMove<Traits>(board, Color::White, cell.x, cell.y))
-		return signedFromAi(Color::White, 1000000 + captureScore);
-
-	int result = tool.check_open_four(board.black, board.white, cell.x, cell.y);
-	if (result == 2)
-		return signedFromAi(Color::White, 500000 + captureScore);
-	if (result == 1)
-		return signedFromAi(Color::White, 5000 + captureScore);
-
-	if (tool.check_super_four(board.white, board.black, cell.x, cell.y))
-		return signedFromAi(Color::White, 60000 + captureScore);
-
-	if (tool.check_broken_four(board.white, board.black, cell.x, cell.y))
-		return signedFromAi(Color::White, 6000 + captureScore);
-
-	result = tool.check_cross(board.white, board.black, cell.x, cell.y);
-	if (result)
-		return signedFromAi(Color::White, cross_score(result) + captureScore);
-
-	result = tool.check_open_three(board.white, board.black, cell.x, cell.y);
-	if (result)
-		return signedFromAi(Color::White, score_open_three(result) + captureScore);
-
-	return captureScore;
-}

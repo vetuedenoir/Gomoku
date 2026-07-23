@@ -47,8 +47,9 @@ struct BoardTraits<19>
     using Bitboard = std::array<uint64_t, 6>;
 };
 
-// typedef uint64_t bitboard19[6];
-// typedef uint64_t bitboard15[4];
+
+template<typename Traits>
+inline constexpr std::size_t MAX_BOARD_MOVES = Traits::BOARD_SIZE * Traits::BOARD_SIZE - (Traits::BOARD_SIZE * Traits::BOARD_SIZE) / 7;
 
 template<typename Traits>
 struct t_BWBoard

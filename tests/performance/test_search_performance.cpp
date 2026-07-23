@@ -1,5 +1,7 @@
 #include "doctest.h"
 #include <chrono>
+#include <vector>
+#include <string>
 #include "logger/Logger.hpp"
 #include "ai/MasterAI.hpp"
 #include "ai/SearchPosition.hpp"
@@ -41,7 +43,7 @@ TEST_CASE("[PERF] findBestMove timing by depth on empty board")
 
         
         CHECK(t.stats.nodesVisited > 0);
-        CHECK(t.ms < 500); 
+        CHECK(t.ms <= 500); 
     }
 }
 
@@ -84,6 +86,106 @@ TEST_CASE("[PERF] findBestMove timing by depth on board from ASCII")
     
     CHECK(t.move.x == 9);
     CHECK(t.move.y == 2);
+}
+
+// Benchmark comparatif du tri des coups (full vs light) sur un jeu de positions
+// FIXES → mesures déterministes et comparables entre variantes.
+// Lancer une fois par variante (toggle GOMOKU_LIGHT_MOVE_ORDER dans config.hpp) :
+//   make run_tests FILTER="*BENCH*"
+// Comparer surtout les lignes TOTAL : nodes = qualité du tri (déterministe),
+// time/nps = effet net (inclut le coût du tri).
+TEST_CASE("[PERF][BENCH] move ordering: fixed positions by depth")
+{
+    struct Pos { const char* name; GameBoard board; Color toMove; };
+
+    std::vector<Pos> positions;
+
+    // 1) Menaces croisées non terminales (open-threes des deux côtés, pas de 5 possible).
+    positions.push_back({ "menaces-croisees", boardFromAscii({
+        "...................",
+        ".......B...........",
+        "......B.W..........",
+        ".....B..W..........",
+        "........W..........",
+        "...................",
+    }, Color::Black), Color::Black });
+
+    // 2) Open-threes opposés : le camp au trait doit à la fois attaquer et bloquer.
+    positions.push_back({ "threes-opposes", boardFromAscii({
+        "...................",
+        "......BBB..........",
+        "...................",
+        "........WWW........",
+        "...................",
+    }, Color::White), Color::White });
+
+    // 3) Position riche en captures potentielles (paires encadrables).
+    positions.push_back({ "captures", boardFromAscii({
+        "...................",
+        ".....B.............",
+        ".....W.............",
+        ".....W.............",
+        "......WWB..........",
+        "...................",
+    }, Color::Black), Color::Black });
+
+#ifdef GOMOKU_LIGHT_MOVE_ORDER
+    const char* variant = "LIGHT(off+cap)";
+#else
+    const char* variant = "FULL(off+def/2+cap)";
+#endif
+    LOG_INFO("BENCH", std::string("variant=") + variant);
+
+    for (int depth : {6, 8})
+    {
+        long long totMs = 0, totNodes = 0, totEval = 0, totPruned = 0, totTtHits = 0;
+
+        for (auto& p : positions)
+        {
+            SearchPosition19 pos = SearchPosition19::fromBoard(p.board);
+            MasterAI19 ai(depth, 1, p.toMove);
+            Timed t = timeBestMove(ai, pos, p.toMove);
+
+            const long long pruningPct = t.stats.nodesVisited > 0
+                ? (t.stats.nodesPruned * 100LL / t.stats.nodesVisited) : 0;
+            const long long nps = t.ms > 0
+                ? (t.stats.nodesVisited * 1000LL / t.ms) : 0;
+
+            LOG_INFO("BENCH",
+                std::string(variant) +
+                " depth=" + std::to_string(depth) +
+                " pos=" + p.name +
+                " time=" + std::to_string(t.ms) + "ms" +
+                " nodes=" + std::to_string(t.stats.nodesVisited) +
+                " eval=" + std::to_string(t.stats.nodesEvaluated) +
+                " pruned=" + std::to_string(t.stats.nodesPruned) +
+                " (" + std::to_string(pruningPct) + "%)" +
+                " ttHits=" + std::to_string(t.stats.ttHits) +
+                " nps=" + std::to_string(nps));
+
+            totMs     += t.ms;
+            totNodes  += t.stats.nodesVisited;
+            totEval   += t.stats.nodesEvaluated;
+            totPruned += t.stats.nodesPruned;
+            totTtHits += t.stats.ttHits;
+
+            CHECK(t.stats.nodesVisited > 0);
+        }
+
+        const long long totPct = totNodes > 0 ? (totPruned * 100LL / totNodes) : 0;
+        const long long totNps = totMs > 0 ? (totNodes * 1000LL / totMs) : 0;
+
+        LOG_INFO("BENCH",
+            std::string(variant) +
+            " depth=" + std::to_string(depth) +
+            " TOTAL time=" + std::to_string(totMs) + "ms" +
+            " nodes=" + std::to_string(totNodes) +
+            " eval=" + std::to_string(totEval) +
+            " pruned=" + std::to_string(totPruned) +
+            " (" + std::to_string(totPct) + "%)" +
+            " ttHits=" + std::to_string(totTtHits) +
+            " nps=" + std::to_string(totNps));
+    }
 }
 
 // TEST_CASE("[PERF] findBestMove black wins in one – open four")

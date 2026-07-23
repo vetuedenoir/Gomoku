@@ -40,7 +40,7 @@ class TranspositionTable
         void           clear();
 
     private:
-        static constexpr std::size_t TABLE_SIZE = 1u << 20; // 1,048,576 entries
+        static constexpr std::size_t TABLE_SIZE = 1u << 26; // 1,048,576 entries
 
         // Heap-backed so the table can be embedded by value (e.g. in MasterAI)
         // without risking a stack overflow, and so entries start zero-initialized.
