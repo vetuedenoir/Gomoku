@@ -6,6 +6,9 @@
 #include <sstream>
 #include <iomanip>
 
+static const sf::Color STONE_BLACK(30, 30, 30);
+static const sf::Color STONE_WHITE(230, 230, 230);
+
 static std::string fmtMs(double ms)
 {
     std::ostringstream os;
@@ -13,22 +16,67 @@ static std::string fmtMs(double ms)
     return os.str();
 }
 
-static void hudRow(sf::RenderWindow& w, const sf::Font& font, unsigned size,
-                   const std::string& label, const std::string& value,
-                   float x, float right, float y)
+// Draws one vertical "player card": a stone swatch, the colour name, the
+// You / AI role, the capture progress, and (for the AI) its move timings.
+static void drawPlayerCard(sf::RenderWindow& w, const sf::Font& font,
+                           float cx, float cy, float cardW, float cardH,
+                           const std::string& colorName, const std::string& role,
+                           sf::Color stoneColor, int capturePairs, int maxPairs,
+                           bool isActive, bool isAI,
+                           double aiLastMs, double aiAvgMs)
 {
-    sf::Text l(label, font, size);
-    l.setFillColor(DIM);
-    l.setOrigin(l.getLocalBounds().left, l.getLocalBounds().top);
-    l.setPosition(x, y);
-    w.draw(l);
+    sf::RectangleShape panel(sf::Vector2f(cardW, cardH));
+    panel.setOrigin(cardW / 2.f, cardH / 2.f);
+    panel.setPosition(cx, cy);
+    panel.setFillColor(sf::Color(10, 10, 20, 200));
+    panel.setOutlineThickness(isActive ? 2.f : 1.f);
+    panel.setOutlineColor(isActive ? GOLD : DIM);
+    w.draw(panel);
 
-    sf::Text v(value, font, size);
-    v.setFillColor(WHITE);
-    const sf::FloatRect vb = v.getLocalBounds();
-    v.setOrigin(vb.left + vb.width, vb.top);
-    v.setPosition(right, y);
-    w.draw(v);
+    const float top = cy - cardH / 2.f;
+
+    // Stone swatch
+    const float stoneR = cardW * 0.16f;
+    sf::CircleShape stone(stoneR);
+    stone.setOrigin(stoneR, stoneR);
+    stone.setPosition(cx, top + cardH * 0.14f);
+    stone.setFillColor(stoneColor);
+    stone.setOutlineThickness(1.f);
+    stone.setOutlineColor(DIM);
+    w.draw(stone);
+
+    // Colour name
+    sf::Text name = makeText(colorName, font, FONT_SM, WHITE);
+    name.setPosition(cx, top + cardH * 0.30f);
+    w.draw(name);
+
+    // Role badge (You / AI)
+    sf::Text roleText = makeText(role, font, FONT_XS, isActive ? GOLD : DIM);
+    roleText.setStyle(sf::Text::Bold);
+    roleText.setPosition(cx, top + cardH * 0.40f);
+    w.draw(roleText);
+
+    // Captures
+    sf::Text capLabel = makeText("Captures", font, FONT_XS, DIM);
+    capLabel.setPosition(cx, top + cardH * 0.56f);
+    w.draw(capLabel);
+
+    sf::Text caps = makeText(std::to_string(capturePairs) + " / " +
+                             std::to_string(maxPairs), font, FONT_MD, WHITE);
+    caps.setPosition(cx, top + cardH * 0.66f);
+    w.draw(caps);
+
+    // AI move timings, folded into the AI card only
+    if (isAI)
+    {
+        sf::Text last = makeText("last " + fmtMs(aiLastMs), font, FONT_XS, DIM);
+        last.setPosition(cx, top + cardH * 0.82f);
+        w.draw(last);
+
+        sf::Text avg = makeText("avg " + fmtMs(aiAvgMs), font, FONT_XS, DIM);
+        avg.setPosition(cx, top + cardH * 0.90f);
+        w.draw(avg);
+    }
 }
 
 void UIRenderer::renderMenu(sf::RenderWindow& w, MenuPage& page)
@@ -43,28 +91,40 @@ void UIRenderer::renderGame(sf::RenderWindow& w, Board& board,
 }
 
 void UIRenderer::renderStats(sf::RenderWindow& w, const sf::Font& font,
-                             const IGameController& ctrl)
+                             const Board& board, const IGameController& ctrl)
 {
-    const float pad    = WIN_H * 0.016f;
-    const float lineH  = FONT_XS * 1.45f;
-    const float panelW = WIN_W * 0.19f;
-    const float panelH = pad * 2.f + lineH * 2.f;
-    const float panelX = WIN_W - panelW - WIN_H * 0.02f;
-    const float panelY = WIN_H * 0.02f;
+    const sf::FloatRect b = board.bounds();
+    const float leftGutter  = b.left;
+    const float rightGutter = WIN_W - (b.left + b.width);
 
-    sf::RectangleShape panel(sf::Vector2f(panelW, panelH));
-    panel.setPosition(panelX, panelY);
-    panel.setFillColor(sf::Color(10, 10, 20, 180));
-    panel.setOutlineThickness(1.f);
-    panel.setOutlineColor(DIM);
-    w.draw(panel);
+    const float cardW = std::min(leftGutter, rightGutter) * 0.86f;
+    const float cardH = std::min(b.height * 0.5f, WIN_H * 0.36f);
+    const float cy    = b.top + b.height / 2.f;
 
-    const float left  = panelX + pad;
-    const float right = panelX + panelW - pad;
-    const float y0    = panelY + pad;
+    const float leftCX  = leftGutter / 2.f;
+    const float rightCX = b.left + b.width + rightGutter / 2.f;
 
-    hudRow(w, font, FONT_XS, "AI last", fmtMs(ctrl.aiMoveLastMs()),    left, right, y0);
-    hudRow(w, font, FONT_XS, "AI avg",  fmtMs(ctrl.aiMoveAverageMs()), left, right, y0 + lineH);
+    // Captures are tracked as individual stones; Gomoku scoring is by pairs.
+    const int maxPairs   = CAPTURES_TO_WIN / 2;
+    const int blackPairs = ctrl.blackCaptureCount() / 2;
+    const int whitePairs = ctrl.whiteCaptureCount() / 2;
+
+    const bool playerIsBlack = ctrl.playerActor().color == Color::Black;
+    const Color turn         = ctrl.currentColor();
+
+    // Black on the left
+    drawPlayerCard(w, font, leftCX, cy, cardW, cardH,
+                   "Black", playerIsBlack ? "YOU" : "AI",
+                   STONE_BLACK, blackPairs, maxPairs,
+                   turn == Color::Black, !playerIsBlack,
+                   ctrl.aiMoveLastMs(), ctrl.aiMoveAverageMs());
+
+    // White on the right
+    drawPlayerCard(w, font, rightCX, cy, cardW, cardH,
+                   "White", playerIsBlack ? "AI" : "YOU",
+                   STONE_WHITE, whitePairs, maxPairs,
+                   turn == Color::White, playerIsBlack,
+                   ctrl.aiMoveLastMs(), ctrl.aiMoveAverageMs());
 }
 
 void UIRenderer::renderColorChoice(sf::RenderWindow& w, MenuPage& colorChoice)

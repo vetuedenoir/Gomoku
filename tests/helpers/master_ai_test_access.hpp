@@ -11,10 +11,9 @@
 template <typename Traits>
 struct MasterAITestAccess
 {
-	static int search(MasterAI<Traits>& ai, SearchPosition<Traits>& position,
-	                  t_cell cell, int depth, int alpha, int beta, bool isMaximizing)
+	static int search(MasterAI<Traits>& ai, SearchPosition<Traits>& position, t_cell cell, int depth, int alpha, int beta)
 	{
-		return ai.minimax(position, cell, depth, alpha, beta, isMaximizing);
+		return ai.minimax(position, cell, depth, alpha, beta);
 	}
 
 	static const TranspositionTable& tt(const MasterAI<Traits>& ai)

@@ -12,7 +12,8 @@
 // ────────────────────────────────────────────────────────────────────────────
 // Tests de consultation de la Table de Transposition (TT Probe).
 // On pilote minimax() via MasterAITestAccess et on s'appuie sur lastSearchStats()
-// pour distinguer un hit instantané (un seul nœud visité) d'une recherche complète.
+// pour distinguer un hit instantané (aucun nœud compté : la coupure TT précède
+// ++nodesVisited) d'une recherche complète.
 // ────────────────────────────────────────────────────────────────────────────
 
 using Access = MasterAITestAccess<BoardTraits<19>>;
@@ -45,19 +46,20 @@ TEST_CASE("[Minimax] TT: exact hit returns cached value without re-exploring")
 
 
 	// 1. Première recherche : remplit la TT et explore tout le sous-arbre.
-	const int cached = Access::search(ai, pos, previousHarmlessMove, 2, NEG_INF, POS_INF, true);
+	const int cached = Access::search(ai, pos, previousHarmlessMove, 2, NEG_INF, POS_INF);
 	const int visitedAfterFirst = ai.lastSearchStats().nodesVisited;
 	const int hitsAfterFirst     = ai.lastSearchStats().ttHits;
 	CHECK(visitedAfterFirst > 1); // un vrai sous-arbre a bien été parcouru
 
 	// 2. Seconde recherche, même hash et même profondeur : hit Exact instantané.
-	const int reused = Access::search(ai, pos, previousHarmlessMove, 2, NEG_INF, POS_INF, true);
+	const int reused = Access::search(ai, pos, previousHarmlessMove, 2, NEG_INF, POS_INF);
 	const int visitedAfterSecond = ai.lastSearchStats().nodesVisited;
 	const int hitsAfterSecond     = ai.lastSearchStats().ttHits;
 
-	// 3. Vérifications : même valeur, et seul le nœud racine est revisité.
+	// 3. Vérifications : même valeur, et le hit Exact coupe AVANT ++nodesVisited,
+	//    donc le 2nd passage ne compte aucun nœud visité.
 	CHECK(reused == cached);
-	CHECK(visitedAfterSecond - visitedAfterFirst == 1); // racine seule, aucun enfant
+	CHECK(visitedAfterSecond - visitedAfterFirst == 0); // cutoff TT avant ++nodesVisited
 	CHECK(hitsAfterSecond - hitsAfterFirst == 1);       // le probe a bien servi
 }
 
@@ -75,7 +77,7 @@ TEST_CASE("[Minimax] TT: shallow entry is rejected, full search runs")
 
 	// 1. Référence : recherche complète à depth = 4 sans entrée injectée.
 	MasterAI19 aiRef = MasterAI19(4, 1, Color::Black);
-	const int refValue   = Access::search(aiRef, pos, previousHarmlessMove, 4, NEG_INF, POS_INF, true);
+	const int refValue   = Access::search(aiRef, pos, previousHarmlessMove, 4, NEG_INF, POS_INF);
 	const int refVisited = aiRef.lastSearchStats().nodesVisited;
 	const int refHits    = aiRef.lastSearchStats().ttHits; // hits internes légitimes (transpositions)
 
@@ -87,7 +89,7 @@ TEST_CASE("[Minimax] TT: shallow entry is rejected, full search runs")
 	                            { -1, -1 });
 
 	// 3. Recherche à depth = 4 : l'entrée depth = 2 doit être rejetée.
-	const int value = Access::search(ai, pos, previousHarmlessMove, 4, NEG_INF, POS_INF, true);
+	const int value = Access::search(ai, pos, previousHarmlessMove, 4, NEG_INF, POS_INF);
 
 	// 4. Vérifications : la sentinelle est ignorée et la recherche complète a tourné.
 	CHECK(value != sentinel);                                   // valeur cachée non utilisée

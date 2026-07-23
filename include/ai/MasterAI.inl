@@ -149,6 +149,13 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	_stats.nodesEvaluated = 0;
 	_stats.nodesPruned    = 0;
 	_stats.maxDepthSeen   = 0;
+	_stats.ttHits             = 0;
+	_stats.ttCutoffs          = 0;
+	_stats.ttStores           = 0;
+	_stats.ttOrderingHits     = 0;
+	_stats.ttRootHits         = 0;
+	_stats.ttRootOrderingHits = 0;
+	_stats.ttRootExactSeeds   = 0;
 
 	MoveList<t_cell, MAX_BOARD_MOVES<Traits>> rootMoves;
 	
@@ -181,6 +188,28 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 		}
 		std::sort(orderedRoot.begin(), orderedRoot.end(),
 			[](const EvaluatedMove& a, const EvaluatedMove& b) { return a.score > b.score; });
+	}
+
+	// TT probe at the ROOT — used ONLY for move ordering / seeding. We never cut
+	// early here (no LOWER/UPPER return): the root must return the actual best
+	// move, not just a bound. If the entry carries a bestMove, search it first.
+	const TTEntry* rootHit = _tt.probe(position.zobristHash());
+	if (rootHit)
+		++_stats.ttRootHits;
+	if (rootHit && rootHit->bestMove.x >= 0)
+	{
+		for (size_t i = 0; i < orderedRoot.size(); ++i)
+		{
+			if (orderedRoot[i].move.x == rootHit->bestMove.x &&
+			    orderedRoot[i].move.y == rootHit->bestMove.y)
+			{
+				std::rotate(orderedRoot.begin(),
+				            orderedRoot.begin() + i,
+				            orderedRoot.begin() + i + 1);
+				++_stats.ttRootOrderingHits;
+				break;
+			}
+		}
 	}
 
 	int bestScore = std::numeric_limits<int>::min();
@@ -234,9 +263,13 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 		+ " (" + std::to_string(pruningPct) + "%)"
 		+ "  maxDepth="  + std::to_string(_stats.maxDepthSeen));
 	LOG_SUPPRESS(_stats.nodesVisited, _stats.nodesEvaluated, _stats.nodesPruned, _stats.maxDepthSeen, pruningPct);
-	LOG_DEBUG("AI", "[findBestMove] tt stores=" + std::to_string(_stats.ttStores));
-	LOG_DEBUG("AI", "[findBestMove] tt hits=" + std::to_string(_stats.ttHits));
-	LOG_DEBUG("AI", "[findBestMove] tt cutoffs=" + std::to_string(_stats.ttCutoffs));
+	LOG_DEBUG("AI", "[findBestMove] tt [minimax] stores=" + std::to_string(_stats.ttStores)
+		+ " hits=" + std::to_string(_stats.ttHits)
+		+ " cutoffs=" + std::to_string(_stats.ttCutoffs)
+		+ " orderingHits=" + std::to_string(_stats.ttOrderingHits));
+	LOG_DEBUG("AI", "[findBestMove] tt [root] hits=" + std::to_string(_stats.ttRootHits)
+		+ " orderingHits=" + std::to_string(_stats.ttRootOrderingHits)
+		+ " exactSeeds=" + std::to_string(_stats.ttRootExactSeeds));
 	
 
 	return bestMove;
@@ -324,6 +357,32 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 		
 		std::sort(ordered.begin(), ordered.end(),
             [](const EvaluatedMove& a, const EvaluatedMove& b) { return a.score > b.score; });
+    }
+
+    // 6.b Ordonnancement dynamique : si la TT porte un bestMove pour cette
+    //     position (même issu d'une recherche moins profonde), on le place en
+    //     TÊTE de la liste. Deux effets :
+    //       - il est TOUJOURS exploré, en contournant le plafond top-N
+    //         (MAX_CANDIDATES) qui aurait pu l'écarter s'il était mal classé
+    //         par le tri statique ;
+    //       - le meilleur coup connu est essayé en premier → coupures
+    //         alpha-beta plus précoces.
+    //     ttHit a été sondé en début de fonction et reste valide ici (aucun
+    //     store n'a eu lieu entre-temps). Même logique qu'à la racine.
+    if (ttHit && ttHit->bestMove.x >= 0)
+    {
+        for (size_t i = 0; i < ordered.size(); ++i)
+        {
+            if (ordered[i].move.x == ttHit->bestMove.x &&
+                ordered[i].move.y == ttHit->bestMove.y)
+            {
+                std::rotate(ordered.begin(),
+                            ordered.begin() + i,
+                            ordered.begin() + i + 1);
+                ++_stats.ttOrderingHits;
+                break;
+            }
+        }
     }
 
     // 7. sideToMove AVANT makeMove → pour undoMove
