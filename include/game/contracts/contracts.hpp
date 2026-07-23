@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <array>
+#include <cstdint>
 
 enum class Color { Black = 0, White = 1 };
 enum class GamePhase { Opening, ColorChoice, Standard };
@@ -41,8 +42,8 @@ struct Move {
 
 struct t_cell
 {
-	int x;
-	int y;
+	int_fast16_t x;
+	int_fast16_t y;
 
 	bool operator==(const t_cell& other) const
     {

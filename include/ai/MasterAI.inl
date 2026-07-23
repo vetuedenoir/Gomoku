@@ -13,7 +13,7 @@ static constexpr int CAPTURE_SCORE = 202;
 // nœud interne de minimax. Les coups étant triés best-first, on ne garde que
 // les N meilleurs. Réduit le facteur de branchement effectif. À tuner via le
 // benchmark [PERF][BENCH].
-static constexpr int MAX_CANDIDATES = 30;
+static constexpr int MAX_CANDIDATES = 20;
 
 // Coup accompagné de sa clé de tri statique (heuristique indépendante de la TT).
 struct ScoredMove

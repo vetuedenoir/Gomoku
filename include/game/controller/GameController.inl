@@ -281,7 +281,7 @@ std::optional<Move> GameController<Traits>::requestAIMove()
         
         submitMove(col, row);
         
-        return Move{ col, row, colorToCell(currentColor()) };
+        return Move{ static_cast<int>(col), static_cast<int>(row), colorToCell(currentColor()) };
     }
 
     return std::nullopt;
