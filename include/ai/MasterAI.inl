@@ -396,32 +396,6 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
         }
     }
 
-    // 6.b Ordonnancement dynamique : si la TT porte un bestMove pour cette
-    //     position (même issu d'une recherche moins profonde), on le place en
-    //     TÊTE de la liste. Deux effets :
-    //       - il est TOUJOURS exploré, en contournant le plafond top-N
-    //         (MAX_CANDIDATES) qui aurait pu l'écarter s'il était mal classé
-    //         par le tri statique ;
-    //       - le meilleur coup connu est essayé en premier → coupures
-    //         alpha-beta plus précoces.
-    //     ttHit a été sondé en début de fonction et reste valide ici (aucun
-    //     store n'a eu lieu entre-temps). Même logique qu'à la racine.
-    if (ttHit && ttHit->bestMove.x >= 0)
-    {
-        for (size_t i = 0; i < ordered.size(); ++i)
-        {
-            if (ordered[i].move.x == ttHit->bestMove.x &&
-                ordered[i].move.y == ttHit->bestMove.y)
-            {
-                std::rotate(ordered.begin(),
-                            ordered.begin() + i,
-                            ordered.begin() + i + 1);
-                ++_stats.ttOrderingHits;
-                break;
-            }
-        }
-    }
-
     // 7. sideToMove AVANT makeMove → pour undoMove
     const bool isMaximizing = (position.sideToMove() == _aiColor);
     const int alphaOrig = alpha;
