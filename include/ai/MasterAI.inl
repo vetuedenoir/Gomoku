@@ -13,7 +13,7 @@ static constexpr int CAPTURE_SCORE = 202;
 // nœud interne de minimax. Les coups étant triés best-first, on ne garde que
 // les N meilleurs. Réduit le facteur de branchement effectif. À tuner via le
 // benchmark [PERF][BENCH].
-static constexpr int MAX_CANDIDATES = 30;
+static constexpr int MAX_CANDIDATES = 24;
 
 // Coup accompagné de sa clé de tri statique (heuristique indépendante de la TT).
 struct ScoredMove
@@ -216,6 +216,17 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	int alpha = std::numeric_limits<int>::min();
 	const int beta = std::numeric_limits<int>::max();
 
+	// An EXACT root hit from an equally-deep (or deeper) search seeds bestMove
+	// and bestScore, but the loop below still runs in full so ordering and
+	// tie-breaks among the remaining candidates stay correct.
+	if (rootHit && rootHit->flag == TTFlag::Exact && rootHit->depth >= _maxDepth)
+	{
+		bestScore = ttScoreFromEntry(rootHit->score, 0);
+		if (rootHit->bestMove.x >= 0)
+			bestMove = rootHit->bestMove;
+		++_stats.ttRootExactSeeds;
+	}
+
 	for (size_t i = 0; i < orderedRoot.size() && i < MAX_CANDIDATES; ++i)
 	{
 		const t_cell& move = orderedRoot[i].move;
@@ -385,6 +396,32 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
         }
     }
 
+    // 6.b Ordonnancement dynamique : si la TT porte un bestMove pour cette
+    //     position (même issu d'une recherche moins profonde), on le place en
+    //     TÊTE de la liste. Deux effets :
+    //       - il est TOUJOURS exploré, en contournant le plafond top-N
+    //         (MAX_CANDIDATES) qui aurait pu l'écarter s'il était mal classé
+    //         par le tri statique ;
+    //       - le meilleur coup connu est essayé en premier → coupures
+    //         alpha-beta plus précoces.
+    //     ttHit a été sondé en début de fonction et reste valide ici (aucun
+    //     store n'a eu lieu entre-temps). Même logique qu'à la racine.
+    if (ttHit && ttHit->bestMove.x >= 0)
+    {
+        for (size_t i = 0; i < ordered.size(); ++i)
+        {
+            if (ordered[i].move.x == ttHit->bestMove.x &&
+                ordered[i].move.y == ttHit->bestMove.y)
+            {
+                std::rotate(ordered.begin(),
+                            ordered.begin() + i,
+                            ordered.begin() + i + 1);
+                ++_stats.ttOrderingHits;
+                break;
+            }
+        }
+    }
+
     // 7. sideToMove AVANT makeMove → pour undoMove
     const bool isMaximizing = (position.sideToMove() == _aiColor);
     const int alphaOrig = alpha;
@@ -408,6 +445,7 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
         const Color colorBeforeMove = position.sideToMove();
 
 
+		
         ++legalMovesSearched;
 
         position.makeMove(move.x, move.y, colorBeforeMove, moveHash);
