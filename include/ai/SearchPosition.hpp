@@ -6,6 +6,7 @@
 #include "game/contracts/contracts.hpp"
 #include "optimization/ZobristHasher.hpp"
 #include "bitboard/bitboard.hpp"
+#include "config/config.hpp"
 
 
 // a "SearchPosition" conventionally includes:
@@ -42,7 +43,7 @@ class SearchPosition
         Color                          _sideToMove;
         const ZobristHasher<Traits>&   _hasher;
         
-        MoveList<MoveState, 10>	_history; // stock tout utile pour remetre les pierres captures sur le board
+        MoveList<MoveState, DEPTH>	_history; // stock tout utile pour remetre les pierres captures sur le board
 
     public:
         static SearchPosition fromBoard(const GameBoard& src);

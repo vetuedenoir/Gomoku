@@ -3,6 +3,9 @@
 
 # define GOMOKU_DEBUG  // comment out for benchmark mode
 
+// profondeur de recursion minimax
+#define DEPTH 8
+
 # ifdef GOMOKU_DEBUG
 #   define LOG_DEBUG(tag, msg) Logger::debug(tag, msg)
 #   define LOG_INFO(tag, msg)  Logger::info(tag, msg)
