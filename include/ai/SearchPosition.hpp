@@ -2,6 +2,7 @@
 # define SEARCHSTATE_HPP
 
 #include <cstdint>
+#include <array>
 #include "game/board/GameBoard.hpp"
 #include "game/contracts/contracts.hpp"
 #include "optimization/ZobristHasher.hpp"
@@ -45,8 +46,17 @@ class SearchPosition
         
         MoveList<MoveState, DEPTH>	_history; // stock tout utile pour remetre les pierres captures sur le board
 
+        static constexpr int ZONE_RADIUS = ACTIVE_ZONE_RADIUS;
+
+        typename Traits::Bitboard                                _zoneMask {};
+        std::array<uint8_t, Traits::STRIDE * Traits::BOARD_SIZE> _zoneCount {};
+
+        void zoneApplyStone(int cx, int cy, int delta);
+        void zoneRebuild();
+
     public:
         static SearchPosition fromBoard(const GameBoard& src);
+        
         static const ZobristHasher<Traits>& hasher();
     
         // int detect_captures_hash(const t_BWBoard<Traits>& board, int col, int row, 
@@ -80,6 +90,8 @@ class SearchPosition
         uint64_t                 zobristHash() const;
         Color                    sideToMove()  const;
 
+        typename Traits::Bitboard candidateMask() const;
+
         MoveStateHash buildMoveHash(EvaluatedMove move, Color color) const;
 
         int detect_and_hash_capture(const t_BWBoard<Traits>& board, int col, int row, const Color attackerColor, MoveStateHash& stateHash) const;
@@ -100,6 +112,64 @@ SearchPosition<Traits>::SearchPosition(t_BWBoard<Traits> board, uint64_t hash, c
 {
     _whiteCaptures = 0;
     _blackCaptures = 0;
+    zoneRebuild();
+}
+
+// Applique le voisinage (boîte de rayon ZONE_RADIUS) d'une pierre posée (delta=+1)
+// ou retirée (delta=-1) sur les compteurs, et met à jour _zoneMask aux transitions
+// 0->1 (allumage) et 1->0 (extinction).
+template<typename Traits>
+void SearchPosition<Traits>::zoneApplyStone(int cx, int cy, int delta)
+{
+    for (int dy = -ZONE_RADIUS; dy <= ZONE_RADIUS; ++dy)
+    {
+        for (int dx = -ZONE_RADIUS; dx <= ZONE_RADIUS; ++dx)
+        {
+            const int nx = cx + dx;
+            const int ny = cy + dy;
+            if (!in_board_generic<Traits>(nx, ny))
+                continue;
+
+            const int idx = index_bb_generic<Traits>(nx, ny);
+            if (delta > 0)
+            {
+                if (++_zoneCount[idx] == 1)
+                    set_bb_generic<Traits>(_zoneMask, nx, ny);
+            }
+            else
+            {
+                if (--_zoneCount[idx] == 0)
+                    clear_bit_generic<Traits>(_zoneMask, nx, ny);
+            }
+        }
+    }
+}
+
+// Recalcule intégralement compteurs + masque depuis _board. Utilisé une seule
+// fois à la construction ; ensuite l'entretien est purement incrémental.
+template<typename Traits>
+void SearchPosition<Traits>::zoneRebuild()
+{
+    _zoneMask = {};
+    _zoneCount.fill(0);
+    bb_for_each_bit<Traits>(_board.black, [&](int x, int y){ zoneApplyStone(x, y, +1); });
+    bb_for_each_bit<Traits>(_board.white, [&](int x, int y){ zoneApplyStone(x, y, +1); });
+}
+
+template<typename Traits>
+typename Traits::Bitboard SearchPosition<Traits>::candidateMask() const
+{
+    typename Traits::Bitboard out;
+    bool anyStone = false;
+    for (int i = 0; i < Traits::WORD_COUNT; ++i)
+    {
+        const uint64_t occ = _board.black[i] | _board.white[i];
+        out[i] = _zoneMask[i] & ~occ;
+        anyStone = anyStone || (occ != 0);
+    }
+    if (!anyStone) // plateau vide -> on amorce le centre (parité avec ActiveZone)
+        set_bb_generic<Traits>(out, Traits::BOARD_SIZE / 2, Traits::BOARD_SIZE / 2);
+    return out;
 }
 
 template<typename Traits>
@@ -208,6 +278,7 @@ void SearchPosition<Traits>::undoMove(int col, int row, Color color)
 		for (int k = 0; k < state.whiteCaptures; ++k)
 		{
 			set_bb_generic<Traits>(_board.white, state.capturedStones[k].x, state.capturedStones[k].y);
+			zoneApplyStone(state.capturedStones[k].x, state.capturedStones[k].y, +1);
 			_hash ^= _hasher.key(state.capturedStones[k].x, state.capturedStones[k].y, Color::White);
 		}
 	}	
@@ -218,11 +289,13 @@ void SearchPosition<Traits>::undoMove(int col, int row, Color color)
 		for (int k = 0; k < state.blackCaptures; ++k)
 		{
 			set_bb_generic<Traits>(_board.black, state.capturedStones[k].x, state.capturedStones[k].y);
+			zoneApplyStone(state.capturedStones[k].x, state.capturedStones[k].y, +1);
 			_hash ^= _hasher.key(state.capturedStones[k].x, state.capturedStones[k].y, Color::Black);
 		}
     }
 
     clear_bit_generic<Traits>(bitboardForColor(_board, color), col, row);
+    zoneApplyStone(col, row, -1);
 }
 
 template<typename Traits>
@@ -248,17 +321,24 @@ template<typename Traits>
 void SearchPosition<Traits>::makeMove(int col, int row, Color color, MoveStateHash stateHash)
 {
     set_bb_generic<Traits>(bitboardForColor(_board, color), col, row);
+    zoneApplyStone(col, row, +1);
     if (stateHash.state.whiteCaptures > 0)
     {
         _whiteCaptures += stateHash.state.whiteCaptures;
         for (int k = 0; k < stateHash.state.whiteCaptures; ++k)
+        {
             clear_bit_generic<Traits>(_board.white, stateHash.state.capturedStones[k].x, stateHash.state.capturedStones[k].y);
+            zoneApplyStone(stateHash.state.capturedStones[k].x, stateHash.state.capturedStones[k].y, -1);
+        }
     }
     else if (stateHash.state.blackCaptures > 0)
     {
         _blackCaptures += stateHash.state.blackCaptures;
         for (int k = 0; k < stateHash.state.blackCaptures; ++k)
+        {
             clear_bit_generic<Traits>(_board.black, stateHash.state.capturedStones[k].x, stateHash.state.capturedStones[k].y);
+            zoneApplyStone(stateHash.state.capturedStones[k].x, stateHash.state.capturedStones[k].y, -1);
+        }
     }
 
     _history.push(stateHash.state);
@@ -298,8 +378,8 @@ int SearchPosition<Traits>::detect_and_hash_capture(const t_BWBoard<Traits>& boa
 			{
                 stateHash.hash ^= _hasher.key(x1, y1, victimColor);
                 stateHash.hash ^= _hasher.key(x2, y2, victimColor);
-                stateHash.state.capturedStones[captured] = {x1, y1};
-                stateHash.state.capturedStones[captured + 1] = {x2, y2};
+                stateHash.state.capturedStones[captured] = {static_cast<int_fast16_t>(x1), static_cast<int_fast16_t>(y1)};
+                stateHash.state.capturedStones[captured + 1] = {static_cast<int_fast16_t>(x2), static_cast<int_fast16_t>(y2)};
 				captured += 2;
 			}
 		}

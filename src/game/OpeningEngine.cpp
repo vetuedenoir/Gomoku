@@ -282,7 +282,7 @@ OpeningCommitResult OpeningEngine::commit(GameBoard& board, const Move& move)
         + " → (" + std::to_string(move.col) + "," + std::to_string(move.row) + ") ✓");
     LOG_SUPPRESS(stepInfo, move.col, move.row, spec.color);
 
-    _history.push_back({ move.col, move.row });
+    _history.push_back({ static_cast<int_fast16_t>(move.col), static_cast<int_fast16_t>(move.row) });
 
     ++_subIdx;
 

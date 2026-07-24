@@ -6,6 +6,8 @@
 // profondeur de recursion minimax
 #define DEPTH 8
 
+static constexpr int ACTIVE_ZONE_RADIUS = 1;
+
 # ifdef GOMOKU_DEBUG
 #   define LOG_DEBUG(tag, msg) Logger::debug(tag, msg)
 #   define LOG_INFO(tag, msg)  Logger::info(tag, msg)

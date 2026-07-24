@@ -159,7 +159,7 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 
 	MoveList<t_cell, MAX_BOARD_MOVES<Traits>> rootMoves;
 	
-	_moveGenerator.generateEmptyMoves(position.board(), rootMoves);
+	_moveGenerator.generateEmptyMoves(position.candidateMask(), rootMoves);
 	
 	LOG_DEBUG("AI", "[findBestMove] depth=" + std::to_string(_maxDepth)
 	              + "  root candidates=" + std::to_string(rootMoves.size()));
@@ -343,7 +343,7 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     //    SANS vérifier la règle du double-trois. La légalité complète est
     //    vérifiée paresseusement dans la boucle, uniquement sur les coups joués.)
     MoveList<t_cell, MAX_BOARD_MOVES<Traits>> movesArray;
-    _moveGenerator.generateEmptyMoves(position.board(), movesArray);
+    _moveGenerator.generateEmptyMoves(position.candidateMask(), movesArray);
 
     if (movesArray.empty())
     {
