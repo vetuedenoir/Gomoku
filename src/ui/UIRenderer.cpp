@@ -85,9 +85,13 @@ void UIRenderer::renderMenu(sf::RenderWindow& w, MenuPage& page)
 }
 
 void UIRenderer::renderGame(sf::RenderWindow& w, Board& board,
-                             const IGameController& ctrl, CellStatus ghost)
+                             const IGameController& ctrl, CellStatus ghost,
+                             std::optional<Move> suggestion)
 {
     board.draw(w, ctrl.visualBoard(), ghost);
+
+    if (suggestion.has_value())
+        board.drawHighlight(w, suggestion->col, suggestion->row);
 }
 
 void UIRenderer::renderStats(sf::RenderWindow& w, const sf::Font& font,
@@ -109,21 +113,31 @@ void UIRenderer::renderStats(sf::RenderWindow& w, const sf::Font& font,
     const int blackPairs = ctrl.blackCaptureCount() / 2;
     const int whitePairs = ctrl.whiteCaptureCount() / 2;
 
+    const bool hotseat       = !ctrl.aiOpponent();
     const bool playerIsBlack = ctrl.playerActor().color == Color::Black;
     const Color turn         = ctrl.currentColor();
 
+    // Role badges: in hotseat both seats are human (P1 = Black, P2 = White);
+    // versus the AI, mark which side the human controls.
+    const std::string blackRole = hotseat ? "P1" : (playerIsBlack ? "YOU" : "AI");
+    const std::string whiteRole = hotseat ? "P2" : (playerIsBlack ? "AI" : "YOU");
+
+    // Only the AI card shows engine timings, and only when an AI is playing.
+    const bool blackIsAI = !hotseat && !playerIsBlack;
+    const bool whiteIsAI = !hotseat && playerIsBlack;
+
     // Black on the left
     drawPlayerCard(w, font, leftCX, cy, cardW, cardH,
-                   "Black", playerIsBlack ? "YOU" : "AI",
+                   "Black", blackRole,
                    STONE_BLACK, blackPairs, maxPairs,
-                   turn == Color::Black, !playerIsBlack,
+                   turn == Color::Black, blackIsAI,
                    ctrl.aiMoveLastMs(), ctrl.aiMoveAverageMs());
 
     // White on the right
     drawPlayerCard(w, font, rightCX, cy, cardW, cardH,
-                   "White", playerIsBlack ? "AI" : "YOU",
+                   "White", whiteRole,
                    STONE_WHITE, whitePairs, maxPairs,
-                   turn == Color::White, playerIsBlack,
+                   turn == Color::White, whiteIsAI,
                    ctrl.aiMoveLastMs(), ctrl.aiMoveAverageMs());
 }
 

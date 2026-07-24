@@ -4,6 +4,7 @@
 #include <SFML/Graphics.hpp>
 #include <stack>
 #include <memory>
+#include <optional>
 
 #include "game/contracts/contracts.hpp"
 #include "ui/MenuPage.hpp"
@@ -33,6 +34,8 @@ class Gomoku
 
         std::unique_ptr<Board>          _board;
         std::unique_ptr<IGameController> _controller;
+        
+        std::optional<Move> _suggestion;
 
         MenuPage &currentPage();
         void      navigateTo(AppState s);
@@ -57,6 +60,9 @@ class Gomoku
         CellStatus computeGhostColor() const;
         bool       isAITurn() const;
         bool       isGameOver();
+
+        void requestSuggestion();
+        void clearSuggestion();
 
         void handleEvent(const sf::Event &event, sf::Vector2f mouse);
         void render();

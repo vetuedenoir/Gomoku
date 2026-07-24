@@ -22,6 +22,8 @@ class IGameController
 
         virtual std::optional<Move> requestAIMove() = 0;
 
+        virtual std::optional<Move> suggestMove() = 0;
+
         virtual const GameBoard&     visualBoard()      const = 0;
         virtual GamePhase            phase()            const = 0;
         virtual Actor                currentActor()     const = 0;
@@ -33,6 +35,8 @@ class IGameController
 
         virtual Actor                playerActor()      const = 0;
         virtual Actor                aiActor()          const = 0;
+
+        virtual bool                 aiOpponent()       const = 0;
 
         virtual double               aiMoveLastMs()     const = 0;
         virtual double               aiMoveAverageMs()  const = 0;

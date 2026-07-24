@@ -161,10 +161,36 @@ bool Gomoku::isGameOver()
     return true;
 }
 
+void Gomoku::requestSuggestion()
+{
+    if (!_controller || _states.top() != AppState::Game)
+        return;
+    if (_controller->phase() != GamePhase::Standard)
+        return;
+    // In a game against the AI, only offer hints on the human's turn.
+    if (_config.aiOpponent && isAITurn())
+        return;
+
+    _suggestion = _controller->suggestMove();
+}
+
+void Gomoku::clearSuggestion()
+{
+    _suggestion.reset();
+}
+
 void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
 {
     if (event.type == sf::Event::Closed)
         _window.close();
+
+    // Move suggestion (hint): press H while in a live game.
+    if (event.type == sf::Event::KeyPressed
+        && event.key.code == sf::Keyboard::H)
+    {
+        requestSuggestion();
+        return;
+    }
 
     if (event.type != sf::Event::MouseButtonReleased
         || event.mouseButton.button != sf::Mouse::Left)
@@ -195,6 +221,8 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
             if (!_controller->submitOpeningMove(col, row))
                 break;
 
+            clearSuggestion();
+
             if (_controller->phase() == GamePhase::ColorChoice)
             {
                 LOG_INFO("ACTOR DEBUG", "buildColorChoicePage on opening click");
@@ -216,6 +244,7 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
                 break;
 
             _controller->submitMove(col, row);
+            clearSuggestion();
             isGameOver();
             break;
         }
@@ -240,6 +269,7 @@ void Gomoku::update(sf::Vector2f mouse)
     if (_config.aiOpponent && _states.top() == AppState::Game && isAITurn())
     { 
         _controller->requestAIMove();
+        clearSuggestion();
 
         if (_controller->phase() == GamePhase::ColorChoice)
             buildColorChoicePage();
@@ -260,10 +290,20 @@ void Gomoku::render()
     }
     else if (_states.top() == AppState::Game)
     {
-        _renderer.renderGame(_window, *_board, *_controller, computeGhostColor());
+        _renderer.renderGame(_window, *_board, *_controller, computeGhostColor(), _suggestion);
         _renderer.renderStats(_window, _font, *_board, *_controller);
         if (_controller->phase() == GamePhase::ColorChoice)
             _renderer.renderColorChoice(_window, _colorChoice);
+        else if (_controller->phase() == GamePhase::Standard)
+        {
+            const bool active = _suggestion.has_value();
+            sf::Text tip = makeText(
+                active ? "Suggested move shown  |  press H for another"
+                       : "Press H for a move suggestion",
+                _font, FONT_XS, active ? GOLD : DIM);
+            tip.setPosition(CX, WIN_H * 0.975f);
+            _window.draw(tip);
+        }
     }
     else
     {
@@ -280,6 +320,7 @@ void Gomoku::resetToMainMenu()
     _states.push(AppState::MainMenu);
     _board.reset();
     _controller.reset();
+    clearSuggestion();
 }
 
 void Gomoku::buildColorChoicePage()
@@ -364,13 +405,16 @@ void Gomoku::buildWinScreenPage(const Color winner, int capturesBlack, int captu
     score.setPosition(CX, WIN_H * 0.431f);
     _winScreen.addText("score", score);
 
-    std::ostringstream avgStream;
-    avgStream << std::fixed << std::setprecision(1)
-              << "AI avg: " << _controller->aiMoveAverageMs() << " ms";
-    sf::Text aiAvg = makeText(avgStream.str(), _font, FONT_MD, GOLD);
-    aiAvg.setStyle(sf::Text::Bold);
-    aiAvg.setPosition(CX, WIN_H * 0.478f);
-    _winScreen.addText("aiAvg", aiAvg);
+    if (_config.aiOpponent)
+    {
+        std::ostringstream avgStream;
+        avgStream << std::fixed << std::setprecision(1)
+                  << "AI avg: " << _controller->aiMoveAverageMs() << " ms";
+        sf::Text aiAvg = makeText(avgStream.str(), _font, FONT_MD, GOLD);
+        aiAvg.setStyle(sf::Text::Bold);
+        aiAvg.setPosition(CX, WIN_H * 0.478f);
+        _winScreen.addText("aiAvg", aiAvg);
+    }
 
     _winScreen.addItem("again", FonctionItem(
         Item("Play Again", _font, CX, WIN_H * 0.5375f),
@@ -410,21 +454,26 @@ void Gomoku::buildMainMenuPage()
     divider.setPosition(CX, WIN_H * 0.30f);
     _mainMenu.addRectangle("divider", divider);
 
-    _mainMenu.addItem("play", FonctionItem(
-        Item("Play", _font, CX, WIN_H * 0.425f),
-        [this]() { navigateTo(AppState::BoardSize); }
+    _mainMenu.addItem("playAI", FonctionItem(
+        Item("Play vs AI", _font, CX, WIN_H * 0.400f),
+        [this]() { _config.aiOpponent = true;  navigateTo(AppState::BoardSize); }
+    ));
+    _mainMenu.addItem("playHotseat", FonctionItem(
+        Item("Two Players", _font, CX, WIN_H * 0.500f),
+        [this]() { _config.aiOpponent = false; navigateTo(AppState::BoardSize); }
     ));
     _mainMenu.addItem("quit", FonctionItem(
-        Item("Quit", _font, CX, WIN_H * 0.525f),
+        Item("Quit", _font, CX, WIN_H * 0.600f),
         [this]() { _window.close(); }
     ));
 
     _mainMenu.setDrawFunction([](MenuPage &page, sf::RenderWindow &win) {
-        if (auto *t = page.getText("title"))        win.draw(*t);
-        if (auto *r = page.getRectangle("divider")) win.draw(*r);
-        if (auto *t = page.getText("sub"))          win.draw(*t);
-        if (auto *fi = page.getItem("play"))        fi->item.draw(win);
-        if (auto *fi = page.getItem("quit"))        fi->item.draw(win);
+        if (auto *t = page.getText("title"))         win.draw(*t);
+        if (auto *r = page.getRectangle("divider"))  win.draw(*r);
+        if (auto *t = page.getText("sub"))           win.draw(*t);
+        if (auto *fi = page.getItem("playAI"))       fi->item.draw(win);
+        if (auto *fi = page.getItem("playHotseat"))  fi->item.draw(win);
+        if (auto *fi = page.getItem("quit"))         fi->item.draw(win);
     });
 }
 

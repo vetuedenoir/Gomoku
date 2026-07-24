@@ -12,7 +12,9 @@ GameController<Traits>::GameController(const GameConfig& config)
     _colorBySeat = { Color::Black, Color::White };
     // The human picked their colour at game creation; the AI takes the opposite seat.
     _aiSeat = (config.playerColor == Color::Black) ? Seat::Second : Seat::First;
-    
+
+    _aiOpponent = config.aiOpponent;
+
     _masterAI.setAIColor(aiColor());
 
     _phase = _opening.isComplete() ? GamePhase::Standard : GamePhase::Opening;
@@ -288,6 +290,24 @@ std::optional<Move> GameController<Traits>::requestAIMove()
 }
 
 template<typename Traits>
+std::optional<Move> GameController<Traits>::suggestMove()
+{
+    if (_winner.has_value() || _phase != GamePhase::Standard)
+        return std::nullopt;
+
+    const Color side = currentColor();
+
+    SearchPosition<Traits> pos = SearchPosition<Traits>::fromBoard(*_board);
+
+    const auto [col, row] = _masterAI.findBestMove(pos, side);
+
+    if (col == -1)
+        return std::nullopt;
+
+    return Move{ static_cast<int>(col), static_cast<int>(row), colorToCell(side) };
+}
+
+template<typename Traits>
 const GameBoard& GameController<Traits>::visualBoard() const
 {
     return *_board;
@@ -315,6 +335,12 @@ template<typename Traits>
 Actor GameController<Traits>::currentActor() const
 {
     return { _currentSeat, colorOf(_currentSeat) };
+}
+
+template<typename Traits>
+bool GameController<Traits>::aiOpponent() const
+{
+    return _aiOpponent;
 }
 
 template<typename Traits>
