@@ -22,6 +22,7 @@ class GameController : public IGameController
         void continueOpeningPlacement() override;
 
         std::optional<Move> requestAIMove() override;
+        std::optional<Move> suggestMove() override;
 
         const GameBoard&     visualBoard()      const override;
         GamePhase            phase()            const override;
@@ -29,6 +30,7 @@ class GameController : public IGameController
         Actor                currentActor()     const override;
         Actor                playerActor()      const override;
         Actor                aiActor()          const override;
+        bool                 aiOpponent()       const override;
 
         CellStatus           nextOpeningColor() const override;
         Color                currentColor()     const override;
@@ -72,6 +74,7 @@ class GameController : public IGameController
         std::array<Color, 2>       _colorBySeat;   // [Seat::First] = Black, [Seat::Second] = White
         Seat                       _aiSeat;         // which seat the AI occupies (only field a swap mutates)
         Seat                       _currentSeat;    // pure turn cursor; never touched by a swap
+        bool                       _aiOpponent = true; // false ⇒ hotseat (both seats human)
 };
 
 #include "game/controller/GameController.inl"

@@ -38,6 +38,8 @@ class Board
         const sf::FloatRect& bounds() const { return _bounds; }
 
         void draw(sf::RenderWindow &window, const GameBoard &gameBoard, CellStatus ghostHint) const;
+
+        void drawHighlight(sf::RenderWindow &window, int col, int row) const;
 };
 
 #endif

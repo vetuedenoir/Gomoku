@@ -139,8 +139,8 @@ void detect_and_stock_capture(const t_BWBoard<Traits>& board, int col, int row, 
 				get_bb_generic<Traits>(victime, x2, y2) &&
 				get_bb_generic<Traits>(attacker, x3, y3))
 			{
-                capturedStones.push({x1, y1});
-                capturedStones.push({x2, y2});
+                capturedStones.push({static_cast<int_fast16_t>(x1), static_cast<int_fast16_t>(y1)});
+                capturedStones.push({static_cast<int_fast16_t>(x2), static_cast<int_fast16_t>(y2)});
 			}
 		}
 	}
@@ -306,7 +306,8 @@ int MasterAI<Traits>::evaluateBlackPosition(
 	t_cell cell)
 {
 	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
-	const auto board = position.board();
+	
+	const auto& board = position.board();
 
 	const int totalWhiteCaptures = position.getTotalwhiteCaptures();
 	const int whiteCaptures =  (position.getWhiteCaptures()) ? 2 : 0;
@@ -349,7 +350,8 @@ int MasterAI<Traits>::evaluateWhitePosition(
 	t_cell cell)
 {
 	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
-	const auto board = position.board();
+	
+	const auto& board = position.board();
 
 	const int totalBlackCaptures = position.getTotalblackCaptures();
 	const int blackCaptures = (position.getBlackCaptures()) ? 2 : 0;
