@@ -211,26 +211,6 @@ EvaluatedMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_
 	return data;
 }
 
-// Clé de tri d'un candidat, du point de vue du camp au trait `side`.
-// Variante complète : offense (ce que JE crée) + défense/2 (ce que l'adversaire
-// créerait ici, donc valeur de blocage) + bonus de capture.
-// Variante allégée (GOMOKU_LIGHT_MOVE_ORDER) : offense + captures uniquement,
-// on économise un rawShapeScore par candidat.
-// resolveCaptures n'exige pas la pierre posée (detect_captures lit
-// victime-victime-attaquant depuis la case).
-// template <typename Traits>
-// int MasterAI<Traits>::staticMoveScore(const t_BWBoard<Traits>& board, t_cell cell, Color side)
-// {
-// 	const int off = rawShapeScore(board, cell, side);
-
-// #ifdef GOMOKU_LIGHT_MOVE_ORDER
-// 	return off + caps * CAPTURE_SCORE;
-// #else
-// 	const Color opp = (side == Color::Black) ? Color::White : Color::Black;
-// 	const int def = rawShapeScore(board, cell, opp);
-// 	return off + def / 2 + caps * CAPTURE_SCORE;
-// #endif
-// }
 
 template <typename Traits>
 int	MasterAI<Traits>::signedFromAi(Color side, int raw) const

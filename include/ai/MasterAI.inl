@@ -9,25 +9,12 @@ static constexpr int WIN_SCORE      = 1000000;
 static constexpr int MATE_THRESHOLD = 900000;
 static constexpr int CAPTURE_SCORE = 202;
 
-// Plafond top-N (forward pruning) : nombre max de coups LÉGAUX explorés par
-// nœud interne de minimax. Les coups étant triés best-first, on ne garde que
-// les N meilleurs. Réduit le facteur de branchement effectif. À tuner via le
-// benchmark [PERF][BENCH].
 static constexpr int MAX_CANDIDATES = 24;
-
-// Coup accompagné de sa clé de tri statique (heuristique indépendante de la TT).
-struct ScoredMove
-{
-	t_cell move;
-	int    key;
-};
 
 // Ordonnancement statique des coups (après cross_score / score_open_three dont il dépend).
 // Score TOUJOURS positif = meilleur, du point de vue du camp au trait `side` : offense + défense (blocage) + captures.
 template <typename Traits>
 static int rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color);
-template <typename Traits>
-static int staticMoveScore(const t_BWBoard<Traits>& board, t_cell cell, Color side);
 
 
 // "depuis le nœud" -> "depuis la racine" (au probe TT)
@@ -49,8 +36,7 @@ static inline int ttScoreToEntry(int score, int ply)
 		return score + ply;
 	if (score < -MATE_THRESHOLD)
 		return score - ply;
-
-	// captures ? 
+	 
 	return score;
 }
 
