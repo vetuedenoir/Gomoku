@@ -84,7 +84,24 @@ class MasterAI
 		using TimePoint = std::chrono::time_point<Clock>;
 
 		SearchStats             _stats;
-	
+
+		// --- Ordonnancement dynamique : killer moves + history heuristic ---------
+		// Profondeur (ply) maximale gérée par les tables killer. Au-delà, on ignore
+		// simplement les heuristiques (aucun impact sur la correction).
+		static constexpr int    MAX_SEARCH_PLY = 64;
+		// Deux "killer moves" par ply : coups (souvent silencieux) ayant provoqué
+		// une coupure beta chez un frère au même ply. Réinitialisés à chaque
+		// recherche racine.
+		t_cell                  _killers[MAX_SEARCH_PLY][2];
+		// History heuristic indexée [camp][case] : accumule depth^2 à chaque coupure
+		// pour départager les coups silencieux de score statique égal.
+		int                     _history[2][Traits::CELL_COUNT];
+
+		void resetOrderingHeuristics();
+		bool isKillerMove(int ply, t_cell move) const;
+		int  historyScore(Color mover, t_cell move) const;
+		void recordCutoff(int ply, t_cell move, int depth, Color mover);
+
 		int signedFromAi(Color side, int raw) const;
 
 		int minimax(SearchPosition<Traits>& position, t_cell cell, int depth, int alpha, int beta);

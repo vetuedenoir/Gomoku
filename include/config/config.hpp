@@ -4,7 +4,7 @@
 # define GOMOKU_DEBUG  // comment out for benchmark mode
 
 // profondeur de recursion minimax
-#define DEPTH 8
+#define DEPTH 10
 
 static constexpr int ACTIVE_ZONE_RADIUS = 1;
 

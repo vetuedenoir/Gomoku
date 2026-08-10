@@ -125,6 +125,7 @@ MasterAI<Traits>::MasterAI(int depth, int activeZoneRadius, Color aiColor)
 {
 	_stoneCapturedByAI = 0;
 	_stoneCapturedByOPP = 0;
+	resetOrderingHeuristics();
 }
 
 template <typename Traits>
@@ -157,6 +158,10 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	_stats.ttRootOrderingHits = 0;
 	_stats.ttRootExactSeeds   = 0;
 
+	// Killer/history repartent à zéro à chaque recherche racine : les coupures
+	// d'une recherche précédente ne sont plus pertinentes pour la nouvelle position.
+	resetOrderingHeuristics();
+
 	MoveList<t_cell, MAX_BOARD_MOVES<Traits>> rootMoves;
 	
 	_moveGenerator.generateEmptyMoves(position.candidateMask(), rootMoves);
@@ -179,9 +184,16 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 			
 			if (scoredMove.isLegal)
 			{
+				// Coup gagnant immédiat (cinq alignés) ou 10e capture → on le joue
+				// tel quel. On renseigne les stats (mat au ply 1) AVANT de sortir,
+				// sinon bestScore resterait à sa valeur par défaut.
 				if (scoredMove.score >= WIN_SCORE ||
 					scoredMove.capturedStones.size() + position.getCapturesForside() >= 10)
+				{
+					_stats.bestScore = WIN_SCORE - 1;
+					_stats.bestMove  = scoredMove.move;
 					return scoredMove.move;
+				}
 
 				orderedRoot.push(scoredMove);
 			}
@@ -246,7 +258,7 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 
 		const std::string marker = (score > bestScore) ? " ← best" : "";
 		const std::string macro  = scoreMacroLabel(score);
-		
+
 		LOG_DEBUG("AI", "[findBestMove] move (" + std::to_string(move.x) + "," + std::to_string(move.y) + ")  score =  " + std::to_string(score) + macro + marker);
 
 		if (score > bestScore)
@@ -356,18 +368,33 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     // 6. Tri statique des coups (heuristique indépendante de la TT), du point de
     //    vue du camp au trait à ce nœud. On n'explorera ensuite que les
     //    MAX_CANDIDATES meilleurs coups légaux (plafond top-N, forward pruning).
+    const int   ply   = currentDepth;
+    const Color mover = position.sideToMove();
+
     MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>> ordered;
     {
         for (size_t i = 0; i < movesArray.size(); ++i)
 		{
-			Color themover = position.sideToMove();
-			EvaluatedMove scoredMove = rawShapeScore(position.board(), movesArray[i], themover);
+			EvaluatedMove scoredMove = rawShapeScore(position.board(), movesArray[i], mover);
 			if (scoredMove.isLegal)
 				ordered.push(scoredMove);
 	}
-		
+
+        // Tri best-first sur le score statique. À score statique ÉGAL (le gros
+        // "paquet silencieux" en position calme), on départage avec les
+        // heuristiques dynamiques : killer moves d'abord, puis history. Comme ce
+        // départage n'intervient qu'entre coups de même score statique, il ne
+        // perturbe jamais l'ordre des coups tactiques (fours, captures…).
 		std::sort(ordered.begin(), ordered.end(),
-            [](const EvaluatedMove& a, const EvaluatedMove& b) { return a.score > b.score; });
+            [this, ply, mover](const EvaluatedMove& a, const EvaluatedMove& b) {
+                if (a.score != b.score)
+                    return a.score > b.score;
+                const bool ak = isKillerMove(ply, a.move);
+                const bool bk = isKillerMove(ply, b.move);
+                if (ak != bk)
+                    return ak;
+                return historyScore(mover, a.move) > historyScore(mover, b.move);
+            });
     }
 
     // 6.b Ordonnancement dynamique : si la TT porte un bestMove pour cette
@@ -423,22 +450,53 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
         ++legalMovesSearched;
 
         position.makeMove(move.x, move.y, colorBeforeMove, moveHash);
-        
-		int eval = minimax(position, move, depth - 1, alpha, beta);
-        // Restaure avec la couleur sauvegardée
-        position.undoMove(move.x, move.y, colorBeforeMove);  // ✅
+
+        // Principal Variation Search : le premier coup (le mieux ordonné) est
+        // exploré en fenêtre pleine. Les coups suivants sont d'abord sondés en
+        // fenêtre nulle (scout, bien moins coûteuse) ; on ne les ré-explore en
+        // fenêtre pleine que s'ils « fail-high », c.-à-d. s'avèrent réellement
+        // meilleurs que le meilleur coup courant. Le résultat est identique à
+        // l'alpha-beta pur — le gain croît avec la qualité de l'ordre des coups
+        // (TT + killers + history).
+        int eval;
+        if (legalMovesSearched == 1)
+        {
+            eval = minimax(position, move, depth - 1, alpha, beta);
+        }
+        else if (isMaximizing)
+        {
+            eval = minimax(position, move, depth - 1, alpha, alpha + 1);
+            if (eval > alpha && eval < beta)
+                eval = minimax(position, move, depth - 1, alpha, beta);
+        }
+        else
+        {
+            eval = minimax(position, move, depth - 1, beta - 1, beta);
+            if (eval < beta && eval > alpha)
+                eval = minimax(position, move, depth - 1, alpha, beta);
+        }
+
+        position.undoMove(move.x, move.y, colorBeforeMove);
 
         if (isMaximizing)
         {
             if (eval > bestEval) { bestEval = eval; bestMove = move; }
             alpha = std::max(alpha, eval);
-            if (beta <= alpha) { ++_stats.nodesPruned; break; }
+            if (beta <= alpha) {
+                ++_stats.nodesPruned;
+                recordCutoff(ply, move, depth, colorBeforeMove);
+                break;
+            }
         }
         else
         {
             if (eval < bestEval) { bestEval = eval; bestMove = move; }
             beta = std::min(beta, eval);
-            if (beta <= alpha) { ++_stats.nodesPruned; break; }
+            if (beta <= alpha) {
+                ++_stats.nodesPruned;
+                recordCutoff(ply, move, depth, colorBeforeMove);
+                break;
+            }
         }
 
     }
@@ -463,5 +521,56 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     ++_stats.ttStores;
 
     return bestEval;
+}
+
+// --------------------------------------------------------------------------
+// Ordonnancement dynamique : killer moves + history heuristic
+// --------------------------------------------------------------------------
+
+template <typename Traits>
+void MasterAI<Traits>::resetOrderingHeuristics()
+{
+    for (int p = 0; p < MAX_SEARCH_PLY; ++p)
+    {
+        _killers[p][0] = t_cell{ -1, -1 };
+        _killers[p][1] = t_cell{ -1, -1 };
+    }
+    for (int c = 0; c < 2; ++c)
+        for (int i = 0; i < Traits::CELL_COUNT; ++i)
+            _history[c][i] = 0;
+}
+
+template <typename Traits>
+bool MasterAI<Traits>::isKillerMove(int ply, t_cell move) const
+{
+    if (ply < 0 || ply >= MAX_SEARCH_PLY)
+        return false;
+    return (_killers[ply][0].x == move.x && _killers[ply][0].y == move.y) ||
+           (_killers[ply][1].x == move.x && _killers[ply][1].y == move.y);
+}
+
+template <typename Traits>
+int MasterAI<Traits>::historyScore(Color mover, t_cell move) const
+{
+    const int idx = idx_generic<Traits>(move.x, move.y);
+    return _history[(mover == Color::Black) ? 0 : 1][idx];
+}
+
+// Enregistre le coup responsable d'une coupure beta : il devient killer pour ce
+// ply (schéma à deux emplacements, sans doublon) et son compteur history est
+// bonifié de depth^2 (les coupures près de la racine pèsent davantage).
+template <typename Traits>
+void MasterAI<Traits>::recordCutoff(int ply, t_cell move, int depth, Color mover)
+{
+    if (ply >= 0 && ply < MAX_SEARCH_PLY)
+    {
+        if (!(_killers[ply][0].x == move.x && _killers[ply][0].y == move.y))
+        {
+            _killers[ply][1] = _killers[ply][0];
+            _killers[ply][0] = move;
+        }
+    }
+    const int idx = idx_generic<Traits>(move.x, move.y);
+    _history[(mover == Color::Black) ? 0 : 1][idx] += depth * depth;
 }
 
