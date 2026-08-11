@@ -110,8 +110,27 @@ class MasterAI
 
 		int evaluateBlackPosition(const SearchPosition<Traits>& position, t_cell cell);
 		int evaluateWhitePosition(const SearchPosition<Traits>& position, t_cell cell);
-		// int	staticMoveScore(const t_BWBoard<Traits>& board, t_cell cell, Color side);
+
+		// Éval de feuille bilatérale : ce que le dernier coup a créé (signé IA)
+		// + meilleure menace / réponse du camp au trait dans la zone active.
+		int evaluateLeafPosition(const SearchPosition<Traits>& position, t_cell cell);
+
+		// Meilleure offense légale pour `color` près de `anchor` (Chebyshev),
+		// ∩ zone active. Pas de défense (déjà dans createdSigned).
+		int bestThreatNear(const SearchPosition<Traits>& position, Color color, t_cell anchor);
+
 		EvaluatedMove rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color);
+
+		EvaluatedMove rawShapeScoreV2(const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore);
+
+		// Clé light : caps + five/four/broken + open_three (légalité). Pas de cross.
+		EvaluatedMove rawShapeScoreLight(const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore);
+
+		// Enrichit la clé d'ordonnancement : score = offense + défense/2.
+		// `offense` garde captures/légalité du camp au trait (pour makeMove) ;
+		// la défense = ce que l'adversaire créerait sur la même case (valeur de blocage).
+		void addDefenseToOrderingScore(EvaluatedMove& offense,
+			const t_BWBoard<Traits>& board, Color side);
 };
 
 using MasterAI19 = MasterAI<BoardTraits<19>>;

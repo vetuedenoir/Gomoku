@@ -203,14 +203,224 @@ EvaluatedMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_
 	r = tool.check_open_three(own, opp, cell.x, cell.y);
 	if (r)
 	{
-		data.score = score_open_three(r);
-		data.isLegal = !tool.isDoubleThreeScore(r);
-		data.score += captureScore;
+		data.score = score_open_three(r) + captureScore;
+		data.isLegal = !(tool.isDoubleThreeScore(r) && !captureScore);
 		return data;
 	}
 	return data;
 }
 
+
+
+template <typename Traits>
+EvaluatedMove MasterAI<Traits>::rawShapeScoreV2(const t_BWBoard<Traits>& board, t_cell cell, Color color, int captureCount)
+{
+	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
+
+	typename Traits::Bitboard own = (color == Color::Black) ? board.black : board.white;
+	const typename Traits::Bitboard& opp = (color == Color::Black) ? board.white : board.black;
+
+	set_bb_generic<Traits>(own, cell.x, cell.y); // pose hypothétique (copie locale)
+
+	EvaluatedMove data {};
+	data.isLegal = true;
+	data.move = cell;
+	detect_and_stock_capture(board, cell.x, cell.y, color, data.capturedStones);
+	int caps = data.capturedStones.size();
+
+	const int captureScore = captureCount + caps * CAPTURE_SCORE * 2;
+
+	if ((captureCount + caps) >= 10)
+	{
+		data.score = 1000000 + captureScore;
+		return data;
+	}
+
+	data.score = captureScore + 89;
+	if (tool.is_five_in_a_row(own, cell.x, cell.y))
+	{
+		data.score = 1000000 + captureScore;
+		return data;
+	}
+
+	int r = tool.check_open_four(own, opp, cell.x, cell.y);
+	if (r == 2)
+	{
+		data.score = 500000 + captureScore;
+		return data;
+	}
+	if (r == 1) {
+		data.score = 5000 + captureScore;
+		return data;
+	}
+
+	// if (tool.check_super_four(own, opp, cell.x, cell.y))
+	// {
+	// 	data.score = 60000 + captureScore;
+	// 	return data;
+	// }
+	if (tool.check_broken_four(own, opp, cell.x, cell.y))
+	{
+		data.score = 6000 + captureScore;
+		return data;
+	}
+
+	r = tool.check_cross(own, opp, cell.x, cell.y);
+	if (r) 
+	{
+		data.score = cross_score(r) + captureScore;
+		return data;
+	}
+
+	r = tool.check_open_three(own, opp, cell.x, cell.y);
+	if (r)
+	{
+		// data.score = score_open_three(r) + captureScore;
+		// if (tool.isDoubleThreeScore(r) && !captureScore)
+		// 	return false;
+
+		data.score = score_open_three(r) + captureScore;
+		data.isLegal = !(tool.isDoubleThreeScore(r) && !captureScore);
+		return data;
+	}
+	return data;
+}
+
+// Clé light pour nœuds profonds : même captures/légalité que V2, mais sans
+// check_cross (coûteux et redondant avec open_three pour le tri).
+template <typename Traits>
+EvaluatedMove MasterAI<Traits>::rawShapeScoreLight(const t_BWBoard<Traits>& board, t_cell cell, Color color, int captureCount)
+{
+	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
+
+	typename Traits::Bitboard own = (color == Color::Black) ? board.black : board.white;
+	const typename Traits::Bitboard& opp = (color == Color::Black) ? board.white : board.black;
+
+	set_bb_generic<Traits>(own, cell.x, cell.y);
+
+	EvaluatedMove data {};
+	data.isLegal = true;
+	data.move = cell;
+	detect_and_stock_capture(board, cell.x, cell.y, color, data.capturedStones);
+	const int caps = static_cast<int>(data.capturedStones.size());
+	const int captureScore = captureCount + caps * CAPTURE_SCORE * 2;
+
+	if ((captureCount + caps) >= 10)
+	{
+		data.score = 1000000 + captureScore;
+		return data;
+	}
+
+	data.score = captureScore + 89;
+	if (tool.is_five_in_a_row(own, cell.x, cell.y))
+	{
+		data.score = 1000000 + captureScore;
+		return data;
+	}
+
+	int r = tool.check_open_four(own, opp, cell.x, cell.y);
+	if (r == 2)
+	{
+		data.score = 500000 + captureScore;
+		return data;
+	}
+	if (r == 1)
+	{
+		data.score = 5000 + captureScore;
+		return data;
+	}
+
+	if (tool.check_broken_four(own, opp, cell.x, cell.y))
+	{
+		data.score = 6000 + captureScore;
+		return data;
+	}
+
+	r = tool.check_open_three(own, opp, cell.x, cell.y);
+	if (r)
+	{
+		data.score = score_open_three(r) + captureScore;
+		data.isLegal = !(tool.isDoubleThreeScore(r) && !caps);
+		return data;
+	}
+	return data;
+}
+
+// Clé de tri : offense (déjà dans `offense.score`, y compris captures du camp
+// au trait) + défense/2 (ce que l'adversaire créerait sur cette case s'il y
+// jouait). On ne touche ni isLegal ni capturedStones — réservés au makeMove
+// du camp au trait.
+template <typename Traits>
+void MasterAI<Traits>::addDefenseToOrderingScore(EvaluatedMove& offense,
+	const t_BWBoard<Traits>& board, Color side)
+{
+	const Color opp = (side == Color::Black) ? Color::White : Color::Black;
+	const EvaluatedMove defense = rawShapeScore(board, offense.move, opp);
+	offense.score += defense.score / 2;
+}
+
+// Meilleure menace offensive près de `anchor` (réponse locale au dernier coup).
+// ∩ candidateMask, early-exit dès THREAT_SCAN_EARLY_EXIT (90k).
+template <typename Traits>
+int MasterAI<Traits>::bestThreatNear(const SearchPosition<Traits>& position, Color color, t_cell anchor)
+{
+	const t_BWBoard<Traits>& board = position.board();
+	const auto zone = position.candidateMask();
+	int best = 0;
+
+	const int x0 = static_cast<int>(anchor.x);
+	const int y0 = static_cast<int>(anchor.y);
+
+	for (int dy = -LEAF_SCAN_RADIUS; dy <= LEAF_SCAN_RADIUS; ++dy)
+	{
+		for (int dx = -LEAF_SCAN_RADIUS; dx <= LEAF_SCAN_RADIUS; ++dx)
+		{
+			const int x = x0 + dx;
+			const int y = y0 + dy;
+			if (!in_board_generic<Traits>(x, y))
+				continue;
+			if (!get_bb_generic<Traits>(zone, x, y))
+				continue;
+
+			const t_cell cand{static_cast<int_fast16_t>(x), static_cast<int_fast16_t>(y)};
+			const EvaluatedMove offense = rawShapeScore(board, cand, color);
+			if (!offense.isLegal)
+				continue;
+			if (offense.score > best)
+			{
+				best = offense.score;
+				if (best >= THREAT_SCAN_EARLY_EXIT)
+					return best;
+			}
+		}
+	}
+	return best;
+}
+
+// Feuille bilatérale (coût adaptatif) :
+//   created  = formes/captures du coup qui vient d'être joué (signé pour l'IA)
+//   si |created| < THREAT_SCAN_THRESHOLD → feuille quiet, pas de scan
+//   sinon stmBest = meilleure ofense STM près de cell
+//   score    = created + signedFromAi(stm, stmBest)
+template <typename Traits>
+int MasterAI<Traits>::evaluateLeafPosition(const SearchPosition<Traits>& position, t_cell cell)
+{
+	const Color stm = position.sideToMove();
+	const Color lastPlayed = (stm == Color::Black) ? Color::White : Color::Black;
+
+	const int createdSigned = (lastPlayed == Color::Black)
+		? evaluateBlackPosition(position, cell)
+		: evaluateWhitePosition(position, cell);
+
+	// Mat déjà créé, ou coup quiet : pas de scan (O(1) shape).
+	if (createdSigned >= MATE_THRESHOLD || createdSigned <= -MATE_THRESHOLD)
+		return createdSigned;
+	if (createdSigned > -THREAT_SCAN_THRESHOLD && createdSigned < THREAT_SCAN_THRESHOLD)
+		return createdSigned;
+
+	const int stmBest = bestThreatNear(position, stm, cell);
+	return createdSigned + signedFromAi(stm, stmBest);
+}
 
 template <typename Traits>
 int	MasterAI<Traits>::signedFromAi(Color side, int raw) const
@@ -344,7 +554,7 @@ int MasterAI<Traits>::evaluateWhitePosition(
 	if (isWinAfterMove<Traits>(board, Color::White, cell.x, cell.y))
 		return signedFromAi(Color::White, 1000000 + captureScore);
 
-	int result = tool.check_open_four(board.black, board.white, cell.x, cell.y);
+	int result = tool.check_open_four(board.white, board.black, cell.x, cell.y);
 	if (result == 2)
 		return signedFromAi(Color::White, 500000 + captureScore);
 	if (result == 1)

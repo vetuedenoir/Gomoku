@@ -34,9 +34,11 @@ void BitboardTool<Traits>::add_mask_to_lookup5(const typename Traits::Bitboard& 
 		int idx = idx_generic<Traits>(x, y);
 		
 		t_PatternList5<Traits> *list = &_lt5[idx][dir];
+		const uint32_t slot = list->count;
 		
 		for (int w = 0; w < Traits::WORD_COUNT; w++)
-			list->masks[list->count][w] = mask[w];
+			list->masks[slot][w] = mask[w];
+		computeMaskSpan(mask, list->firstWord[slot], list->lastWord[slot]);
 		list->count++;
 	}
 }
@@ -137,6 +139,8 @@ void BitboardTool<Traits>::add_mask_to_lookup4(t_Pattern4<Traits>* pattern, cons
 	else if (stride == Traits::STRIDE_D)
 		dir = DIR_DIAG_D;
 	else return;
+
+	computeMaskSpan(pattern->mask, pattern->firstWord, pattern->lastWord);
 
 	for (int i = 0; i < 4; i++)
 	{
@@ -245,6 +249,9 @@ void BitboardTool<Traits>::build_lookup_table4()
 template<typename Traits>
 void BitboardTool<Traits>::add_pattern_group4(t_PatternGroup4<Traits>* group, int start_x, int start_y, int dir)
 {
+	for (int m = 0; m < 3; ++m)
+		computeMaskSpan(group->masks[m], group->firstWord[m], group->lastWord[m]);
+
     for (int i = 0; i < 5; i++)
 	{
         int case_x = 0;
@@ -391,8 +398,35 @@ void BitboardTool<Traits>::build_lookup_table_groupe4()
 }
 
 template<typename Traits>
-void BitboardTool<Traits>::add_pattern_group3_to_lookup(t_PatternGroupe3* group, int dir)
+void BitboardTool<Traits>::finalize_group3_masks(t_PatternGroupe3<Traits>& pattern)
 {
+	pattern.fullMask = {};
+	pattern.holeMask0 = {};
+	pattern.holeMask1 = {};
+
+	// SCORE_3_FULL : pierres en [0],[1],[2]
+	set_bb_flate<Traits>(pattern.fullMask, pattern.stone_pos[0]);
+	set_bb_flate<Traits>(pattern.fullMask, pattern.stone_pos[1]);
+	set_bb_flate<Traits>(pattern.fullMask, pattern.stone_pos[2]);
+	computeMaskSpan(pattern.fullMask, pattern.fullFirst, pattern.fullLast);
+
+	// SCORE_3_HOLE : [0],[2],[3] (trou en [1]) et [0],[1],[3] (trou en [2])
+	set_bb_flate<Traits>(pattern.holeMask0, pattern.stone_pos[0]);
+	set_bb_flate<Traits>(pattern.holeMask0, pattern.stone_pos[2]);
+	set_bb_flate<Traits>(pattern.holeMask0, pattern.stone_pos[3]);
+	computeMaskSpan(pattern.holeMask0, pattern.hole0First, pattern.hole0Last);
+
+	set_bb_flate<Traits>(pattern.holeMask1, pattern.stone_pos[0]);
+	set_bb_flate<Traits>(pattern.holeMask1, pattern.stone_pos[1]);
+	set_bb_flate<Traits>(pattern.holeMask1, pattern.stone_pos[3]);
+	computeMaskSpan(pattern.holeMask1, pattern.hole1First, pattern.hole1Last);
+}
+
+template<typename Traits>
+void BitboardTool<Traits>::add_pattern_group3_to_lookup(t_PatternGroupe3<Traits>* group, int dir)
+{
+	finalize_group3_masks(*group);
+
 	// Parcours des 4 positions de pierres (certaines peuvent être -1 si hors plateau)
     for (int i = 0; i < 4; i++)
 	{
@@ -405,7 +439,7 @@ void BitboardTool<Traits>::add_pattern_group3_to_lookup(t_PatternGroupe3* group,
         int y = pos / Traits::STRIDE;
         int cell = idx_generic<Traits>(x, y);
         
-        t_PatternList_Groupe3 *list = &_lt3[cell][dir];
+        t_PatternList_Groupe3<Traits> *list = &_lt3[cell][dir];
         if (list->count < 4)
 		{
             list->patterns[list->count] = *group; // copie du pattern
@@ -418,14 +452,14 @@ void BitboardTool<Traits>::add_pattern_group3_to_lookup(t_PatternGroupe3* group,
 template<typename Traits>
 void BitboardTool<Traits>::build_lookup_table3()
 {
-	memset(_lt3, 0, sizeof(t_PatternList_Groupe3) * Traits::CELL_COUNT * 4);
+	memset(_lt3, 0, sizeof(t_PatternList_Groupe3<Traits>) * Traits::CELL_COUNT * 4);
 
 	// 1. Horizontal (stride = 1)
 	for (int y = 0; y < Traits::BOARD_SIZE; y++)
 	{
 		for (int x = 0; x < Traits::BOARD_SIZE - 2; x++)
 		{
-			t_PatternGroupe3 pattern = {};
+			t_PatternGroupe3<Traits> pattern = {};
 			int start_pos = y * Traits::STRIDE + x;
 			
 			for (int i = 0; i < 4; i++)
@@ -454,7 +488,7 @@ void BitboardTool<Traits>::build_lookup_table3()
 	{
 		for (int x = 0; x < Traits::BOARD_SIZE; x++)
 		{
-			t_PatternGroupe3 pattern = {};
+			t_PatternGroupe3<Traits> pattern = {};
 			int start_pos = y * Traits::STRIDE + x;
 			
 			for (int i = 0; i < 4; i++)
@@ -484,7 +518,7 @@ void BitboardTool<Traits>::build_lookup_table3()
 	{
 		for (int x = 0; x < Traits::BOARD_SIZE - 2; x++)
 		{
-			t_PatternGroupe3 pattern = {};
+			t_PatternGroupe3<Traits> pattern = {};
 			int start_pos = y * Traits::STRIDE + x;
 			
 			for (int i = 0; i < 4; i++)
@@ -514,7 +548,7 @@ void BitboardTool<Traits>::build_lookup_table3()
 	{
 		for (int x = 2; x < Traits::BOARD_SIZE; x++)
 		{
-			t_PatternGroupe3 pattern = {};
+			t_PatternGroupe3<Traits> pattern = {};
 			int start_pos = y * Traits::STRIDE + x;
 			
 			for (int i = 0; i < 4; i++)
@@ -543,6 +577,8 @@ void BitboardTool<Traits>::build_lookup_table3()
 template<typename Traits>
 void BitboardTool<Traits>::add_pattern_super4(t_super4<Traits>* pattern, int start_x, int start_y, int dir)
 {
+	computeMaskSpan(pattern->mask, pattern->firstWord, pattern->lastWord);
+
 	for (int i = 0; i < 7; i++)
 	{
 		int case_x = 0;

@@ -9,12 +9,35 @@ static constexpr int WIN_SCORE      = 1000000;
 static constexpr int MATE_THRESHOLD = 900000;
 static constexpr int CAPTURE_SCORE = 202;
 
-static constexpr int MAX_CANDIDATES = 24;
+// Feuille bilatérale : ne scanner que si le dernier coup ≥ broken-four.
+// Scan local (Chebyshev ≤ LEAF_SCAN_RADIUS) + early-exit dès menace « imparable ».
+static constexpr int THREAT_SCAN_THRESHOLD  = 5000;
+static constexpr int THREAT_SCAN_EARLY_EXIT = 90000; // double-three / cross / open-four
+static constexpr int LEAF_SCAN_RADIUS      = 2;
+
+// Ordonnancement two-tier : full (offense+défense) seulement près de la racine.
+// En dessous → light (caps/five/four/three, sans cross ni défense adverse).
+static constexpr int FULL_ORDER_MIN_DEPTH = 4;
+
+// Plafond top-N (forward pruning) : nombre max de coups LÉGAUX explorés par
+// nœud interne de minimax. Les coups étant triés best-first, on ne garde que
+// les N meilleurs. Réduit le facteur de branchement effectif. À tuner via le
+// benchmark [PERF][BENCH].
+static constexpr int MAX_CANDIDATES = 18;
+
+// Coup accompagné de sa clé de tri statique (heuristique indépendante de la TT).
+struct ScoredMove
+{
+	t_cell move;
+	int    key;
+};
 
 // Ordonnancement statique des coups (après cross_score / score_open_three dont il dépend).
 // Score TOUJOURS positif = meilleur, du point de vue du camp au trait `side` : offense + défense (blocage) + captures.
 template <typename Traits>
 static int rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color);
+template <typename Traits>
+static int staticMoveScore(const t_BWBoard<Traits>& board, t_cell cell, Color side);
 
 
 // "depuis le nœud" -> "depuis la racine" (au probe TT)
@@ -36,7 +59,8 @@ static inline int ttScoreToEntry(int score, int ply)
 		return score + ply;
 	if (score < -MATE_THRESHOLD)
 		return score - ply;
-	 
+
+	// captures ? 
 	return score;
 }
 
@@ -160,13 +184,13 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 
 	t_cell bestMove = {-1, -1};
 
-	// Tri statique des coups racine (heuristique indépendante de la TT) :
-	// offense + défense + captures, du point de vue du camp au trait.
+	// Tri statique des coups racine : offense + défense/2 + captures.
 	MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>> orderedRoot;
 	{
+		const t_BWBoard<Traits>& board = position.board();
 		for (size_t i = 0; i < rootMoves.size(); ++i)
 		{
-			EvaluatedMove scoredMove = rawShapeScore(position.board(), rootMoves[i], color);
+			EvaluatedMove scoredMove = rawShapeScore(board, rootMoves[i], color);
 			
 			if (scoredMove.isLegal)
 			{
@@ -181,6 +205,7 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 					return scoredMove.move;
 				}
 
+				addDefenseToOrderingScore(scoredMove, board, color);
 				orderedRoot.push(scoredMove);
 			}
 		}
@@ -229,10 +254,10 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	{
 		const t_cell& move = orderedRoot[i].move;
 
-		if (!_moveGenerator.isLegalMove(position.board(), move.x, move.y, position.sideToMove())) {
-			LOG_WARN("AI", "[findBestMove] move (" + std::to_string(move.x) + "," + std::to_string(move.y) + ") is not legal, skipping...");
-			continue;
-		}
+		// if (!_moveGenerator.isLegalMove(position.board(), move.x, move.y, position.sideToMove())) {
+		// 	LOG_WARN("AI", "[findBestMove] move (" + std::to_string(move.x) + "," + std::to_string(move.y) + ") is not legal, skipping...");
+		// 	continue;
+		// }
 
 		SearchPosition<Traits> newPosition = position;
 
@@ -328,13 +353,11 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
         return (lastPlayed == _aiColor) ? mate : -mate;
     }
 
-    // 4. Profondeur 0 → évaluation statique
+    // 4. Profondeur 0 → évaluation bilatérale (dernier coup + menaces du camp au trait)
     if (depth == 0)
     {
         ++_stats.nodesEvaluated;
-        return (lastPlayed == Color::Black)
-            ? evaluateBlackPosition(position, cell)
-            : evaluateWhitePosition(position, cell);
+        return evaluateLeafPosition(position, cell);
     }
 
     // 5. Génération des coups (pseudo-légale : cases vides de la zone active,
@@ -346,24 +369,33 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     if (movesArray.empty())
     {
         ++_stats.nodesEvaluated;
-        return (lastPlayed == Color::Black)
-            ? evaluateBlackPosition(position, cell)
-            : evaluateWhitePosition(position, cell);
+        return evaluateLeafPosition(position, cell);
     }
 
-    // 6. Tri statique des coups (heuristique indépendante de la TT), du point de
-    //    vue du camp au trait à ce nœud. On n'explorera ensuite que les
-    //    MAX_CANDIDATES meilleurs coups légaux (plafond top-N, forward pruning).
+    // 6. Tri statique two-tier :
+    //    depth >= FULL_ORDER_MIN_DEPTH → V2 + défense/2 (près de la racine)
+    //    sinon → light (caps/four/three, sans cross ni défense)
+    //    Puis top-N = MAX_CANDIDATES meilleurs légaux.
     const int   ply   = currentDepth;
     const Color mover = position.sideToMove();
+	const bool  useFullOrder = (depth >= FULL_ORDER_MIN_DEPTH);
+
+    int capturesBefore = position.getCapturesForside();
+    const t_BWBoard<Traits>& board = position.board();
 
     MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>> ordered;
     {
         for (size_t i = 0; i < movesArray.size(); ++i)
 		{
-			EvaluatedMove scoredMove = rawShapeScore(position.board(), movesArray[i], mover);
+			EvaluatedMove scoredMove = useFullOrder
+				? rawShapeScoreV2(board, movesArray[i], mover, capturesBefore)
+				: rawShapeScoreLight(board, movesArray[i], mover, capturesBefore);
 			if (scoredMove.isLegal)
+			{
+				if (useFullOrder)
+					addDefenseToOrderingScore(scoredMove, board, mover);
 				ordered.push(scoredMove);
+			}
 	}
 
         // Tri best-first sur le score statique. À score statique ÉGAL (le gros
@@ -431,19 +463,13 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
         // Sauvegarde la couleur AVANT makeMove
         const Color colorBeforeMove = position.sideToMove();
 
-
-		
         ++legalMovesSearched;
 
         position.makeMove(move.x, move.y, colorBeforeMove, moveHash);
 
-        // Principal Variation Search : le premier coup (le mieux ordonné) est
-        // exploré en fenêtre pleine. Les coups suivants sont d'abord sondés en
-        // fenêtre nulle (scout, bien moins coûteuse) ; on ne les ré-explore en
-        // fenêtre pleine que s'ils « fail-high », c.-à-d. s'avèrent réellement
-        // meilleurs que le meilleur coup courant. Le résultat est identique à
-        // l'alpha-beta pur — le gain croît avec la qualité de l'ordre des coups
-        // (TT + killers + history).
+        // Principal Variation Search : 1er coup en fenêtre pleine ; suivants
+        // en null-window, re-recherche pleine seulement sur fail-high.
+        // (LMR mesuré : régression nette sur captures — re-searches >> économies.)
         int eval;
         if (legalMovesSearched == 1)
         {
@@ -491,9 +517,7 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     if (legalMovesSearched == 0)
     {
         ++_stats.nodesEvaluated;
-        return (lastPlayed == Color::Black)
-            ? evaluateBlackPosition(position, cell)
-            : evaluateWhitePosition(position, cell);
+        return evaluateLeafPosition(position, cell);
     }
 
     // 8. Stockage TT

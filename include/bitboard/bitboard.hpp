@@ -94,7 +94,16 @@ inline bool get_bb_generic(const typename Traits::Bitboard &bb, int x, int y)
 template<typename Traits>
 inline bool get_bb_flate(const typename Traits::Bitboard& bb, int idx)
 {
-	return (bb[idx / 64] & (1ULL << (idx % 64))) != 0;
+	// Callers guard the -1 sentinel with `idx == -1 || get_bb_flate(...)`.
+	return (bb[idx >> 6] & (1ULL << (idx & 63))) != 0;
+}
+
+template<typename Traits>
+inline void set_bb_flate(typename Traits::Bitboard& bb, int idx)
+{
+	if (idx < 0)
+		return;
+	bb[idx >> 6] |= (1ULL << (idx & 63));
 }
 
 

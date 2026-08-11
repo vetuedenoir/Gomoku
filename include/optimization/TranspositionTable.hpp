@@ -23,8 +23,9 @@ struct TTEntry
     t_cell   bestMove   = {-1, -1};
 };
 
-# define GOMOKU_TT_BITS 24
-#endif
+//calcule de la taille de la table.
+// 7 ^ depth
+// 7 ^ 10 = 282 475 249
 
 class TranspositionTable
 {
@@ -39,9 +40,11 @@ class TranspositionTable
         void           clear();
 
     private:
-        static constexpr std::size_t TABLE_SIZE = std::size_t(1) << GOMOKU_TT_BITS;
+        static constexpr std::size_t TABLE_SIZE = 1u << 26; // 1,048,576 entries
 
         // Heap-backed so the table can be embedded by value (e.g. in MasterAI)
         // without risking a stack overflow, and so entries start zero-initialized.
         std::vector<TTEntry> _table;
 };
+
+#endif

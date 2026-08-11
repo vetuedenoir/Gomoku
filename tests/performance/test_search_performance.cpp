@@ -23,46 +23,10 @@ Timed timeBestMove(MasterAI19& ai, SearchPosition19& pos, Color c)
 
 }
 
-// Le livre d'ouverture répond instantanément (aucun nœud visité) sur les
-// positions triviales : plateau vide → centre ; une seule pierre → contact
-// diagonal vers le centre. C'est ce qui supprime le plus gros pic de temps de la
-// partie (l'ouverture, très coûteuse à fouiller car sans menace) sans calcul.
-TEST_CASE("[PERF][opening] book plays instantly on empty / single-stone boards")
-{
-    // Plateau vide → centre, sans recherche.
-    {
-        GameBoard b = empty_board();
-        b.setCurrentColor(Color::Black);
-        SearchPosition19 pos = SearchPosition19::fromBoard(b);
-        MasterAI19 ai(8, 1, Color::Black);
-        const t_cell mv = ai.findBestMove(pos, Color::Black);
-        CHECK(mv.x == 9);
-        CHECK(mv.y == 9);
-        CHECK(ai.lastSearchStats().nodesVisited == 0);
-    }
-    // Une seule pierre au centre → réponse instantanée en diagonale (10,10).
-    {
-        GameBoard b = empty_board();
-        place(b, 9, 9, CellStatus::Black);
-        b.setCurrentColor(Color::White);
-        SearchPosition19 pos = SearchPosition19::fromBoard(b);
-        MasterAI19 ai(8, 1, Color::White);
-        const t_cell mv = ai.findBestMove(pos, Color::White);
-        CHECK(ai.lastSearchStats().nodesVisited == 0);
-        CHECK(mv.x == 10);
-        CHECK(mv.y == 10);
-    }
-}
-
-// L'ouverture (0/1 pierre) étant désormais jouée par le livre, ce test mesure le
-// temps de recherche par profondeur sur une position calme mais NON-livresque
-// (quelques pierres posées), représentative du tout début de partie réel.
-TEST_CASE("[PERF] findBestMove timing by depth (quiet early position)")
+TEST_CASE("[PERF] findBestMove timing by depth on empty board")
 {
     for (int depth : {1, 2, 4, 6, 8}) {
         GameBoard b = empty_board();
-        place(b, 9, 9, CellStatus::Black);
-        place(b, 9, 10, CellStatus::White);
         b.setCurrentColor(Color::Black);
         SearchPosition19 pos = SearchPosition19::fromBoard(b);
 
@@ -70,53 +34,19 @@ TEST_CASE("[PERF] findBestMove timing by depth (quiet early position)")
 
         Timed t = timeBestMove(ai, pos, Color::Black);
 
+        double nps = t.ms > 0 ? (t.stats.nodesVisited * 1000.0 / t.ms) : 0.0;
         LOG_INFO("PERF",
             "depth=" + std::to_string(depth) +
             " time=" + std::to_string(t.ms) + "ms" +
-            " nodes=" + std::to_string(t.stats.nodesVisited));
+            " nodes=" + std::to_string(t.stats.nodesVisited) +
+            " nps=" + std::to_string((long long)nps));
 
+        
         CHECK(t.stats.nodesVisited > 0);
-        // Une position CALME fouillée en profondeur peut légitimement dépasser
-        // 500 ms (c'est précisément le mal que combattent le livre d'ouverture et
-        // la profondeur adaptative de début de partie) : sur une position à peine
-        // développée, même depth 6 coûte ~1 s selon la machine. On ne garde donc
-        // le garde-fou temps que sur les profondeurs franchement rapides
-        // (≤ 4, robustes au bruit machine) et on se contente de journaliser au-delà.
-        if (depth <= 4)
+        // Quiet empty-board trees at depth 8 can exceed 500 ms wall-clock
+        // depending on machine load; keep the hard guard on shallow depths.
+        if (depth <= 6)
             CHECK(t.ms <= 500);
-    }
-}
-
-// TEMP bench: profondeur adaptative en début de partie (à supprimer).
-TEST_CASE("[PERF][TMP] adaptive opening depth @ configured=10")
-{
-    struct Row { const char* name; int stones; GameBoard board; };
-    std::vector<Row> rows;
-
-    { GameBoard b = empty_board();
-      place(b,9,9,CellStatus::Black); place(b,9,10,CellStatus::White);
-      rows.push_back({"2-stones",2,b}); }
-    { GameBoard b = empty_board();
-      place(b,9,9,CellStatus::Black); place(b,9,10,CellStatus::White);
-      place(b,10,9,CellStatus::Black); place(b,8,10,CellStatus::White);
-      rows.push_back({"4-stones",4,b}); }
-    { GameBoard b = empty_board();
-      place(b,9,9,CellStatus::Black); place(b,9,10,CellStatus::White);
-      place(b,10,9,CellStatus::Black); place(b,8,10,CellStatus::White);
-      place(b,10,10,CellStatus::Black); place(b,8,9,CellStatus::White);
-      rows.push_back({"6-stones",6,b}); }
-
-    for (auto& r : rows) {
-        r.board.setCurrentColor(Color::Black);
-        SearchPosition19 pos = SearchPosition19::fromBoard(r.board);
-        MasterAI19 ai(10, 1, Color::Black);           // configuré à 10
-        Timed t = timeBestMove(ai, pos, Color::Black);
-        LOG_INFO("TMP",
-            std::string(r.name) +
-            " cfg=10 effDepthSeen=" + std::to_string(t.stats.maxDepthSeen) +
-            " time=" + std::to_string(t.ms) + "ms" +
-            " nodes=" + std::to_string(t.stats.nodesVisited));
-        CHECK(t.stats.nodesVisited > 0);
     }
 }
 
@@ -202,11 +132,7 @@ TEST_CASE("[PERF][BENCH] move ordering: fixed positions by depth")
         "...................",
     }, Color::Black), Color::Black });
 
-#ifdef GOMOKU_LIGHT_MOVE_ORDER
-    const char* variant = "LIGHT(off+cap)";
-#else
-    const char* variant = "FULL(off+def/2+cap)";
-#endif
+    const char* variant = "TWO-TIER(full@d>=4, light else)";
     LOG_INFO("BENCH", std::string("variant=") + variant);
 
     for (int depth : {6, 8})
@@ -223,7 +149,6 @@ TEST_CASE("[PERF][BENCH] move ordering: fixed positions by depth")
                 ? (t.stats.nodesPruned * 100LL / t.stats.nodesVisited) : 0;
             const long long nps = t.ms > 0
                 ? (t.stats.nodesVisited * 1000LL / t.ms) : 0;
-
             LOG_INFO("BENCH",
                 std::string(variant) +
                 " depth=" + std::to_string(depth) +
