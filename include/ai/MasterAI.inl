@@ -15,8 +15,10 @@ static constexpr int THREAT_SCAN_THRESHOLD  = 5000;
 static constexpr int THREAT_SCAN_EARLY_EXIT = 90000; // double-three / cross / open-four
 static constexpr int LEAF_SCAN_RADIUS      = 2;
 
-// Ordonnancement two-tier : full (offense+défense) seulement près de la racine.
-// En dessous → light (caps/five/four/three, sans cross ni défense adverse).
+// Ordonnancement lazy :
+//   1) light sur tous les candidats
+//   2) si depth >= FULL_ORDER_MIN_DEPTH → re-score full (V2+déf) seulement
+//      le top LAZY_FULL_POOL (ceux qu'on risque de chercher)
 static constexpr int FULL_ORDER_MIN_DEPTH = 4;
 
 // Plafond top-N (forward pruning) : nombre max de coups LÉGAUX explorés par
@@ -24,6 +26,10 @@ static constexpr int FULL_ORDER_MIN_DEPTH = 4;
 // les N meilleurs. Réduit le facteur de branchement effectif. À tuner via le
 // benchmark [PERF][BENCH].
 static constexpr int MAX_CANDIDATES = 18;
+
+// Marge au-dessus de MAX_CANDIDATES pour le re-score full (si le light
+// sous-classe un bon coup défensif juste hors du top-N).
+static constexpr int LAZY_FULL_POOL = MAX_CANDIDATES + 4;
 
 // Coup accompagné de sa clé de tri statique (heuristique indépendante de la TT).
 struct ScoredMove
@@ -372,47 +378,53 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
         return evaluateLeafPosition(position, cell);
     }
 
-    // 6. Tri statique two-tier :
-    //    depth >= FULL_ORDER_MIN_DEPTH → V2 + défense/2 (près de la racine)
-    //    sinon → light (caps/four/three, sans cross ni défense)
-    //    Puis top-N = MAX_CANDIDATES meilleurs légaux.
+    // 6. Tri lazy :
+    //    light sur tous → sort → (près racine) full V2+déf sur le top pool → re-sort.
+    //    Exploration limitée ensuite à MAX_CANDIDATES.
     const int   ply   = currentDepth;
     const Color mover = position.sideToMove();
-	const bool  useFullOrder = (depth >= FULL_ORDER_MIN_DEPTH);
 
     int capturesBefore = position.getCapturesForside();
     const t_BWBoard<Traits>& board = position.board();
+
+    auto betterMove = [this, ply, mover](const EvaluatedMove& a, const EvaluatedMove& b) {
+        if (a.score != b.score)
+            return a.score > b.score;
+        const bool ak = isKillerMove(ply, a.move);
+        const bool bk = isKillerMove(ply, b.move);
+        if (ak != bk)
+            return ak;
+        return historyScore(mover, a.move) > historyScore(mover, b.move);
+    };
 
     MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>> ordered;
     {
         for (size_t i = 0; i < movesArray.size(); ++i)
 		{
-			EvaluatedMove scoredMove = useFullOrder
-				? rawShapeScoreV2(board, movesArray[i], mover, capturesBefore)
-				: rawShapeScoreLight(board, movesArray[i], mover, capturesBefore);
+			EvaluatedMove scoredMove = rawShapeScoreLight(board, movesArray[i], mover, capturesBefore);
 			if (scoredMove.isLegal)
-			{
-				if (useFullOrder)
-					addDefenseToOrderingScore(scoredMove, board, mover);
 				ordered.push(scoredMove);
-			}
-	}
+		}
 
-        // Tri best-first sur le score statique. À score statique ÉGAL (le gros
-        // "paquet silencieux" en position calme), on départage avec les
-        // heuristiques dynamiques : killer moves d'abord, puis history. Comme ce
-        // départage n'intervient qu'entre coups de même score statique, il ne
-        // perturbe jamais l'ordre des coups tactiques (fours, captures…).
-		std::sort(ordered.begin(), ordered.end(),
-            [this, ply, mover](const EvaluatedMove& a, const EvaluatedMove& b) {
-                if (a.score != b.score)
-                    return a.score > b.score;
-                const bool ak = isKillerMove(ply, a.move);
-                const bool bk = isKillerMove(ply, b.move);
-                if (ak != bk)
-                    return ak;
-                return historyScore(mover, a.move) > historyScore(mover, b.move);
-            });
+		std::sort(ordered.begin(), ordered.end(), betterMove);
+
+		if (depth >= FULL_ORDER_MIN_DEPTH && !ordered.empty())
+		{
+			const size_t pool = std::min(ordered.size(), static_cast<size_t>(LAZY_FULL_POOL));
+			for (size_t i = 0; i < pool; ++i)
+			{
+				EvaluatedMove full = rawShapeScoreV2(board, ordered[i].move, mover, capturesBefore);
+				if (!full.isLegal)
+				{
+					ordered[i].isLegal = false;
+					ordered[i].score = std::numeric_limits<int>::min() / 2;
+					continue;
+				}
+				addDefenseToOrderingScore(full, board, mover);
+				ordered[i] = full;
+			}
+			std::sort(ordered.begin(), ordered.end(), betterMove);
+		}
     }
 
     // 6.b Ordonnancement dynamique : si la TT porte un bestMove pour cette
@@ -456,6 +468,8 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
         // Plafond top-N : on a déjà exploré les N meilleurs coups légaux.
         if (legalMovesSearched >= MAX_CANDIDATES)
             break;
+		if (!ordered[i].isLegal)
+			continue;
 
         const t_cell&         move      = ordered[i].move;
         const MoveStateHash moveHash  = position.buildMoveHash(ordered[i], position.sideToMove());

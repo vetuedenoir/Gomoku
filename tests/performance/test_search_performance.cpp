@@ -132,7 +132,7 @@ TEST_CASE("[PERF][BENCH] move ordering: fixed positions by depth")
         "...................",
     }, Color::Black), Color::Black });
 
-    const char* variant = "TWO-TIER(full@d>=4, light else)";
+    const char* variant = "LAZY(light→full@top-pool)";
     LOG_INFO("BENCH", std::string("variant=") + variant);
 
     for (int depth : {6, 8})
