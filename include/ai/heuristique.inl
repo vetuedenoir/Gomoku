@@ -114,38 +114,6 @@ static int score_open_three(int threeResult)
 // (les masques des check_* incluent la case et exigent la pierre présente).
 
 
-template<typename Traits>
-void detect_and_stock_capture(const t_BWBoard<Traits>& board, int col, int row, const Color attackerColor, MoveList<t_cell, 16>& capturedStones)
-{
-	const typename Traits::Bitboard& attacker = bitboardForColor(board, attackerColor);
-	const Color victimColor = (attackerColor == Color::Black) ? Color::White : Color::Black;
-	const typename Traits::Bitboard& victime = bitboardForColor(board, victimColor);
-
-	for (Direction dir : LINE_DIRS)
-	{
-		for (int sign : {-1, 1})
-		{
-			int stepX = sign * dx(dir);
-			int stepY = sign * dy(dir);
-
-			int x1 = col + 1 * stepX, y1 = row + 1 * stepY;
-			int x2 = col + 2 * stepX, y2 = row + 2 * stepY;
-			int x3 = col + 3 * stepX, y3 = row + 3 * stepY;
-
-			if (!in_board_generic<Traits>(x1, y1) || !in_board_generic<Traits>(x2, y2) || !in_board_generic<Traits>(x3, y3))
-				continue;
-
-			if (get_bb_generic<Traits>(victime, x1, y1) &&
-				get_bb_generic<Traits>(victime, x2, y2) &&
-				get_bb_generic<Traits>(attacker, x3, y3))
-			{
-                capturedStones.push({static_cast<int_fast16_t>(x1), static_cast<int_fast16_t>(y1)});
-                capturedStones.push({static_cast<int_fast16_t>(x2), static_cast<int_fast16_t>(y2)});
-			}
-		}
-	}
-}
-
 template <typename Traits>
 EvaluatedMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore)
 {
@@ -159,8 +127,8 @@ EvaluatedMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_
 	EvaluatedMove data {};
 	data.isLegal = true;
 	data.move = cell;
-	detect_and_stock_capture(board, cell.x, cell.y, color, data.capturedStones);
-	int caps = static_cast<int>(data.capturedStones.size());
+	data.captureMask = detect_capture_mask(board, cell.x, cell.y, color);
+	const int caps = capture_mask_count(data.captureMask);
 
 	const int captureScore = captureProgressScore(capturesBefore, caps);
 
@@ -174,6 +142,7 @@ EvaluatedMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_
 	if (tool.is_five_in_a_row(own, cell.x, cell.y))
 	{
 		data.score = 1000000 + captureScore;
+		data.stage = ShapeStage::Terminal;
 		return data;
 	}
 
@@ -181,10 +150,12 @@ EvaluatedMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_
 	if (r == 2)
 	{
 		data.score = 500000 + captureScore;
+		data.stage = ShapeStage::OpenFour;
 		return data;
 	}
 	if (r == 1) {
 		data.score = 5000 + captureScore;
+		data.stage = ShapeStage::HalfFour;
 		return data;
 	}
 
@@ -196,6 +167,7 @@ EvaluatedMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_
 	if (tool.check_broken_four(own, opp, cell.x, cell.y))
 	{
 		data.score = 6000 + captureScore;
+		data.stage = ShapeStage::BrokenFour;
 		return data;
 	}
 
@@ -203,6 +175,7 @@ EvaluatedMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_
 	if (r) 
 	{
 		data.score = cross_score(r) + captureScore;
+		data.stage = ShapeStage::Cross;
 		return data;
 	}
 
@@ -218,7 +191,10 @@ EvaluatedMove MasterAI<Traits>::rawShapeScore(const t_BWBoard<Traits>& board, t_
 }
 
 
-
+// Clé « full » de référence. Le tri de minimax ne l'appelle plus : il part de
+// rawShapeScoreLight et complète avec upgradeLightToFull, qui produit le même
+// résultat pour un seul scan de motif au lieu de cinq. L'équivalence des deux
+// chemins est verrouillée par [Ordering] light+upgrade ≡ V2.
 template <typename Traits>
 EvaluatedMove MasterAI<Traits>::rawShapeScoreV2(const t_BWBoard<Traits>& board, t_cell cell, Color color, int captureCount)
 {
@@ -232,14 +208,15 @@ EvaluatedMove MasterAI<Traits>::rawShapeScoreV2(const t_BWBoard<Traits>& board, 
 	EvaluatedMove data {};
 	data.isLegal = true;
 	data.move = cell;
-	detect_and_stock_capture(board, cell.x, cell.y, color, data.capturedStones);
-	int caps = static_cast<int>(data.capturedStones.size());
+	data.captureMask = detect_capture_mask(board, cell.x, cell.y, color);
+	const int caps = capture_mask_count(data.captureMask);
 
 	const int captureScore = captureProgressScore(captureCount, caps);
 
 	if ((captureCount + caps) >= 10)
 	{
 		data.score = 1000000 + captureScore;
+		data.stage = ShapeStage::Terminal;
 		return data;
 	}
 
@@ -247,6 +224,7 @@ EvaluatedMove MasterAI<Traits>::rawShapeScoreV2(const t_BWBoard<Traits>& board, 
 	if (tool.is_five_in_a_row(own, cell.x, cell.y))
 	{
 		data.score = 1000000 + captureScore;
+		data.stage = ShapeStage::Terminal;
 		return data;
 	}
 
@@ -254,10 +232,12 @@ EvaluatedMove MasterAI<Traits>::rawShapeScoreV2(const t_BWBoard<Traits>& board, 
 	if (r == 2)
 	{
 		data.score = 500000 + captureScore;
+		data.stage = ShapeStage::OpenFour;
 		return data;
 	}
 	if (r == 1) {
 		data.score = 5000 + captureScore;
+		data.stage = ShapeStage::HalfFour;
 		return data;
 	}
 
@@ -269,6 +249,7 @@ EvaluatedMove MasterAI<Traits>::rawShapeScoreV2(const t_BWBoard<Traits>& board, 
 	if (tool.check_broken_four(own, opp, cell.x, cell.y))
 	{
 		data.score = 6000 + captureScore;
+		data.stage = ShapeStage::BrokenFour;
 		return data;
 	}
 
@@ -276,6 +257,7 @@ EvaluatedMove MasterAI<Traits>::rawShapeScoreV2(const t_BWBoard<Traits>& board, 
 	if (r) 
 	{
 		data.score = cross_score(r) + captureScore;
+		data.stage = ShapeStage::Cross;
 		return data;
 	}
 
@@ -292,6 +274,8 @@ EvaluatedMove MasterAI<Traits>::rawShapeScoreV2(const t_BWBoard<Traits>& board, 
 
 // Clé light pour nœuds profonds : même captures/légalité que V2, mais sans
 // check_cross (coûteux et redondant avec open_three pour le tri).
+// `stage` mémorise l'étage de sortie : c'est ce qui permet à upgradeLightToFull
+// de savoir si le check_cross omis peut encore changer quelque chose.
 template <typename Traits>
 EvaluatedMove MasterAI<Traits>::rawShapeScoreLight(const t_BWBoard<Traits>& board, t_cell cell, Color color, int captureCount)
 {
@@ -305,13 +289,14 @@ EvaluatedMove MasterAI<Traits>::rawShapeScoreLight(const t_BWBoard<Traits>& boar
 	EvaluatedMove data {};
 	data.isLegal = true;
 	data.move = cell;
-	detect_and_stock_capture(board, cell.x, cell.y, color, data.capturedStones);
-	const int caps = static_cast<int>(data.capturedStones.size());
+	data.captureMask = detect_capture_mask(board, cell.x, cell.y, color);
+	const int caps = capture_mask_count(data.captureMask);
 	const int captureScore = captureProgressScore(captureCount, caps);
 
 	if ((captureCount + caps) >= 10)
 	{
 		data.score = 1000000 + captureScore;
+		data.stage = ShapeStage::Terminal;
 		return data;
 	}
 
@@ -319,6 +304,7 @@ EvaluatedMove MasterAI<Traits>::rawShapeScoreLight(const t_BWBoard<Traits>& boar
 	if (tool.is_five_in_a_row(own, cell.x, cell.y))
 	{
 		data.score = 1000000 + captureScore;
+		data.stage = ShapeStage::Terminal;
 		return data;
 	}
 
@@ -326,17 +312,20 @@ EvaluatedMove MasterAI<Traits>::rawShapeScoreLight(const t_BWBoard<Traits>& boar
 	if (r == 2)
 	{
 		data.score = 500000 + captureScore;
+		data.stage = ShapeStage::OpenFour;
 		return data;
 	}
 	if (r == 1)
 	{
 		data.score = 5000 + captureScore;
+		data.stage = ShapeStage::HalfFour;
 		return data;
 	}
 
 	if (tool.check_broken_four(own, opp, cell.x, cell.y))
 	{
 		data.score = 6000 + captureScore;
+		data.stage = ShapeStage::BrokenFour;
 		return data;
 	}
 
@@ -350,9 +339,93 @@ EvaluatedMove MasterAI<Traits>::rawShapeScoreLight(const t_BWBoard<Traits>& boar
 	return data;
 }
 
+// Promeut une clé light en clé full. Light et V2 sont la même chaîne de tests à
+// un maillon près : le check_cross intercalé entre le broken-four et le three.
+// Tout ce que light a conclu au-dessus de cet étage (terminal, four, broken
+// four) est donc déjà le verdict de V2 — captures comprises, ce qui évite de
+// relancer detect_capture_mask. Il ne reste à traiter que les coups sortis
+// à l'étage three/quiet, et un seul scan suffit.
+// La légalité n'est jamais réévaluée : celle de light (`!caps`) est la bonne, et
+// V2 la relâchait à tort dès que le camp avait déjà capturé une paire.
+template <typename Traits>
+void MasterAI<Traits>::upgradeLightToFull(EvaluatedMove& move, const t_BWBoard<Traits>& board,
+	Color color, int captureCount)
+{
+	if (move.stage != ShapeStage::ThreeOrQuiet)
+		return;
+
+	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
+
+	typename Traits::Bitboard own = (color == Color::Black) ? board.black : board.white;
+	const typename Traits::Bitboard& opp = (color == Color::Black) ? board.white : board.black;
+
+	set_bb_generic<Traits>(own, move.move.x, move.move.y);
+
+	const int r = tool.check_cross(own, opp, move.move.x, move.move.y);
+	if (!r)
+		return;
+
+	const int caps = capture_mask_count(move.captureMask);
+	move.score = cross_score(r) + captureProgressScore(captureCount, caps);
+	move.stage = ShapeStage::Cross;
+}
+
+// Un cinq aligné gagne inconditionnellement (cf. isWinAfterMove) : si l'adversaire
+// en pose un au coup suivant, seules trois familles de réponses peuvent encore
+// changer l'issue — gagner immédiatement, occuper la case du cinq, ou capturer
+// (une prise casse l'alignement, et la dixième pierre gagne). Tout le reste perd,
+// et les explorer ne fait que gonfler le facteur de branchement là où l'arbre est
+// le plus profond.
+template <typename Traits>
+bool MasterAI<Traits>::restrictToForcedReplies(const t_BWBoard<Traits>& board,
+	MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>>& ordered, Color mover)
+{
+	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
+
+	const Color oppColor = (mover == Color::Black) ? Color::White : Color::Black;
+	const typename Traits::Bitboard& oppStones = bitboardForColor(board, oppColor);
+
+	bool isBlock[MAX_BOARD_MOVES<Traits>] = {};
+	bool threatened = false;
+
+	// Une seule copie du plan adverse, la pierre hypothétique est posée puis
+	// retirée à chaque essai.
+	typename Traits::Bitboard opp = oppStones;
+	for (size_t i = 0; i < ordered.size(); ++i)
+	{
+		const t_cell& m = ordered[i].move;
+		set_bb_generic<Traits>(opp, m.x, m.y);
+		if (tool.is_five_in_a_row(opp, m.x, m.y))
+		{
+			isBlock[i] = true;
+			threatened = true;
+		}
+		clear_bit_generic<Traits>(opp, m.x, m.y);
+	}
+
+	if (!threatened)
+		return false;
+
+	size_t kept = 0;
+	for (size_t i = 0; i < ordered.size(); ++i)
+	{
+		if (isBlock[i] || ordered[i].captureMask || ordered[i].score >= WIN_SCORE)
+			ordered[kept++] = ordered[i];
+	}
+
+	// La case du cinq peut être interdite au camp au trait (double-trois) et
+	// n'apparaître dans aucune des trois familles : mieux vaut alors chercher
+	// normalement que rendre le nœud stérile.
+	if (kept == 0)
+		return false;
+
+	ordered.count = kept;
+	return true;
+}
+
 // Clé de tri : offense (déjà dans `offense.score`, y compris captures du camp
 // au trait) + défense/2 (ce que l'adversaire créerait sur cette case s'il y
-// jouait). On ne touche ni isLegal ni capturedStones — réservés au makeMove
+// jouait). On ne touche ni isLegal ni captureMask — réservés au makeMove
 // du camp au trait.
 template <typename Traits>
 void MasterAI<Traits>::addDefenseToOrderingScore(EvaluatedMove& offense,

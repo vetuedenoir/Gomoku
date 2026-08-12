@@ -107,8 +107,8 @@ TEST_CASE("[Zone] make/undo AVEC capture restaure la zone à l'identique")
 
     EvaluatedMove move {};
     move.move = { 5, 9 };
-    move.capturedStones.push({ 6, 9 });
-    move.capturedStones.push({ 7, 9 });
+    move.captureMask = detect_capture_mask(pos.board(), 5, 9, Color::Black);
+    REQUIRE(capture_mask_count(move.captureMask) == 2);
 
     const MoveStateHash msh = pos.buildMoveHash(move, Color::Black);
     pos.makeMove(move.move.x, move.move.y, Color::Black, msh);

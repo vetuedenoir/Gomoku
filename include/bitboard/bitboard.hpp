@@ -313,6 +313,68 @@ bool detect_captures(const t_BWBoard<Traits>& board, int col, int row, const Col
 }
 
 
+// Une capture est une paire adverse encadrée : il y en a au plus une par
+// demi-direction, donc au plus 8 pour un coup. Le bit (2 * d + s) code la paire
+// prise le long de LINE_DIRS[d], dans le sens négatif si s vaut 0. Les deux
+// pierres se déduisent de ce masque et de la case jouée (un et deux pas), ce
+// qui évite de les matérialiser pour chaque candidat d'un nœud de recherche.
+template<typename Traits>
+inline uint8_t detect_capture_mask(const t_BWBoard<Traits>& board, int col, int row, const Color attackerColor)
+{
+	const typename Traits::Bitboard& attacker = bitboardForColor(board, attackerColor);
+	const Color victimColor = (attackerColor == Color::Black) ? Color::White : Color::Black;
+	const typename Traits::Bitboard& victime = bitboardForColor(board, victimColor);
+
+	uint8_t mask = 0;
+
+	for (int d = 0; d < 4; ++d)
+	{
+		for (int s = 0; s < 2; ++s)
+		{
+			const int stepX = (s ? 1 : -1) * dx(LINE_DIRS[d]);
+			const int stepY = (s ? 1 : -1) * dy(LINE_DIRS[d]);
+
+			const int x1 = col + stepX,     y1 = row + stepY;
+			const int x2 = col + 2 * stepX, y2 = row + 2 * stepY;
+			const int x3 = col + 3 * stepX, y3 = row + 3 * stepY;
+
+			if (!in_board_generic<Traits>(x1, y1) || !in_board_generic<Traits>(x2, y2) || !in_board_generic<Traits>(x3, y3))
+				continue;
+
+			if (get_bb_generic<Traits>(victime, x1, y1) &&
+				get_bb_generic<Traits>(victime, x2, y2) &&
+				get_bb_generic<Traits>(attacker, x3, y3))
+				mask |= static_cast<uint8_t>(1u << (2 * d + s));
+		}
+	}
+	return mask;
+}
+
+inline int capture_mask_count(uint8_t mask)
+{
+	return 2 * __builtin_popcount(mask);
+}
+
+// Appelle fn(x, y) sur chaque pierre prise, dans l'ordre de balayage du masque.
+template<typename Fn>
+inline void for_each_captured_stone(uint8_t mask, int col, int row, Fn fn)
+{
+	for (int d = 0; d < 4; ++d)
+	{
+		for (int s = 0; s < 2; ++s)
+		{
+			if (!(mask & (1u << (2 * d + s))))
+				continue;
+
+			const int stepX = (s ? 1 : -1) * dx(LINE_DIRS[d]);
+			const int stepY = (s ? 1 : -1) * dy(LINE_DIRS[d]);
+
+			fn(col + stepX, row + stepY);
+			fn(col + 2 * stepX, row + 2 * stepY);
+		}
+	}
+}
+
 template<typename Traits>
 void apply_captures(t_BWBoard<Traits>& board, const typename Traits::Bitboard captured, const Color attacker)
 {

@@ -13,35 +13,33 @@ static constexpr int LEAF_SCAN_RADIUS      = 2;
 
 // Ordonnancement lazy :
 //   1) light sur tous les candidats
-//   2) si depth >= FULL_ORDER_MIN_DEPTH → re-score full (V2+déf) seulement
-//      le top LAZY_FULL_POOL (ceux qu'on risque de chercher)
+//   2) si depth >= FULL_ORDER_MIN_DEPTH → complétion full (cross+déf) seulement
+//      sur le top du classement (ceux qu'on risque de chercher)
 static constexpr int FULL_ORDER_MIN_DEPTH = 4;
 
 // Plafond top-N (forward pruning) : nombre max de coups LÉGAUX explorés par
-// nœud interne de minimax. Les coups étant triés best-first, on ne garde que
-// les N meilleurs. Réduit le facteur de branchement effectif. À tuner via le
-// benchmark [PERF][BENCH].
-static constexpr int MAX_CANDIDATES = 14;
+// nœud. Les coups étant triés best-first, on ne garde que les N meilleurs.
+// Le plafond dépend de la profondeur RESTANTE sous le nœud : près de la racine
+// une erreur d'ordonnancement coûte tout le sous-arbre, on reste large ; près
+// des feuilles les nœuds sont les plus nombreux et leur score le moins
+// discriminant, on serre pour réduire le facteur de branchement effectif.
+// Index = profondeur restante ; au-delà, le plafond de la racine.
+// Table à tuner via le benchmark [PERF][BENCH].
+static constexpr int CANDIDATE_CAPS[]   = { 4, 4, 6, 8, 10, 12, 14 };
+static constexpr int CANDIDATE_CAPS_LEN =
+	static_cast<int>(sizeof(CANDIDATE_CAPS) / sizeof(CANDIDATE_CAPS[0]));
 
-// Marge au-dessus de MAX_CANDIDATES pour le re-score full (si le light
-// sous-classe un bon coup défensif juste hors du top-N).
-static constexpr int LAZY_FULL_POOL = MAX_CANDIDATES + 4;
-
-// Progressive race-to-10 incentive. `totalBefore` / `capsThisMove` are stone counts.
-// Near the threshold this must rival half-open / broken fours so captures are planned.
-inline int captureProgressScore(int totalBefore, int capsThisMove)
+static constexpr int candidateCap(int depth)
 {
-	const int totalAfter = totalBefore + capsThisMove;
-	int score = capsThisMove * CAPTURE_SCORE * 2;
-	// Quadratic progress: 2→160, 4→640, 6→1440, 8→2560
-	score += totalAfter * totalAfter * 40;
-	if (capsThisMove > 0)
-		score += totalBefore * 100;
-	// One pair from winning — treat like a forcing threat for ordering
-	if (totalAfter >= 8 && capsThisMove > 0 && totalAfter < 10)
-		score += 8000;
-	return score;
+	return depth <= 0 ? CANDIDATE_CAPS[0]
+	     : depth < CANDIDATE_CAPS_LEN ? CANDIDATE_CAPS[depth]
+	     : CANDIDATE_CAPS[CANDIDATE_CAPS_LEN - 1];
 }
+
+// Marge au-dessus du plafond pour le re-score full (si le light sous-classe
+// un bon coup défensif juste hors du top-N).
+static constexpr int LAZY_FULL_MARGIN = 4;
+
 // Progressive race-to-10 incentive. `totalBefore` / `capsThisMove` are stone counts.
 // Near the threshold this must rival half-open / broken fours so captures are planned.
 inline int captureProgressScore(int totalBefore, int capsThisMove)
@@ -281,7 +279,7 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 				// tel quel. On renseigne les stats (mat au ply 1) AVANT de sortir,
 				// sinon bestScore resterait à sa valeur par défaut.
 				if (scoredMove.score >= WIN_SCORE ||
-					static_cast<int>(scoredMove.capturedStones.size()) + rootCaps >= 10)
+					capture_mask_count(scoredMove.captureMask) + rootCaps >= 10)
 				{
 					_stats.bestScore = WIN_SCORE - 1;
 					_stats.bestMove  = scoredMove.move;
@@ -293,6 +291,8 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 				orderedRoot.push(scoredMove);
 			}
 		}
+		if (restrictToForcedReplies(board, orderedRoot, color))
+			++_stats.forcedNodes;
 		std::sort(orderedRoot.begin(), orderedRoot.end(),
 			[](const EvaluatedMove& a, const EvaluatedMove& b) { return a.score > b.score; });
 	}
@@ -341,10 +341,11 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 		}
 	}
 
+	const int rootCap = candidateCap(_maxDepth);
 	int legalRootSearched = 0;
 	for (size_t i = 0; i < orderedRoot.size(); ++i)
 	{
-		if (legalRootSearched >= MAX_CANDIDATES)
+		if (legalRootSearched >= rootCap)
 			break;
 
 		const t_cell& move = orderedRoot[i].move;
@@ -414,7 +415,8 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 		+ "  evaluated=" + std::to_string(_stats.nodesEvaluated)
 		+ "  pruned="    + std::to_string(_stats.nodesPruned)
 		+ " (" + std::to_string(pruningPct) + "%)"
-		+ "  maxDepth="  + std::to_string(_stats.maxDepthSeen));
+		+ "  maxDepth="  + std::to_string(_stats.maxDepthSeen)
+		+ "  forced="    + std::to_string(_stats.forcedNodes));
 	LOG_SUPPRESS(_stats.nodesVisited, _stats.nodesEvaluated, _stats.nodesPruned, _stats.maxDepthSeen, pruningPct);
 	LOG_DEBUG("AI", "[findBestMove] tt [minimax] stores=" + std::to_string(_stats.ttStores)
 		+ " hits=" + std::to_string(_stats.ttHits)
@@ -492,14 +494,20 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     }
 
     // 6. Tri lazy :
-    //    light sur tous → sort → (près racine) full V2+déf sur le top pool → re-sort.
-    //    Exploration limitée ensuite à MAX_CANDIDATES.
+    //    light sur tous → sort → (près racine) cross+déf sur le top pool → re-sort.
+    //    Exploration limitée ensuite à candidateCap(depth).
     const int   ply   = currentDepth;
     const Color mover = position.sideToMove();
 
     int capturesBefore = position.getCapturesForside();
     const t_BWBoard<Traits>& board = position.board();
 
+    // Ce comparateur laisse beaucoup d'ex æquo (les coups silencieux partagent
+    // le même score light), et leur classement est décidé par la façon dont
+    // std::sort brasse les égalités. Ce n'est donc pas un détail de coût :
+    // mesuré sur le benchmark, passer à std::partial_sort coûte +44 % de nœuds
+    // et départager par proximité au dernier coup +45 %, à qualité de tri
+    // théoriquement égale.
     auto betterMove = [this, ply, mover](const EvaluatedMove& a, const EvaluatedMove& b) {
         if (a.score != b.score)
             return a.score > b.score;
@@ -519,23 +527,20 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 				ordered.push(scoredMove);
 		}
 
+		if (restrictToForcedReplies(board, ordered, mover))
+			++_stats.forcedNodes;
+
 		std::sort(ordered.begin(), ordered.end(), betterMove);
 
 		if (depth >= FULL_ORDER_MIN_DEPTH && !ordered.empty())
 		{
-			const size_t pool = std::min(ordered.size(), static_cast<size_t>(LAZY_FULL_POOL));
+			const size_t pool = std::min(ordered.size(),
+				static_cast<size_t>(candidateCap(depth) + LAZY_FULL_MARGIN));
 			for (size_t i = 0; i < pool; ++i)
 			{
-				EvaluatedMove full = rawShapeScoreV2(board, ordered[i].move, mover, capturesBefore);
-				if (!full.isLegal)
-				{
-					ordered[i].isLegal = false;
-					ordered[i].score = std::numeric_limits<int>::min() / 2;
-					continue;
-				}
-				addDefenseToOrderingScore(full, board, mover,
+				upgradeLightToFull(ordered[i], board, mover, capturesBefore);
+				addDefenseToOrderingScore(ordered[i], board, mover,
 					position.getCapturesForColor(mover == Color::Black ? Color::White : Color::Black));
-				ordered[i] = full;
 			}
 			std::sort(ordered.begin(), ordered.end(), betterMove);
 		}
@@ -545,7 +550,7 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     //     position (même issu d'une recherche moins profonde), on le place en
     //     TÊTE de la liste. Deux effets :
     //       - il est TOUJOURS exploré, en contournant le plafond top-N
-    //         (MAX_CANDIDATES) qui aurait pu l'écarter s'il était mal classé
+    //         (candidateCap) qui aurait pu l'écarter s'il était mal classé
     //         par le tri statique ;
     //       - le meilleur coup connu est essayé en premier → coupures
     //         alpha-beta plus précoces.
@@ -577,10 +582,11 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
                      : std::numeric_limits<int>::max();
 
     int legalMovesSearched = 0;
+    const int nodeCap = candidateCap(depth);
     for (size_t i = 0; i < ordered.size(); ++i)
     {
         // Plafond top-N : on a déjà exploré les N meilleurs coups légaux.
-        if (legalMovesSearched >= MAX_CANDIDATES)
+        if (legalMovesSearched >= nodeCap)
             break;
 		if (!ordered[i].isLegal)
 			continue;
