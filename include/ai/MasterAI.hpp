@@ -102,6 +102,10 @@ class MasterAI
 		int  historyScore(Color mover, t_cell move) const;
 		void recordCutoff(int ply, t_cell move, int depth, Color mover);
 
+		// Early opening replies that skip minimax. Returns {-1,-1} if none applies.
+		//   0 stones → centre; 1 stone → adjacent touch (AI second).
+		t_cell tryOpeningBookMove(const t_BWBoard<Traits>& board) const;
+
 		int signedFromAi(Color side, int raw) const;
 
 		int minimax(SearchPosition<Traits>& position, t_cell cell, int depth, int alpha, int beta);
@@ -119,7 +123,7 @@ class MasterAI
 		// ∩ zone active. Pas de défense (déjà dans createdSigned).
 		int bestThreatNear(const SearchPosition<Traits>& position, Color color, t_cell anchor);
 
-		EvaluatedMove rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color);
+		EvaluatedMove rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore = 0);
 
 		EvaluatedMove rawShapeScoreV2(const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore);
 
@@ -130,7 +134,7 @@ class MasterAI
 		// `offense` garde captures/légalité du camp au trait (pour makeMove) ;
 		// la défense = ce que l'adversaire créerait sur la même case (valeur de blocage).
 		void addDefenseToOrderingScore(EvaluatedMove& offense,
-			const t_BWBoard<Traits>& board, Color side);
+			const t_BWBoard<Traits>& board, Color side, int oppCapturesBefore);
 };
 
 using MasterAI19 = MasterAI<BoardTraits<19>>;

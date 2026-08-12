@@ -55,7 +55,11 @@ class SearchPosition
         void zoneRebuild();
 
     public:
-        static SearchPosition fromBoard(const GameBoard& src);
+        // capturesByBlack / capturesByWhite = stones each colour has taken
+        // (GameController tally). Mapped internally to victim counters.
+        static SearchPosition fromBoard(const GameBoard& src,
+                                        int capturesByBlack = 0,
+                                        int capturesByWhite = 0);
         
         static const ZobristHasher<Traits>& hasher();
     
@@ -64,18 +68,23 @@ class SearchPosition
         int  getTotalblackCaptures() const { return _blackCaptures; }
         int  getTotalwhiteCaptures() const { return _whiteCaptures; }
 
-        int getCapturesForside() const
-        {
-            return (sideToMove() == Color::Black) ? getTotalblackCaptures() : getTotalwhiteCaptures();
-        }
-
+        // Stones taken BY `color` (Black's score lives in _whiteCaptures, etc.).
         int getCapturesForColor(Color color) const
         {
             return (color == Color::Black) ? getTotalwhiteCaptures() : getTotalblackCaptures();
         }
 
+        // Stones taken by the side about to move.
+        int getCapturesForside() const
+        {
+            return getCapturesForColor(sideToMove());
+        }
+
         int getBlackCaptures() const { return _history.empty() ? 0 : _history.top().blackCaptures; }
         int getWhiteCaptures() const { return _history.empty() ? 0 : _history.top().whiteCaptures; }
+
+        void setBlackCaptures(int captures) { _history.top().blackCaptures = captures; }
+        void setWhiteCaptures(int captures) { _history.top().whiteCaptures = captures; }
     
         const t_BWBoard<Traits>& board()       const;
         uint64_t                 zobristHash() const;
@@ -164,13 +173,28 @@ typename Traits::Bitboard SearchPosition<Traits>::candidateMask() const
 }
 
 template<typename Traits>
-SearchPosition<Traits> SearchPosition<Traits>::fromBoard(const GameBoard& src)
+SearchPosition<Traits> SearchPosition<Traits>::fromBoard(const GameBoard& src,
+                                                        int capturesByBlack,
+                                                        int capturesByWhite)
 {
     const ZobristHasher<Traits>& h = SearchPosition<Traits>::hasher();
     t_BWBoard<Traits> bb   = GameBoard_to_bitboard<Traits>(src);
     uint64_t          hash = h.compute(bb);
     Color             side = src.currentColor();
-    return SearchPosition<Traits>(bb, hash, side, h);
+
+    // Match make/undo convention: XOR pair-count keys 1..N for each victim colour.
+    // SearchPosition stores victim tallies: Black's score → _whiteCaptures.
+    const int whiteVictimPairs = capturesByBlack >> 1;
+    const int blackVictimPairs = capturesByWhite >> 1;
+    for (int p = 1; p <= whiteVictimPairs; ++p)
+        hash ^= h.captureHash(Color::White, p);
+    for (int p = 1; p <= blackVictimPairs; ++p)
+        hash ^= h.captureHash(Color::Black, p);
+
+    SearchPosition<Traits> pos(bb, hash, side, h);
+    pos._whiteCaptures = capturesByBlack;
+    pos._blackCaptures = capturesByWhite;
+    return pos;
 }
 
 template<typename Traits>

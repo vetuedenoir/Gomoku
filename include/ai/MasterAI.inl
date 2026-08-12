@@ -2,15 +2,11 @@
 #include "game/turn/WinDetector.hpp"
 #include "logger/Logger.hpp"
 
-// Score d'un alignement gagnant (mat). Les scores dont la magnitude dépasse
-// MATE_THRESHOLD sont des scores de mat : ils encodent une distance (ply) et
-// doivent être ré-ajustés à l'entrée/sortie de la table de transposition.
 static constexpr int WIN_SCORE      = 1000000;
 static constexpr int MATE_THRESHOLD = 900000;
-static constexpr int CAPTURE_SCORE = 202;
+static constexpr int CAPTURE_SCORE  = 202;
 
-// Feuille bilatérale : ne scanner que si le dernier coup ≥ broken-four.
-// Scan local (Chebyshev ≤ LEAF_SCAN_RADIUS) + early-exit dès menace « imparable ».
+// Ne scanner que si le dernier coup ≥ broken-four.
 static constexpr int THREAT_SCAN_THRESHOLD  = 5000;
 static constexpr int THREAT_SCAN_EARLY_EXIT = 90000; // double-three / cross / open-four
 static constexpr int LEAF_SCAN_RADIUS      = 2;
@@ -25,25 +21,32 @@ static constexpr int FULL_ORDER_MIN_DEPTH = 4;
 // nœud interne de minimax. Les coups étant triés best-first, on ne garde que
 // les N meilleurs. Réduit le facteur de branchement effectif. À tuner via le
 // benchmark [PERF][BENCH].
-static constexpr int MAX_CANDIDATES = 18;
+static constexpr int MAX_CANDIDATES = 14;
 
 // Marge au-dessus de MAX_CANDIDATES pour le re-score full (si le light
 // sous-classe un bon coup défensif juste hors du top-N).
 static constexpr int LAZY_FULL_POOL = MAX_CANDIDATES + 4;
 
-// Coup accompagné de sa clé de tri statique (heuristique indépendante de la TT).
-struct ScoredMove
+// Progressive race-to-10 incentive. `totalBefore` / `capsThisMove` are stone counts.
+// Near the threshold this must rival half-open / broken fours so captures are planned.
+inline int captureProgressScore(int totalBefore, int capsThisMove)
 {
-	t_cell move;
-	int    key;
-};
+	const int totalAfter = totalBefore + capsThisMove;
+	int score = capsThisMove * CAPTURE_SCORE * 2;
+	// Quadratic progress: 2→160, 4→640, 6→1440, 8→2560
+	score += totalAfter * totalAfter * 40;
+	if (capsThisMove > 0)
+		score += totalBefore * 100;
+	// One pair from winning — treat like a forcing threat for ordering
+	if (totalAfter >= 8 && capsThisMove > 0 && totalAfter < 10)
+		score += 8000;
+	return score;
+}
 
 // Ordonnancement statique des coups (après cross_score / score_open_three dont il dépend).
 // Score TOUJOURS positif = meilleur, du point de vue du camp au trait `side` : offense + défense (blocage) + captures.
 template <typename Traits>
 static int rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color);
-template <typename Traits>
-static int staticMoveScore(const t_BWBoard<Traits>& board, t_cell cell, Color side);
 
 
 // "depuis le nœud" -> "depuis la racine" (au probe TT)
@@ -157,6 +160,53 @@ int	MasterAI<Traits>::getSearchDepth() const noexcept
 }
 
 template <typename Traits>
+t_cell MasterAI<Traits>::tryOpeningBookMove(const t_BWBoard<Traits>& board) const
+{
+	const int stoneCount = popcount_bb_generic<Traits>(board.black)
+	                     + popcount_bb_generic<Traits>(board.white);
+
+	if (stoneCount == 0)
+	{
+		return {
+			static_cast<int_fast16_t>(Traits::BOARD_SIZE / 2),
+			static_cast<int_fast16_t>(Traits::BOARD_SIZE / 2)};
+	}
+
+	if (stoneCount == 1)
+	{
+		t_cell anchor{-1, -1};
+		bb_for_each_bit<Traits>(board.black, [&](int x, int y) {
+			anchor = {static_cast<int_fast16_t>(x), static_cast<int_fast16_t>(y)};
+		});
+		if (anchor.x < 0)
+		{
+			bb_for_each_bit<Traits>(board.white, [&](int x, int y) {
+				anchor = {static_cast<int_fast16_t>(x), static_cast<int_fast16_t>(y)};
+			});
+		}
+
+		// Prefer diagonals (standard second-move shape), then orthogonals.
+		static constexpr int kDx[8] = { 1,  1, -1, -1,  1,  0, -1,  0 };
+		static constexpr int kDy[8] = { 1, -1,  1, -1,  0,  1,  0, -1 };
+		for (int i = 0; i < 8; ++i)
+		{
+			const int x = anchor.x + kDx[i];
+			const int y = anchor.y + kDy[i];
+			if (!in_board_generic<Traits>(x, y))
+				continue;
+			if (get_bb_generic<Traits>(board.black, x, y)
+				|| get_bb_generic<Traits>(board.white, x, y))
+				continue;
+			return {
+				static_cast<int_fast16_t>(x),
+				static_cast<int_fast16_t>(y)};
+		}
+	}
+
+	return {-1, -1};
+}
+
+template <typename Traits>
 t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Color color)
 {
 	_aiColor = color;
@@ -173,6 +223,16 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	_stats.ttRootHits         = 0;
 	_stats.ttRootOrderingHits = 0;
 	_stats.ttRootExactSeeds   = 0;
+
+	const t_cell bookMove = tryOpeningBookMove(position.board());
+	if (bookMove.x >= 0)
+	{
+		_stats.bestMove  = bookMove;
+		_stats.bestScore = 0;
+		LOG_DEBUG("AI", "[findBestMove] opening book → ("
+			+ std::to_string(bookMove.x) + "," + std::to_string(bookMove.y) + ")");
+		return bookMove;
+	}
 
 	// Killer/history repartent à zéro à chaque recherche racine : les coupures
 	// d'une recherche précédente ne sont plus pertinentes pour la nouvelle position.
@@ -194,24 +254,27 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>> orderedRoot;
 	{
 		const t_BWBoard<Traits>& board = position.board();
+		const int rootCaps = position.getCapturesForside();
 		for (size_t i = 0; i < rootMoves.size(); ++i)
 		{
-			EvaluatedMove scoredMove = rawShapeScore(board, rootMoves[i], color);
+			EvaluatedMove scoredMove = rawShapeScore(board, rootMoves[i], color, rootCaps);
 			
-			if (scoredMove.isLegal)
+			if (scoredMove.isLegal
+				&& _moveGenerator.isLegalMove(board, scoredMove.move.x, scoredMove.move.y, color))
 			{
 				// Coup gagnant immédiat (cinq alignés) ou 10e capture → on le joue
 				// tel quel. On renseigne les stats (mat au ply 1) AVANT de sortir,
 				// sinon bestScore resterait à sa valeur par défaut.
 				if (scoredMove.score >= WIN_SCORE ||
-					scoredMove.capturedStones.size() + position.getCapturesForside() >= 10)
+					static_cast<int>(scoredMove.capturedStones.size()) + rootCaps >= 10)
 				{
 					_stats.bestScore = WIN_SCORE - 1;
 					_stats.bestMove  = scoredMove.move;
 					return scoredMove.move;
 				}
 
-				addDefenseToOrderingScore(scoredMove, board, color);
+				addDefenseToOrderingScore(scoredMove, board, color,
+					position.getCapturesForColor(color == Color::Black ? Color::White : Color::Black));
 				orderedRoot.push(scoredMove);
 			}
 		}
@@ -245,25 +308,41 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	int alpha = std::numeric_limits<int>::min();
 	const int beta = std::numeric_limits<int>::max();
 
-	// An EXACT root hit from an equally-deep (or deeper) search seeds bestMove
-	// and bestScore, but the loop below still runs in full so ordering and
-	// tie-breaks among the remaining candidates stay correct.
-	if (rootHit && rootHit->flag == TTFlag::Exact && rootHit->depth >= _maxDepth)
+	// An EXACT root hit seeds bestMove/bestScore ONLY if that move is still
+	// among the legal ordered candidates (guards TT collisions / stale cells).
+	if (rootHit && rootHit->flag == TTFlag::Exact && rootHit->depth >= _maxDepth
+		&& rootHit->bestMove.x >= 0)
 	{
-		bestScore = ttScoreFromEntry(rootHit->score, 0);
-		if (rootHit->bestMove.x >= 0)
-			bestMove = rootHit->bestMove;
-		++_stats.ttRootExactSeeds;
+		for (size_t i = 0; i < orderedRoot.size(); ++i)
+		{
+			if (orderedRoot[i].move.x == rootHit->bestMove.x &&
+			    orderedRoot[i].move.y == rootHit->bestMove.y)
+			{
+				bestScore = ttScoreFromEntry(rootHit->score, 0);
+				bestMove  = rootHit->bestMove;
+				++_stats.ttRootExactSeeds;
+				break;
+			}
+		}
 	}
 
-	for (size_t i = 0; i < orderedRoot.size() && i < MAX_CANDIDATES; ++i)
+	int legalRootSearched = 0;
+	for (size_t i = 0; i < orderedRoot.size(); ++i)
 	{
+		if (legalRootSearched >= MAX_CANDIDATES)
+			break;
+
 		const t_cell& move = orderedRoot[i].move;
 
-		// if (!_moveGenerator.isLegalMove(position.board(), move.x, move.y, position.sideToMove())) {
-		// 	LOG_WARN("AI", "[findBestMove] move (" + std::to_string(move.x) + "," + std::to_string(move.y) + ") is not legal, skipping...");
-		// 	continue;
-		// }
+		// Full StandardRules check — shape isLegal can diverge; never search/return illegal.
+		if (!_moveGenerator.isLegalMove(position.board(), move.x, move.y, color))
+		{
+			LOG_WARN("AI", "[findBestMove] skip illegal root ("
+				+ std::to_string(move.x) + "," + std::to_string(move.y) + ")");
+			continue;
+		}
+
+		++legalRootSearched;
 
 		SearchPosition<Traits> newPosition = position;
 
@@ -288,6 +367,25 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 			break;
 
 		alpha = std::max(alpha, bestScore);
+	}
+
+	// Last resort: if TT/seed left an illegal bestMove and nothing beat it, pick
+	// the first fully-legal ordered candidate (stops submitMove infinite loops).
+	if (bestMove.x < 0
+		|| !_moveGenerator.isLegalMove(position.board(), bestMove.x, bestMove.y, color))
+	{
+		bestMove = {-1, -1};
+		for (size_t i = 0; i < orderedRoot.size(); ++i)
+		{
+			const t_cell& m = orderedRoot[i].move;
+			if (_moveGenerator.isLegalMove(position.board(), m.x, m.y, color))
+			{
+				bestMove = m;
+				LOG_WARN("AI", "[findBestMove] fallback to legal ("
+					+ std::to_string(m.x) + "," + std::to_string(m.y) + ")");
+				break;
+			}
+		}
 	}
 
 	_stats.bestScore = bestScore;
@@ -350,9 +448,9 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     const Color lastPlayed = (position.sideToMove() == Color::Black)
                            ? Color::White : Color::Black;
 
-    // 3. Check victoire du coup qui vient d'être joué
+    // 3. Check victoire du coup qui vient d'être joué (cinq ou 10 captures)
     if (isWinAfterMove<Traits>(position.board(), lastPlayed, cell.x, cell.y) ||
-		position.getCapturesForside() >= 10)
+		position.getCapturesForColor(lastPlayed) >= 10)
     {
         ++_stats.nodesEvaluated;
         const int mate = WIN_SCORE - currentDepth;
@@ -420,7 +518,8 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 					ordered[i].score = std::numeric_limits<int>::min() / 2;
 					continue;
 				}
-				addDefenseToOrderingScore(full, board, mover);
+				addDefenseToOrderingScore(full, board, mover,
+					position.getCapturesForColor(mover == Color::Black ? Color::White : Color::Black));
 				ordered[i] = full;
 			}
 			std::sort(ordered.begin(), ordered.end(), betterMove);
