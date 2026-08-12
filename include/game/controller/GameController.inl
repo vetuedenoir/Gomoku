@@ -13,7 +13,8 @@ GameController<Traits>::GameController(const GameConfig& config)
     // The human picked their colour at game creation; the AI takes the opposite seat.
     _aiSeat = (config.playerColor == Color::Black) ? Seat::Second : Seat::First;
 
-    _aiOpponent = config.aiOpponent;
+    _aiVsAi     = config.aiVsAi;
+    _aiOpponent = config.aiOpponent || _aiVsAi;
 
     _masterAI.setAIColor(aiColor());
 
@@ -341,6 +342,12 @@ template<typename Traits>
 bool GameController<Traits>::aiOpponent() const
 {
     return _aiOpponent;
+}
+
+template<typename Traits>
+bool GameController<Traits>::aiVsAi() const
+{
+    return _aiVsAi;
 }
 
 template<typename Traits>

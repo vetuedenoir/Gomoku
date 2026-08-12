@@ -113,18 +113,22 @@ void UIRenderer::renderStats(sf::RenderWindow& w, const sf::Font& font,
     const int blackPairs = ctrl.blackCaptureCount() / 2;
     const int whitePairs = ctrl.whiteCaptureCount() / 2;
 
-    const bool hotseat       = !ctrl.aiOpponent();
+    const bool aiVsAi        = ctrl.aiVsAi();
+    const bool hotseat       = !ctrl.aiOpponent() && !aiVsAi;
     const bool playerIsBlack = ctrl.playerActor().color == Color::Black;
     const Color turn         = ctrl.currentColor();
 
-    // Role badges: in hotseat both seats are human (P1 = Black, P2 = White);
-    // versus the AI, mark which side the human controls.
-    const std::string blackRole = hotseat ? "P1" : (playerIsBlack ? "YOU" : "AI");
-    const std::string whiteRole = hotseat ? "P2" : (playerIsBlack ? "AI" : "YOU");
+    // Role badges: hotseat → P1/P2; AI vs AI → AI/AI; else YOU/AI by seat.
+    const std::string blackRole = aiVsAi  ? "AI"
+                                : hotseat ? "P1"
+                                : (playerIsBlack ? "YOU" : "AI");
+    const std::string whiteRole = aiVsAi  ? "AI"
+                                : hotseat ? "P2"
+                                : (playerIsBlack ? "AI" : "YOU");
 
-    // Only the AI card shows engine timings, and only when an AI is playing.
-    const bool blackIsAI = !hotseat && !playerIsBlack;
-    const bool whiteIsAI = !hotseat && playerIsBlack;
+    // Engine timings on every AI-controlled seat.
+    const bool blackIsAI = aiVsAi || (!hotseat && !playerIsBlack);
+    const bool whiteIsAI = aiVsAi || (!hotseat && playerIsBlack);
 
     // Black on the left
     drawPlayerCard(w, font, leftCX, cy, cardW, cardH,

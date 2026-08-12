@@ -77,18 +77,26 @@ void Gomoku::logConfig() const
 {
     const char *stoneStr[]   = { "Black (plays first)", "White" };
     const char *openingStr[] = { "Standard", "Pro", "Long Pro", "Swap", "Swap 2" };
+    const char *modeStr      = _config.aiVsAi ? "AI vs AI"
+                             : _config.aiOpponent ? "vs AI"
+                             : "hotseat";
 
     LOG_INFO("CONFIG",
-        std::string("board=")   + std::to_string(_config.boardSize) + "x" + std::to_string(_config.boardSize)
+        std::string("mode=") + modeStr
+        + "  board="   + std::to_string(_config.boardSize) + "x" + std::to_string(_config.boardSize)
         + "  stone="   + stoneStr  [static_cast<int>(_config.playerColor)]
         + "  opening=" + openingStr[static_cast<int>(_config.openingProtocol)]);
-    LOG_SUPPRESS(stoneStr[static_cast<int>(_config.playerColor)], openingStr[static_cast<int>(_config.openingProtocol)]);
+    LOG_SUPPRESS(modeStr, stoneStr[static_cast<int>(_config.playerColor)], openingStr[static_cast<int>(_config.openingProtocol)]);
 }
 
 void Gomoku::onBoardSizeSelected(int size)
 {
     _config.boardSize = size;
-    navigateTo(AppState::StoneColor);
+    // Both seats are AI — no human colour to pick.
+    if (_config.aiVsAi)
+        navigateTo(AppState::Opening);
+    else
+        navigateTo(AppState::StoneColor);
 }
 
 void Gomoku::onStoneColorSelected(const Color color)
@@ -143,6 +151,10 @@ CellStatus Gomoku::computeGhostColor() const
 bool Gomoku::isAITurn() const
 {
     if (!_controller) return false;
+    if (_controller->aiVsAi())
+        return true;
+    if (!_controller->aiOpponent())
+        return false;
     return _controller->currentActor().seat == _controller->aiActor().seat;
 }
 
@@ -167,8 +179,8 @@ void Gomoku::requestSuggestion()
         return;
     if (_controller->phase() != GamePhase::Standard)
         return;
-    // In a game against the AI, only offer hints on the human's turn.
-    if (_config.aiOpponent && isAITurn())
+    // Hints are for humans only — skip on AI turns and in AI vs AI.
+    if (_controller->aiVsAi() || (_config.aiOpponent && isAITurn()))
         return;
 
     _suggestion = _controller->suggestMove();
@@ -207,6 +219,10 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
         currentPage().handleClick(mouse);
         return;
     }
+
+    // Spectate only — both seats are driven by the engine.
+    if (_controller->aiVsAi())
+        return;
 
     switch (_controller->phase())
     {
@@ -271,7 +287,11 @@ void Gomoku::update(sf::Vector2f mouse)
         _controller->requestAIMove();
         clearSuggestion();
 
-        if (_controller->phase() == GamePhase::ColorChoice)
+        // Opening may land on ColorChoice; AI vs AI resolves it immediately
+        // so the next frame can start Standard search without a UI flash.
+        if (_controller->aiVsAi() && _controller->phase() == GamePhase::ColorChoice)
+            _controller->requestAIMove();
+        else if (_controller->phase() == GamePhase::ColorChoice)
             buildColorChoicePage();
 
         isGameOver();
@@ -292,15 +312,21 @@ void Gomoku::render()
     {
         _renderer.renderGame(_window, *_board, *_controller, computeGhostColor(), _suggestion);
         _renderer.renderStats(_window, _font, *_board, *_controller);
-        if (_controller->phase() == GamePhase::ColorChoice)
+        if (_controller->phase() == GamePhase::ColorChoice && !_controller->aiVsAi())
             _renderer.renderColorChoice(_window, _colorChoice);
-        else if (_controller->phase() == GamePhase::Standard)
+        else if (_controller->phase() == GamePhase::Standard && !_controller->aiVsAi())
         {
             const bool active = _suggestion.has_value();
             sf::Text tip = makeText(
                 active ? "Suggested move shown  |  press H for another"
                        : "Press H for a move suggestion",
                 _font, FONT_XS, active ? GOLD : DIM);
+            tip.setPosition(CX, WIN_H * 0.975f);
+            _window.draw(tip);
+        }
+        else if (_controller->aiVsAi() && _controller->phase() == GamePhase::Standard)
+        {
+            sf::Text tip = makeText("AI vs AI — spectating", _font, FONT_XS, DIM);
             tip.setPosition(CX, WIN_H * 0.975f);
             _window.draw(tip);
         }
@@ -455,15 +481,32 @@ void Gomoku::buildMainMenuPage()
     _mainMenu.addRectangle("divider", divider);
 
     _mainMenu.addItem("playAI", FonctionItem(
-        Item("Play vs AI", _font, CX, WIN_H * 0.400f),
-        [this]() { _config.aiOpponent = true;  navigateTo(AppState::BoardSize); }
+        Item("Play vs AI", _font, CX, WIN_H * 0.375f),
+        [this]() {
+            _config.aiOpponent = true;
+            _config.aiVsAi    = false;
+            navigateTo(AppState::BoardSize);
+        }
     ));
     _mainMenu.addItem("playHotseat", FonctionItem(
-        Item("Two Players", _font, CX, WIN_H * 0.500f),
-        [this]() { _config.aiOpponent = false; navigateTo(AppState::BoardSize); }
+        Item("Two Players", _font, CX, WIN_H * 0.460f),
+        [this]() {
+            _config.aiOpponent = false;
+            _config.aiVsAi    = false;
+            navigateTo(AppState::BoardSize);
+        }
+    ));
+    _mainMenu.addItem("playAIvsAI", FonctionItem(
+        Item("AI vs AI", _font, CX, WIN_H * 0.545f),
+        [this]() {
+            _config.aiOpponent = true;
+            _config.aiVsAi    = true;
+            _config.playerColor = Color::Black; // unused; AI drives both seats
+            navigateTo(AppState::BoardSize);
+        }
     ));
     _mainMenu.addItem("quit", FonctionItem(
-        Item("Quit", _font, CX, WIN_H * 0.600f),
+        Item("Quit", _font, CX, WIN_H * 0.630f),
         [this]() { _window.close(); }
     ));
 
@@ -473,6 +516,7 @@ void Gomoku::buildMainMenuPage()
         if (auto *t = page.getText("sub"))           win.draw(*t);
         if (auto *fi = page.getItem("playAI"))       fi->item.draw(win);
         if (auto *fi = page.getItem("playHotseat"))  fi->item.draw(win);
+        if (auto *fi = page.getItem("playAIvsAI"))   fi->item.draw(win);
         if (auto *fi = page.getItem("quit"))         fi->item.draw(win);
     });
 }

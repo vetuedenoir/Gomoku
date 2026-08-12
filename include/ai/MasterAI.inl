@@ -25,7 +25,7 @@ static constexpr int FULL_ORDER_MIN_DEPTH = 4;
 // nœud interne de minimax. Les coups étant triés best-first, on ne garde que
 // les N meilleurs. Réduit le facteur de branchement effectif. À tuner via le
 // benchmark [PERF][BENCH].
-static constexpr int MAX_CANDIDATES = 18;
+static constexpr int MAX_CANDIDATES = 24;
 
 // Marge au-dessus de MAX_CANDIDATES pour le re-score full (si le light
 // sous-classe un bon coup défensif juste hors du top-N).
