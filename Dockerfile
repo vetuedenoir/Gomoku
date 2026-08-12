@@ -6,6 +6,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Pas de cache mount - juste l'installation normale
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
+        clang \
+        cmake \
         libsfml-dev \
         fonts-liberation \
         # valgrind \

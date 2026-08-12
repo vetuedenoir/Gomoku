@@ -12,7 +12,7 @@ bool BitboardTool<Traits>::is_five_in_a_row(const typename Traits::Bitboard& sto
 
 		for (uint32_t i = 0; i < list.count; i++)
 		{
-			if (matchPattern(list.masks[i], stones))
+			if (matchPattern(list.masks[i], stones, list.firstWord[i], list.lastWord[i]))
 				return true;
 		}
 	}
@@ -36,7 +36,7 @@ int BitboardTool<Traits>::check_open_four(const typename Traits::Bitboard& stone
 		{
 			const t_Pattern4<Traits>& pattern = list.patterns[i];
 
-			if (!matchPattern(pattern.mask, stones))
+			if (!matchPattern(pattern.mask, stones, pattern.firstWord, pattern.lastWord))
 				continue;
 			if (pattern.opposant_left == -1
 			    || get_bb_flate<Traits>(opponent, pattern.opposant_left))
@@ -67,13 +67,13 @@ int BitboardTool<Traits>::check_broken_four(const typename Traits::Bitboard& sto
 			const t_PatternGroup4<Traits>& groupe = list_groupe.patterns[i];
 
 			if (!get_bb_flate<Traits>(opponent, groupe.hole_pos[0])
-			    && matchPattern(groupe.masks[0], stones))
+			    && matchPattern(groupe.masks[0], stones, groupe.firstWord[0], groupe.lastWord[0]))
 				return 1;
 			if (!get_bb_flate<Traits>(opponent, groupe.hole_pos[1])
-			    && matchPattern(groupe.masks[1], stones))
+			    && matchPattern(groupe.masks[1], stones, groupe.firstWord[1], groupe.lastWord[1]))
 				return 2;
 			if (!get_bb_flate<Traits>(opponent, groupe.hole_pos[2])
-			    && matchPattern(groupe.masks[2], stones))
+			    && matchPattern(groupe.masks[2], stones, groupe.firstWord[2], groupe.lastWord[2]))
 				return 3;
 		}
 	}
@@ -91,12 +91,12 @@ int BitboardTool<Traits>::check_open_three(const typename Traits::Bitboard& ston
 
 	for (int dir = 0; dir < 4; dir++)
 	{
-		const t_PatternList_Groupe3& list_groupe = _lt3[idx][dir];
+		const t_PatternList_Groupe3<Traits>& list_groupe = _lt3[idx][dir];
 		const int count = list_groupe.count;
 
 		for (int pos = 0; pos < count; pos++)
 		{
-			const t_PatternGroupe3& pattern = list_groupe.patterns[pos];
+			const t_PatternGroupe3<Traits>& pattern = list_groupe.patterns[pos];
 			int score = 0;
 
 			if (pattern.oposant_pos[1] == -1
@@ -115,9 +115,8 @@ int BitboardTool<Traits>::check_open_three(const typename Traits::Bitboard& ston
 			if (score > 256)
 				continue;
 
-			if (get_bb_flate<Traits>(stones, pattern.stone_pos[0])
-			    && get_bb_flate<Traits>(stones, pattern.stone_pos[1])
-			    && get_bb_flate<Traits>(stones, pattern.stone_pos[2]))
+			// SCORE_3_FULL : 3 pierres contiguës — un AND sur 1–2 words.
+			if (matchPattern(pattern.fullMask, stones, pattern.fullFirst, pattern.fullLast))
 			{
 				total_score += score + 8;
 				double_three += 1;
@@ -133,22 +132,19 @@ int BitboardTool<Traits>::check_open_three(const typename Traits::Bitboard& ston
 			if (score > 256)
 				continue;
 
-			if (pattern.stone_pos[3] == -1)
+			if (pattern.stone_pos[3] == -1) // regarde si il y a un three Hole
 				continue;
 
+			// SCORE_3_HOLE : trois pierres avec un trou — même match masqué.
 			if (!get_bb_flate<Traits>(opponent, pattern.hole_pos[0])
-			    && get_bb_flate<Traits>(stones, pattern.stone_pos[0])
-			    && get_bb_flate<Traits>(stones, pattern.stone_pos[2])
-			    && get_bb_flate<Traits>(stones, pattern.stone_pos[3]))
+			    && matchPattern(pattern.holeMask0, stones, pattern.hole0First, pattern.hole0Last))
 			{
 				total_score += score + 12;
 				double_three += 1;
 				continue;
 			}
 			if (!get_bb_flate<Traits>(opponent, pattern.hole_pos[1])
-			    && get_bb_flate<Traits>(stones, pattern.stone_pos[0])
-			    && get_bb_flate<Traits>(stones, pattern.stone_pos[1])
-			    && get_bb_flate<Traits>(stones, pattern.stone_pos[3]))
+			    && matchPattern(pattern.holeMask1, stones, pattern.hole1First, pattern.hole1Last))
 			{
 				total_score += score + 12;
 				double_three += 1;
@@ -179,7 +175,7 @@ int BitboardTool<Traits>::check_super_four(const typename Traits::Bitboard& ston
 		{
 			const t_super4<Traits>& pattern = list_super4.patterns[i];
 
-			if (matchPattern(pattern.mask, stones)
+			if (matchPattern(pattern.mask, stones, pattern.firstWord, pattern.lastWord)
 			    && !get_bb_flate<Traits>(opponent, pattern.hole_pos[0])
 			    && !get_bb_flate<Traits>(opponent, pattern.hole_pos[1]))
 				return 1;
@@ -255,17 +251,17 @@ int BitboardTool<Traits>::check_cross(const typename Traits::Bitboard& stones,
 }
 
 template<typename Traits>
-bool BitboardTool<Traits>::isDoubleThreeScore(int score)
+bool BitboardTool<Traits>::isDoubleThreeScore(const int score) const
 {
 	if (score <= 0)
-		return false;
-	if (score == SCORE_3_FULL || score == SCORE_3_HOLE || score >= SCORE_FULL_EXTERN)
 		return false;
 	if (score < SCORE_3_FULL)
 		return true;
 	if (score >= SCORE_DOUBLE_FULL_FULL_EXTERN
-	    && score <= SCORE_DOUBLE_HOLE_HOLE_INTERN2)
+	    && score <= SCORE_DOUBLE_HOLE_HOLE_EXTERN)
 		return true;
+	// if (score == SCORE_3_FULL || score == SCORE_3_HOLE || score >= SCORE_FULL_EXTERN)
+	// 	return false;
 	return false;
 }
 
@@ -276,4 +272,18 @@ bool BitboardTool<Traits>::is_double_three_at(const typename Traits::Bitboard& s
 {
 	const int score = check_open_three(stones, opponent, col, row);
 	return isDoubleThreeScore(score);
+}
+
+
+template<typename Traits>
+CaptureResult<Traits> BitboardTool<Traits>::resolveCaptures(t_BWBoard<Traits>& bb, int col,
+                                                              int row, const Color color) const
+{
+    typename Traits::Bitboard capturedMask = {};
+
+    detect_captures<Traits>(bb, col, row, color, capturedMask);
+
+    const int newCaptures = popcount_bb_generic<Traits>(capturedMask);
+
+    return { capturedMask, newCaptures };
 }

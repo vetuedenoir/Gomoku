@@ -1,71 +1,41 @@
 #ifndef MOVEVALIDATOR_HPP
 # define MOVEVALIDATOR_HPP
 
-// Uniform façade for move legality. Delegates by phase to policies with
-// different internal representations. See include/game/validation/RULES.md.
-
-#include "game/GameState.hpp"
 #include "game/contracts/contracts.hpp"
-#include "game/validation/policy/OpeningMovePolicy.hpp"
+#include "game/board/GameBoard.hpp"
 #include "game/validation/policy/StandardMovePolicy.hpp"
 #include "logger/Logger.hpp"
 #include <string>
-#include <vector>
 
 template<typename Traits>
 class MoveValidator
 {
-public:
-    bool isLegal(const GameState& state, const Move& move) const
-    {
-        switch (state.phase)
+    public:
+        bool isLegal(const GameBoard& board, Color sideToMove, const Move& move) const
         {
-            case GamePhase::Opening:
-                return logResult("opening", move,
-                    OpeningMovePolicy::isLegal(state, move));
-            case GamePhase::Standard:
-                return logResult("standard", move,
-                    _standard.isLegal(state, move.col, move.row, sideToMove(state)));
-            case GamePhase::ColorChoice:
-            default:
-                return false;
+            const char* reason = nullptr;
+            const bool  ok = _standardPolicy.isLegal(board, move.col, move.row, sideToMove, &reason);
+            return logResult(move, ok, reason);
         }
-    }
 
-    std::vector<Move> legalMoves(const GameState& state) const
-    {
-        switch (state.phase)
+    private:
+        static bool logResult(const Move& move, bool ok, const char* reason)
         {
-            case GamePhase::Opening:
-                return OpeningMovePolicy::legalMoves(state);
-            case GamePhase::Standard:
-                return _standard.legalMoves(state, sideToMove(state));
-            default:
-                return {};
+            const std::string coord = "(" + std::to_string(move.col) + ","
+                                    + std::to_string(move.row) + ")";
+            if (!ok)
+            {
+                std::string msg = "standard " + coord + " rejected";
+                if (reason)
+                    msg += " — " + std::string(reason);
+                Logger::warn("VALIDATOR", msg);
+            }
+            else
+                LOG_DEBUG("VALIDATOR", "standard " + coord + " ok");
+            return ok;
         }
-    }
 
-private:
-    static Color sideToMove(const GameState& state)
-    {
-        const Seat seat = state.board->currentSeat();
-        if (state.blackSeat.has_value())
-            return (state.blackSeat.value() == seat) ? Color::Black : Color::White;
-        return (seat == Seat::First) ? Color::Black : Color::White;
-    }
-
-    static bool logResult(const char* phase, const Move& move, bool ok)
-    {
-        const std::string coord = "(" + std::to_string(move.col) + ","
-                                  + std::to_string(move.row) + ")";
-        if (!ok)
-            Logger::warn("VALIDATOR", std::string(phase) + " " + coord + " rejected");
-        else
-            Logger::debug("VALIDATOR", std::string(phase) + " " + coord + " ok");
-        return ok;
-    }
-
-    StandardMovePolicy<Traits> _standard;
+        StandardMovePolicy<Traits> _standardPolicy;
 };
 
 #endif

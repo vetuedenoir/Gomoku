@@ -48,6 +48,34 @@ bool Board::contains(sf::Vector2f pt) const
     return _bounds.contains(pt);
 }
 
+void Board::drawHighlight(sf::RenderWindow &window, int col, int row) const
+{
+    if (col < 0 || row < 0 || col >= _gridN || row >= _gridN)
+        return;
+
+    const float x = _bounds.left + col * _cellSize;
+    const float y = _bounds.top  + row * _cellSize;
+    const float r = _stoneR * 1.05f;
+
+    static const sf::Color HINT(220, 175, 80, 235); // GOLD, opaque
+
+    sf::CircleShape ring(r);
+    ring.setOrigin(r, r);
+    ring.setPosition(x, y);
+    ring.setFillColor(sf::Color::Transparent);
+    ring.setOutlineThickness(3.f);
+    ring.setOutlineColor(HINT);
+    window.draw(ring);
+
+    // A small centre dot makes an empty target cell easy to read at a glance.
+    const float dotR = _stoneR * 0.22f;
+    sf::CircleShape dot(dotR);
+    dot.setOrigin(dotR, dotR);
+    dot.setPosition(x, y);
+    dot.setFillColor(HINT);
+    window.draw(dot);
+}
+
 void Board::updateHover(sf::Vector2f pt)
 {
     if (!_bounds.contains(pt))

@@ -11,7 +11,9 @@
 
 #define BLACK_STONE "\033[1;30m"   // bright black (gray)
 #define WHITE_STONE "\033[1;37m"   // bright white
+#define LEGAL_MOVE  "\033[1;32m"   // bright green
 #define EMPTY_CELL  "\033[2;37m"   // dim white
+#define TITLE_LINE "\033[1;34m"   // bright blue
 #define RESET   "\033[0m"
 
 // template<int SIZE>
@@ -45,8 +47,9 @@ struct BoardTraits<19>
     using Bitboard = std::array<uint64_t, 6>;
 };
 
-// typedef uint64_t bitboard19[6];
-// typedef uint64_t bitboard15[4];
+
+template<typename Traits>
+inline constexpr std::size_t MAX_BOARD_MOVES = Traits::BOARD_SIZE * Traits::BOARD_SIZE - (Traits::BOARD_SIZE * Traits::BOARD_SIZE) / 7;
 
 template<typename Traits>
 struct t_BWBoard
@@ -91,7 +94,16 @@ inline bool get_bb_generic(const typename Traits::Bitboard &bb, int x, int y)
 template<typename Traits>
 inline bool get_bb_flate(const typename Traits::Bitboard& bb, int idx)
 {
-	return (bb[idx / 64] & (1ULL << (idx % 64))) != 0;
+	// Callers guard the -1 sentinel with `idx == -1 || get_bb_flate(...)`.
+	return (bb[idx >> 6] & (1ULL << (idx & 63))) != 0;
+}
+
+template<typename Traits>
+inline void set_bb_flate(typename Traits::Bitboard& bb, int idx)
+{
+	if (idx < 0)
+		return;
+	bb[idx >> 6] |= (1ULL << (idx & 63));
 }
 
 
@@ -164,12 +176,12 @@ void print_bb_19(t_BWBoard<Traits> &bw)
 			if (get_bb_generic<Traits>(bw.black, x, y) || get_bb_generic<Traits>(bw.white, x, y))
 			{
 				if (get_bb_generic<Traits>(bw.black, x, y))
-					str += "B ";
+					str += BLACK_STONE "B" RESET " ";
 				else if (get_bb_generic<Traits>(bw.white, x, y))
-					str += "W ";
+					str += WHITE_STONE "W" RESET " ";
 			}	
 			else
-				str += "0 ";
+				str += EMPTY_CELL "." RESET " ";
 		}
 		str += "|\n";
 	}
@@ -178,11 +190,47 @@ void print_bb_19(t_BWBoard<Traits> &bw)
 }
 
 template<typename Traits>
-void print_bb_19_colored(t_BWBoard<Traits> &bw)
+void print_bb_colored(typename Traits::Bitboard& bb)
 {
 	std::string str;
 
-	str += "\n - - - - - - - - - - - - - - - - - - -\n";
+	str += "\n";
+	for (int i = 0; i < Traits::BOARD_SIZE + 1; i++) {
+		str += "--";
+	}
+	str += "\n";
+
+	for (uint64_t y = 0; y < Traits::BOARD_SIZE; y++)
+	{
+		str += '|';
+		for (uint64_t x = 0; x < Traits::BOARD_SIZE; x++)
+		{
+			if (get_bb_generic<Traits>(bb, x, y))
+				str += LEGAL_MOVE "* " RESET;
+			else
+				str += EMPTY_CELL ". " RESET;
+		}
+		str += "|\n";
+	}
+
+	for (int i = 0; i < Traits::BOARD_SIZE + 1; i++) {
+		str += "--";
+	}
+	str += "\n";
+
+	std::cout << str << std::endl;
+}
+
+template<typename Traits>
+void print_bb_overlay(t_BWBoard<Traits>& bw, typename Traits::Bitboard& legalMoves)
+{
+	std::string str;
+
+	str += "\n";
+	for (int i = 0; i < Traits::BOARD_SIZE + 1; i++)
+		str += "--";
+	str += "\n";
+
 	for (uint64_t y = 0; y < Traits::BOARD_SIZE; y++)
 	{
 		str += '|';
@@ -192,12 +240,17 @@ void print_bb_19_colored(t_BWBoard<Traits> &bw)
 				str += BLACK_STONE "B " RESET;
 			else if (get_bb_generic<Traits>(bw.white, x, y))
 				str += WHITE_STONE "W " RESET;
+			else if (get_bb_generic<Traits>(legalMoves, x, y))
+				str += LEGAL_MOVE "* " RESET;
 			else
 				str += EMPTY_CELL ". " RESET;
 		}
 		str += "|\n";
 	}
-	str += " - - - - - - - - - - - - - - - - - - -\n";
+
+	for (int i = 0; i < Traits::BOARD_SIZE + 1; i++)
+		str += "--";
+	str += "\n";
 
 	std::cout << str << std::endl;
 }
@@ -257,6 +310,69 @@ bool detect_captures(const t_BWBoard<Traits>& board, int col, int row, const Col
 	}
 
 	return captured;
+}
+
+
+// Une capture est une paire adverse encadrée : il y en a au plus une par
+// demi-direction, donc au plus 8 pour un coup. Le bit (2 * d + s) code la paire
+// prise le long de LINE_DIRS[d], dans le sens négatif si s vaut 0. Les deux
+// pierres se déduisent de ce masque et de la case jouée (un et deux pas), ce
+// qui évite de les matérialiser pour chaque candidat d'un nœud de recherche.
+template<typename Traits>
+inline uint8_t detect_capture_mask(const t_BWBoard<Traits>& board, int col, int row, const Color attackerColor)
+{
+	const typename Traits::Bitboard& attacker = bitboardForColor(board, attackerColor);
+	const Color victimColor = (attackerColor == Color::Black) ? Color::White : Color::Black;
+	const typename Traits::Bitboard& victime = bitboardForColor(board, victimColor);
+
+	uint8_t mask = 0;
+
+	for (int d = 0; d < 4; ++d)
+	{
+		for (int s = 0; s < 2; ++s)
+		{
+			const int stepX = (s ? 1 : -1) * dx(LINE_DIRS[d]);
+			const int stepY = (s ? 1 : -1) * dy(LINE_DIRS[d]);
+
+			const int x1 = col + stepX,     y1 = row + stepY;
+			const int x2 = col + 2 * stepX, y2 = row + 2 * stepY;
+			const int x3 = col + 3 * stepX, y3 = row + 3 * stepY;
+
+			if (!in_board_generic<Traits>(x1, y1) || !in_board_generic<Traits>(x2, y2) || !in_board_generic<Traits>(x3, y3))
+				continue;
+
+			if (get_bb_generic<Traits>(victime, x1, y1) &&
+				get_bb_generic<Traits>(victime, x2, y2) &&
+				get_bb_generic<Traits>(attacker, x3, y3))
+				mask |= static_cast<uint8_t>(1u << (2 * d + s));
+		}
+	}
+	return mask;
+}
+
+inline int capture_mask_count(uint8_t mask)
+{
+	return 2 * __builtin_popcount(mask);
+}
+
+// Appelle fn(x, y) sur chaque pierre prise, dans l'ordre de balayage du masque.
+template<typename Fn>
+inline void for_each_captured_stone(uint8_t mask, int col, int row, Fn fn)
+{
+	for (int d = 0; d < 4; ++d)
+	{
+		for (int s = 0; s < 2; ++s)
+		{
+			if (!(mask & (1u << (2 * d + s))))
+				continue;
+
+			const int stepX = (s ? 1 : -1) * dx(LINE_DIRS[d]);
+			const int stepY = (s ? 1 : -1) * dy(LINE_DIRS[d]);
+
+			fn(col + stepX, row + stepY);
+			fn(col + 2 * stepX, row + 2 * stepY);
+		}
+	}
 }
 
 template<typename Traits>

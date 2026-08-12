@@ -5,6 +5,9 @@
 #include "bitboard/BitboardTool.hpp"
 #include "game/contracts/contracts.hpp"
 
+
+// fonction qui ne detecte pas les captures gagnantes, mais seulement les alignements de 5
+// surement à compléter plus tard pour les captures
 template<typename Traits>
 bool isWinAfterMove(const t_BWBoard<Traits>& bb, const Color color, int col, int row)
 {

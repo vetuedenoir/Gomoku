@@ -3,9 +3,12 @@
 #include "logger/Logger.hpp"
 #include <algorithm>
 #include <random>
+#include <chrono>
 #include <iostream>
+#include <thread>
+#include <sstream>
+#include <iomanip>
 
-// #include "bitboard/bitboard.hpp"
 
 #ifdef __APPLE__
     static const char *FONT = "/System/Library/Fonts/Helvetica.ttc";
@@ -26,8 +29,6 @@ Gomoku::Gomoku()
     buildOpeningPage();
 
     _states.push(AppState::MainMenu);
-
-    // _activeZone = std::make_unique<ActiveZone19>(2);
 }
 
 void Gomoku::run()
@@ -77,10 +78,11 @@ void Gomoku::logConfig() const
     const char *stoneStr[]   = { "Black (plays first)", "White" };
     const char *openingStr[] = { "Standard", "Pro", "Long Pro", "Swap", "Swap 2" };
 
-    Logger::info("CONFIG",
+    LOG_INFO("CONFIG",
         std::string("board=")   + std::to_string(_config.boardSize) + "x" + std::to_string(_config.boardSize)
         + "  stone="   + stoneStr  [static_cast<int>(_config.playerColor)]
         + "  opening=" + openingStr[static_cast<int>(_config.openingProtocol)]);
+    LOG_SUPPRESS(stoneStr[static_cast<int>(_config.playerColor)], openingStr[static_cast<int>(_config.openingProtocol)]);
 }
 
 void Gomoku::onBoardSizeSelected(int size)
@@ -108,6 +110,10 @@ void Gomoku::startGame()
     float boardSize = std::min(WIN_W, WIN_H) * 0.90f;
     _board      = std::make_unique<Board>(WIN_W / 2.f, WIN_H / 2.f, boardSize, _config.boardSize);
     _controller = makeGameController(_config);
+
+    LOG_INFO("GAME DEBUG", "player actor: " + seatStr(_controller->playerActor().seat) + " " + (_controller->playerActor().color == Color::Black ? "Black" : "White"));
+    LOG_INFO("GAME DEBUG", "ai actor: " + seatStr(_controller->aiActor().seat) + " " + (_controller->aiActor().color == Color::Black ? "Black" : "White"));
+    LOG_INFO("GAME DEBUG", "current actor: " + seatStr(_controller->currentActor().seat) + " " + (_controller->currentActor().color == Color::Black ? "Black" : "White"));
 }
 
 // ── Ghost-colour computation ──────────────────────────────────────────────────
@@ -134,10 +140,57 @@ CellStatus Gomoku::computeGhostColor() const
 }
 
 
+bool Gomoku::isAITurn() const
+{
+    if (!_controller) return false;
+    return _controller->currentActor().seat == _controller->aiActor().seat;
+}
+
+bool Gomoku::isGameOver()
+{
+    const auto winner = _controller->getColorFromWinningActor();
+    
+    if (!winner.has_value())
+        return false;
+
+    buildWinScreenPage(winner.value(),
+                       _controller->blackCaptureCount(),
+                       _controller->whiteCaptureCount());
+    navigateTo(AppState::GameOver);
+    
+    return true;
+}
+
+void Gomoku::requestSuggestion()
+{
+    if (!_controller || _states.top() != AppState::Game)
+        return;
+    if (_controller->phase() != GamePhase::Standard)
+        return;
+    // In a game against the AI, only offer hints on the human's turn.
+    if (_config.aiOpponent && isAITurn())
+        return;
+
+    _suggestion = _controller->suggestMove();
+}
+
+void Gomoku::clearSuggestion()
+{
+    _suggestion.reset();
+}
+
 void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
 {
     if (event.type == sf::Event::Closed)
         _window.close();
+
+    // Move suggestion (hint): press H while in a live game.
+    if (event.type == sf::Event::KeyPressed
+        && event.key.code == sf::Keyboard::H)
+    {
+        requestSuggestion();
+        return;
+    }
 
     if (event.type != sf::Event::MouseButtonReleased
         || event.mouseButton.button != sf::Mouse::Left)
@@ -161,18 +214,25 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
         {
             int col = _board->getHoveredCol();
             int row = _board->getHoveredRow();
+            
             if (col < 0 || row < 0)
                 break;
 
-            if (!_controller->handleOpeningClick(col, row))
+            if (!_controller->submitOpeningMove(col, row))
                 break;
 
+            clearSuggestion();
+
             if (_controller->phase() == GamePhase::ColorChoice)
+            {
+                LOG_INFO("ACTOR DEBUG", "buildColorChoicePage on opening click");
                 buildColorChoicePage();
+            }
             break;
         }
 
         case GamePhase::ColorChoice:
+            LOG_INFO("COLORCHOICE", "handleEvent");
             _colorChoice.handleClick(mouse);
             break;
 
@@ -183,14 +243,9 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
             if (col < 0 || row < 0)
                 break;
 
-            auto result = _controller->submitMove(col, row);
-            if (result == MoveResult::Win)
-            {
-                buildWinScreenPage(_controller->winner().value(),
-                                   _controller->captureCount(Color::Black),
-                                   _controller->captureCount(Color::White));
-                navigateTo(AppState::GameOver);
-            }
+            _controller->submitMove(col, row);
+            clearSuggestion();
+            isGameOver();
             break;
         }
     }
@@ -205,12 +260,21 @@ void Gomoku::update(sf::Vector2f mouse)
     else if (_states.top() == AppState::Game)
     {
         _board->updateHover(mouse);
-        if (_controller->phase() == GamePhase::ColorChoice)
-            _colorChoice.updateHover(mouse);
     }
     else
     {
         currentPage().updateHover(mouse);
+    }
+
+    if (_config.aiOpponent && _states.top() == AppState::Game && isAITurn())
+    { 
+        _controller->requestAIMove();
+        clearSuggestion();
+
+        if (_controller->phase() == GamePhase::ColorChoice)
+            buildColorChoicePage();
+
+        isGameOver();
     }
 }
 
@@ -226,9 +290,20 @@ void Gomoku::render()
     }
     else if (_states.top() == AppState::Game)
     {
-        _renderer.renderGame(_window, *_board, *_controller, computeGhostColor());
+        _renderer.renderGame(_window, *_board, *_controller, computeGhostColor(), _suggestion);
+        _renderer.renderStats(_window, _font, *_board, *_controller);
         if (_controller->phase() == GamePhase::ColorChoice)
             _renderer.renderColorChoice(_window, _colorChoice);
+        else if (_controller->phase() == GamePhase::Standard)
+        {
+            const bool active = _suggestion.has_value();
+            sf::Text tip = makeText(
+                active ? "Suggested move shown  |  press H for another"
+                       : "Press H for a move suggestion",
+                _font, FONT_XS, active ? GOLD : DIM);
+            tip.setPosition(CX, WIN_H * 0.975f);
+            _window.draw(tip);
+        }
     }
     else
     {
@@ -245,21 +320,30 @@ void Gomoku::resetToMainMenu()
     _states.push(AppState::MainMenu);
     _board.reset();
     _controller.reset();
+    clearSuggestion();
 }
 
 void Gomoku::buildColorChoicePage()
 {
     _colorChoice.clear();
 
+    const Actor       actor = _controller->currentActor();
+
+    LOG_INFO("COLORCHOICE", "actor: " + seatStr(actor.seat) + " " + (actor.color == Color::Black ? "Black" : "White"));
+    LOG_SUPPRESS(actor.seat, actor.color);
+
+    const Seat        seat = _controller->currentActor().seat;
+
     const OpeningProtocol openingProtocol  = _controller->openingProtocol();
-    const Seat        actor = _controller->currentActor();
     const bool threeOptions = (openingProtocol == OpeningProtocol::Swap2
-                               && actor == Seat::Second
+                               && seat == Seat::Second
                                && _controller->stepIdx() == 1);
+
+    
 
     const char* titleStr = threeOptions
         ? "Seat 2: Choose your option"
-        : (actor == Seat::Second ? "Seat 2: Choose your colour"
+        : (seat == Seat::Second ? "Seat 2: Choose your colour"
                                  : "Seat 1: Choose your colour");
 
     sf::Text title = makeText(titleStr, _font, FONT_CC, GOLD);
@@ -272,8 +356,8 @@ void Gomoku::buildColorChoicePage()
     divider.setOrigin(divW / 2.f, 0.5f);
     divider.setPosition(CX, WIN_H * 0.50f);
 
-    const char* label1 = (actor == Seat::Second) ? "Play White" : "Play Black";
-    const char* label2 = (actor == Seat::Second) ? "Play Black" : "Play White";
+    const char* label1 = (seat == Seat::Second) ? "Play White" : "Play Black";
+    const char* label2 = (seat == Seat::Second) ? "Play Black" : "Play White";
 
     _colorChoice.addItem("opt1", FonctionItem(
         Item(label1,         _font, CX, WIN_H * 0.545f),
@@ -321,6 +405,17 @@ void Gomoku::buildWinScreenPage(const Color winner, int capturesBlack, int captu
     score.setPosition(CX, WIN_H * 0.431f);
     _winScreen.addText("score", score);
 
+    if (_config.aiOpponent)
+    {
+        std::ostringstream avgStream;
+        avgStream << std::fixed << std::setprecision(1)
+                  << "AI avg: " << _controller->aiMoveAverageMs() << " ms";
+        sf::Text aiAvg = makeText(avgStream.str(), _font, FONT_MD, GOLD);
+        aiAvg.setStyle(sf::Text::Bold);
+        aiAvg.setPosition(CX, WIN_H * 0.478f);
+        _winScreen.addText("aiAvg", aiAvg);
+    }
+
     _winScreen.addItem("again", FonctionItem(
         Item("Play Again", _font, CX, WIN_H * 0.5375f),
         [this]() { resetToMainMenu(); }
@@ -333,6 +428,7 @@ void Gomoku::buildWinScreenPage(const Color winner, int capturesBlack, int captu
     _winScreen.setDrawFunction([](MenuPage& page, sf::RenderWindow& win) {
         if (auto *t  = page.getText("title"))  win.draw(*t);
         if (auto *t  = page.getText("score"))  win.draw(*t);
+        if (auto *t  = page.getText("aiAvg"))  win.draw(*t);
         if (auto *fi = page.getItem("again"))  fi->item.draw(win);
         if (auto *fi = page.getItem("quit"))   fi->item.draw(win);
     });
@@ -358,21 +454,26 @@ void Gomoku::buildMainMenuPage()
     divider.setPosition(CX, WIN_H * 0.30f);
     _mainMenu.addRectangle("divider", divider);
 
-    _mainMenu.addItem("play", FonctionItem(
-        Item("Play", _font, CX, WIN_H * 0.425f),
-        [this]() { navigateTo(AppState::BoardSize); }
+    _mainMenu.addItem("playAI", FonctionItem(
+        Item("Play vs AI", _font, CX, WIN_H * 0.400f),
+        [this]() { _config.aiOpponent = true;  navigateTo(AppState::BoardSize); }
+    ));
+    _mainMenu.addItem("playHotseat", FonctionItem(
+        Item("Two Players", _font, CX, WIN_H * 0.500f),
+        [this]() { _config.aiOpponent = false; navigateTo(AppState::BoardSize); }
     ));
     _mainMenu.addItem("quit", FonctionItem(
-        Item("Quit", _font, CX, WIN_H * 0.525f),
+        Item("Quit", _font, CX, WIN_H * 0.600f),
         [this]() { _window.close(); }
     ));
 
     _mainMenu.setDrawFunction([](MenuPage &page, sf::RenderWindow &win) {
-        if (auto *t = page.getText("title"))        win.draw(*t);
-        if (auto *r = page.getRectangle("divider")) win.draw(*r);
-        if (auto *t = page.getText("sub"))          win.draw(*t);
-        if (auto *fi = page.getItem("play"))        fi->item.draw(win);
-        if (auto *fi = page.getItem("quit"))        fi->item.draw(win);
+        if (auto *t = page.getText("title"))         win.draw(*t);
+        if (auto *r = page.getRectangle("divider"))  win.draw(*r);
+        if (auto *t = page.getText("sub"))           win.draw(*t);
+        if (auto *fi = page.getItem("playAI"))       fi->item.draw(win);
+        if (auto *fi = page.getItem("playHotseat"))  fi->item.draw(win);
+        if (auto *fi = page.getItem("quit"))         fi->item.draw(win);
     });
 }
 

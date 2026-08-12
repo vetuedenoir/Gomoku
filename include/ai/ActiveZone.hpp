@@ -2,13 +2,10 @@
 # define ACTIVEZONE_HPP
 
 #include "bitboard/bitboard.hpp"
+#include "game/contracts/contracts.hpp"
 #include <vector>
 
-typedef struct t_cell
-{
-	int x;
-	int y;
-}	t_cell;
+
 
 template<typename Traits>
 class ActiveZone
@@ -32,8 +29,6 @@ class ActiveZone
 
 		int getRadius() const noexcept;
 
-		std::vector<t_cell> generateZoneMoves();
-
 	private:
 		typename Traits::Bitboard _candidateMask;
 		int                       _radius;
@@ -55,15 +50,24 @@ template<typename Traits>
 void ActiveZone<Traits>::initialize(const t_BWBoard<Traits>& board)
 {
 	_candidateMask = {};
+	int	neighborAdded = 0;
 
 	for (int y = 0; y < Traits::BOARD_SIZE; y++)
 	{
 		for (int x = 0; x < Traits::BOARD_SIZE; x++)
 		{
 			if (get_bb_generic<Traits>(board.black, x, y) ||
-				get_bb_generic<Traits>(board.white, x, y))
-				addNeighborBits(x, y);
+				get_bb_generic<Traits>(board.white, x, y)) {
+					addNeighborBits(x, y);
+					neighborAdded++;
+				}
 		}
+	}
+
+	if (neighborAdded == 0)
+	{
+		set_bb_generic<Traits>(_candidateMask,
+			Traits::BOARD_SIZE / 2, Traits::BOARD_SIZE / 2);
 	}
 
 	for (int i = 0; i < Traits::WORD_COUNT; i++)
@@ -125,24 +129,5 @@ int ActiveZone<Traits>::getRadius() const noexcept
 
 using ActiveZone19 = ActiveZone<BoardTraits<19>>;
 using ActiveZone15 = ActiveZone<BoardTraits<15>>;
-
-
-template<typename Traits>
-std::vector<t_cell> ActiveZone<Traits>::generateZoneMoves()
-{
-	std::vector<t_cell> moves;
-
-	for (int y = 0; y < Traits::BOARD_SIZE; y++)
-	{
-		for (int x = 0; x < Traits::BOARD_SIZE; x++)
-		{
-			if (contains(x, y))
-			{
-				moves.push_back({x, y});
-			}
-		}
-	}
-	return moves;
-}
 
 #endif // ACTIVEZONE_HPP
