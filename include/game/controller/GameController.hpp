@@ -31,6 +31,7 @@ class GameController : public IGameController
         Actor                playerActor()      const override;
         Actor                aiActor()          const override;
         bool                 aiOpponent()       const override;
+        bool                 aiVsAi()           const override;
 
         CellStatus           nextOpeningColor() const override;
         Color                currentColor()     const override;
@@ -75,6 +76,7 @@ class GameController : public IGameController
         Seat                       _aiSeat;         // which seat the AI occupies (only field a swap mutates)
         Seat                       _currentSeat;    // pure turn cursor; never touched by a swap
         bool                       _aiOpponent = true; // false ⇒ hotseat (both seats human)
+        bool                       _aiVsAi     = false; // both seats driven by MasterAI
 };
 
 #include "game/controller/GameController.inl"

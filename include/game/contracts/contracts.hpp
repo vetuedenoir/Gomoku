@@ -16,7 +16,8 @@ struct GameConfig
     int             boardSize       = 19;
     Color           playerColor     = Color::Black;
     OpeningProtocol openingProtocol = OpeningProtocol::Standard;
-    bool            aiOpponent      = true;
+    bool            aiOpponent      = true;  // false ⇒ hotseat (both seats human)
+    bool            aiVsAi          = false; // both seats AI (implies aiOpponent)
 };
 
 

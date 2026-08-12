@@ -37,6 +37,7 @@ class IGameController
         virtual Actor                aiActor()          const = 0;
 
         virtual bool                 aiOpponent()       const = 0;
+        virtual bool                 aiVsAi()           const = 0;
 
         virtual double               aiMoveLastMs()     const = 0;
         virtual double               aiMoveAverageMs()  const = 0;
