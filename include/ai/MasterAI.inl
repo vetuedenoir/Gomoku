@@ -18,18 +18,31 @@ static constexpr int LEAF_SCAN_RADIUS      = 2;
 // Ordonnancement lazy :
 //   1) light sur tous les candidats
 //   2) si depth >= FULL_ORDER_MIN_DEPTH → complétion full (cross+déf) seulement
-//      sur le top LAZY_FULL_POOL (ceux qu'on risque de chercher)
+//      sur le top du classement (ceux qu'on risque de chercher)
 static constexpr int FULL_ORDER_MIN_DEPTH = 4;
 
 // Plafond top-N (forward pruning) : nombre max de coups LÉGAUX explorés par
-// nœud interne de minimax. Les coups étant triés best-first, on ne garde que
-// les N meilleurs. Réduit le facteur de branchement effectif. À tuner via le
-// benchmark [PERF][BENCH].
-static constexpr int MAX_CANDIDATES = 14;
+// nœud. Les coups étant triés best-first, on ne garde que les N meilleurs.
+// Le plafond dépend de la profondeur RESTANTE sous le nœud : près de la racine
+// une erreur d'ordonnancement coûte tout le sous-arbre, on reste large ; près
+// des feuilles les nœuds sont les plus nombreux et leur score le moins
+// discriminant, on serre pour réduire le facteur de branchement effectif.
+// Index = profondeur restante ; au-delà, le plafond de la racine.
+// Table à tuner via le benchmark [PERF][BENCH].
+static constexpr int CANDIDATE_CAPS[]   = { 4, 4, 6, 8, 10, 12, 14 };
+static constexpr int CANDIDATE_CAPS_LEN =
+	static_cast<int>(sizeof(CANDIDATE_CAPS) / sizeof(CANDIDATE_CAPS[0]));
 
-// Marge au-dessus de MAX_CANDIDATES pour le re-score full (si le light
-// sous-classe un bon coup défensif juste hors du top-N).
-static constexpr int LAZY_FULL_POOL = MAX_CANDIDATES + 4;
+static constexpr int candidateCap(int depth)
+{
+	return depth <= 0 ? CANDIDATE_CAPS[0]
+	     : depth < CANDIDATE_CAPS_LEN ? CANDIDATE_CAPS[depth]
+	     : CANDIDATE_CAPS[CANDIDATE_CAPS_LEN - 1];
+}
+
+// Marge au-dessus du plafond pour le re-score full (si le light sous-classe
+// un bon coup défensif juste hors du top-N).
+static constexpr int LAZY_FULL_MARGIN = 4;
 
 // Coup accompagné de sa clé de tri statique (heuristique indépendante de la TT).
 struct ScoredMove
@@ -259,7 +272,8 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 		++_stats.ttRootExactSeeds;
 	}
 
-	for (size_t i = 0; i < orderedRoot.size() && i < MAX_CANDIDATES; ++i)
+	const size_t rootCap = static_cast<size_t>(candidateCap(_maxDepth));
+	for (size_t i = 0; i < orderedRoot.size() && i < rootCap; ++i)
 	{
 		const t_cell& move = orderedRoot[i].move;
 
@@ -384,7 +398,7 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 
     // 6. Tri lazy :
     //    light sur tous → sort → (près racine) cross+déf sur le top pool → re-sort.
-    //    Exploration limitée ensuite à MAX_CANDIDATES.
+    //    Exploration limitée ensuite à candidateCap(depth).
     const int   ply   = currentDepth;
     const Color mover = position.sideToMove();
 
@@ -423,7 +437,8 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 
 		if (depth >= FULL_ORDER_MIN_DEPTH && !ordered.empty())
 		{
-			const size_t pool = std::min(ordered.size(), static_cast<size_t>(LAZY_FULL_POOL));
+			const size_t pool = std::min(ordered.size(),
+				static_cast<size_t>(candidateCap(depth) + LAZY_FULL_MARGIN));
 			for (size_t i = 0; i < pool; ++i)
 			{
 				upgradeLightToFull(ordered[i], board, mover, capturesBefore);
@@ -437,7 +452,7 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     //     position (même issu d'une recherche moins profonde), on le place en
     //     TÊTE de la liste. Deux effets :
     //       - il est TOUJOURS exploré, en contournant le plafond top-N
-    //         (MAX_CANDIDATES) qui aurait pu l'écarter s'il était mal classé
+    //         (candidateCap) qui aurait pu l'écarter s'il était mal classé
     //         par le tri statique ;
     //       - le meilleur coup connu est essayé en premier → coupures
     //         alpha-beta plus précoces.
@@ -469,10 +484,11 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
                      : std::numeric_limits<int>::max();
 
     int legalMovesSearched = 0;
+    const int nodeCap = candidateCap(depth);
     for (size_t i = 0; i < ordered.size(); ++i)
     {
         // Plafond top-N : on a déjà exploré les N meilleurs coups légaux.
-        if (legalMovesSearched >= MAX_CANDIDATES)
+        if (legalMovesSearched >= nodeCap)
             break;
 		if (!ordered[i].isLegal)
 			continue;
