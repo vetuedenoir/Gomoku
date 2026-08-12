@@ -42,6 +42,21 @@ inline int captureProgressScore(int totalBefore, int capsThisMove)
 		score += 8000;
 	return score;
 }
+// Progressive race-to-10 incentive. `totalBefore` / `capsThisMove` are stone counts.
+// Near the threshold this must rival half-open / broken fours so captures are planned.
+inline int captureProgressScore(int totalBefore, int capsThisMove)
+{
+	const int totalAfter = totalBefore + capsThisMove;
+	int score = capsThisMove * CAPTURE_SCORE * 2;
+	// Quadratic progress: 2→160, 4→640, 6→1440, 8→2560
+	score += totalAfter * totalAfter * 40;
+	if (capsThisMove > 0)
+		score += totalBefore * 100;
+	// One pair from winning — treat like a forcing threat for ordering
+	if (totalAfter >= 8 && capsThisMove > 0 && totalAfter < 10)
+		score += 8000;
+	return score;
+}
 
 // Ordonnancement statique des coups (après cross_score / score_open_three dont il dépend).
 // Score TOUJOURS positif = meilleur, du point de vue du camp au trait `side` : offense + défense (blocage) + captures.
