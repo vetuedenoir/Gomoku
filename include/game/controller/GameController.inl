@@ -268,6 +268,9 @@ std::optional<Move> GameController<Traits>::requestAIMove()
     if (_phase == GamePhase::Standard)
     {
         SearchPosition<Traits> pos = SearchPosition<Traits>::fromBoard(*_board);
+
+        pos.setWhiteCaptures(_capturesWhite);
+        pos.setBlackCaptures(_capturesBlack);
         
         _tracker.start();
         
@@ -298,6 +301,8 @@ std::optional<Move> GameController<Traits>::suggestMove()
     const Color side = currentColor();
 
     SearchPosition<Traits> pos = SearchPosition<Traits>::fromBoard(*_board);
+    pos.setWhiteCaptures(_capturesWhite);
+    pos.setBlackCaptures(_capturesBlack);
 
     const auto [col, row] = _masterAI.findBestMove(pos, side);
 

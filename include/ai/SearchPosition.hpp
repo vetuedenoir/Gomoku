@@ -76,6 +76,10 @@ class SearchPosition
 
         int getBlackCaptures() const { return _history.empty() ? 0 : _history.top().blackCaptures; }
         int getWhiteCaptures() const { return _history.empty() ? 0 : _history.top().whiteCaptures; }
+
+        void    setBlackCaptures(int count) { _blackCaptures = count; }
+        void    setWhiteCaptures(int count) { _whiteCaptures = count; }
+
     
         const t_BWBoard<Traits>& board()       const;
         uint64_t                 zobristHash() const;
@@ -316,17 +320,16 @@ MoveStateHash SearchPosition<Traits>::buildMoveHash(EvaluatedMove move, Color co
     stateHash.hash ^= _hasher.sideKey();
 
     
-    int caps = move.capturedStones.size();
+    const int caps = capture_mask_count(move.captureMask);
     if (caps > 0)
     {
-        stateHash.state.capturedStones = move.capturedStones;
-        
+        // Les victimes ne sont reconstruites qu'ici, pour le coup effectivement
+        // joué : l'ordonnancement, lui, n'a manipulé que le masque.
         const Color victimColor = (color == Color::Black) ? Color::White : Color::Black;
-        for (size_t k = 0; k < move.capturedStones.size(); ++k)
-        {
-            const t_cell& stone = move.capturedStones[k];
-            stateHash.hash ^= _hasher.key(stone.x, stone.y, victimColor);
-        }
+        for_each_captured_stone(move.captureMask, move.move.x, move.move.y, [&](int x, int y) {
+            stateHash.state.capturedStones.push({static_cast<int_fast16_t>(x), static_cast<int_fast16_t>(y)});
+            stateHash.hash ^= _hasher.key(x, y, victimColor);
+        });
 
         if (color == Color::Black)
         {

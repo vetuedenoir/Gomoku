@@ -17,15 +17,15 @@ static constexpr int LEAF_SCAN_RADIUS      = 2;
 
 // Ordonnancement lazy :
 //   1) light sur tous les candidats
-//   2) si depth >= FULL_ORDER_MIN_DEPTH → re-score full (V2+déf) seulement
-//      le top LAZY_FULL_POOL (ceux qu'on risque de chercher)
+//   2) si depth >= FULL_ORDER_MIN_DEPTH → complétion full (cross+déf) seulement
+//      sur le top LAZY_FULL_POOL (ceux qu'on risque de chercher)
 static constexpr int FULL_ORDER_MIN_DEPTH = 4;
 
 // Plafond top-N (forward pruning) : nombre max de coups LÉGAUX explorés par
 // nœud interne de minimax. Les coups étant triés best-first, on ne garde que
 // les N meilleurs. Réduit le facteur de branchement effectif. À tuner via le
 // benchmark [PERF][BENCH].
-static constexpr int MAX_CANDIDATES = 18;
+static constexpr int MAX_CANDIDATES = 14;
 
 // Marge au-dessus de MAX_CANDIDATES pour le re-score full (si le light
 // sous-classe un bon coup défensif juste hors du top-N).
@@ -173,6 +173,7 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	_stats.ttRootHits         = 0;
 	_stats.ttRootOrderingHits = 0;
 	_stats.ttRootExactSeeds   = 0;
+	_stats.forcedNodes        = 0;
 
 	// Killer/history repartent à zéro à chaque recherche racine : les coupures
 	// d'une recherche précédente ne sont plus pertinentes pour la nouvelle position.
@@ -204,7 +205,7 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 				// tel quel. On renseigne les stats (mat au ply 1) AVANT de sortir,
 				// sinon bestScore resterait à sa valeur par défaut.
 				if (scoredMove.score >= WIN_SCORE ||
-					scoredMove.capturedStones.size() + position.getCapturesForside() >= 10)
+					capture_mask_count(scoredMove.captureMask) + position.getCapturesForside() >= 10)
 				{
 					_stats.bestScore = WIN_SCORE - 1;
 					_stats.bestMove  = scoredMove.move;
@@ -215,6 +216,8 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 				orderedRoot.push(scoredMove);
 			}
 		}
+		if (restrictToForcedReplies(board, orderedRoot, color))
+			++_stats.forcedNodes;
 		std::sort(orderedRoot.begin(), orderedRoot.end(),
 			[](const EvaluatedMove& a, const EvaluatedMove& b) { return a.score > b.score; });
 	}
@@ -301,7 +304,8 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 		+ "  evaluated=" + std::to_string(_stats.nodesEvaluated)
 		+ "  pruned="    + std::to_string(_stats.nodesPruned)
 		+ " (" + std::to_string(pruningPct) + "%)"
-		+ "  maxDepth="  + std::to_string(_stats.maxDepthSeen));
+		+ "  maxDepth="  + std::to_string(_stats.maxDepthSeen)
+		+ "  forced="    + std::to_string(_stats.forcedNodes));
 	LOG_SUPPRESS(_stats.nodesVisited, _stats.nodesEvaluated, _stats.nodesPruned, _stats.maxDepthSeen, pruningPct);
 	LOG_DEBUG("AI", "[findBestMove] tt [minimax] stores=" + std::to_string(_stats.ttStores)
 		+ " hits=" + std::to_string(_stats.ttHits)
@@ -379,7 +383,7 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     }
 
     // 6. Tri lazy :
-    //    light sur tous → sort → (près racine) full V2+déf sur le top pool → re-sort.
+    //    light sur tous → sort → (près racine) cross+déf sur le top pool → re-sort.
     //    Exploration limitée ensuite à MAX_CANDIDATES.
     const int   ply   = currentDepth;
     const Color mover = position.sideToMove();
@@ -387,6 +391,12 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     int capturesBefore = position.getCapturesForside();
     const t_BWBoard<Traits>& board = position.board();
 
+    // Ce comparateur laisse beaucoup d'ex æquo (les coups silencieux partagent
+    // le même score light), et leur classement est décidé par la façon dont
+    // std::sort brasse les égalités. Ce n'est donc pas un détail de coût :
+    // mesuré sur le benchmark, passer à std::partial_sort coûte +44 % de nœuds
+    // et départager par proximité au dernier coup +45 %, à qualité de tri
+    // théoriquement égale.
     auto betterMove = [this, ply, mover](const EvaluatedMove& a, const EvaluatedMove& b) {
         if (a.score != b.score)
             return a.score > b.score;
@@ -406,6 +416,9 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 				ordered.push(scoredMove);
 		}
 
+		if (restrictToForcedReplies(board, ordered, mover))
+			++_stats.forcedNodes;
+
 		std::sort(ordered.begin(), ordered.end(), betterMove);
 
 		if (depth >= FULL_ORDER_MIN_DEPTH && !ordered.empty())
@@ -413,15 +426,8 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
 			const size_t pool = std::min(ordered.size(), static_cast<size_t>(LAZY_FULL_POOL));
 			for (size_t i = 0; i < pool; ++i)
 			{
-				EvaluatedMove full = rawShapeScoreV2(board, ordered[i].move, mover, capturesBefore);
-				if (!full.isLegal)
-				{
-					ordered[i].isLegal = false;
-					ordered[i].score = std::numeric_limits<int>::min() / 2;
-					continue;
-				}
-				addDefenseToOrderingScore(full, board, mover);
-				ordered[i] = full;
+				upgradeLightToFull(ordered[i], board, mover, capturesBefore);
+				addDefenseToOrderingScore(ordered[i], board, mover);
 			}
 			std::sort(ordered.begin(), ordered.end(), betterMove);
 		}

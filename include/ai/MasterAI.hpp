@@ -31,6 +31,7 @@ struct SearchStats
     int    ttRootHits         = 0;  // [root] probe found a matching entry
     int    ttRootOrderingHits = 0;  // [root] entry bestMove located & moved to front
     int    ttRootExactSeeds   = 0;  // [root] EXACT entry (depth>=maxDepth) seeded best move/score
+    int    forcedNodes        = 0;  // nœuds où la liste a été réduite aux parades d'un cinq
     int    bestScore      = 0;
     t_cell bestMove       = {-1, -1};
 };
@@ -121,10 +122,23 @@ class MasterAI
 
 		EvaluatedMove rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color);
 
+		// Clé full de référence : light + cross. Le tri ne l'appelle plus
+		// (rawShapeScoreLight puis upgradeLightToFull donnent le même résultat).
 		EvaluatedMove rawShapeScoreV2(const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore);
 
 		// Clé light : caps + five/four/broken + open_three (légalité). Pas de cross.
 		EvaluatedMove rawShapeScoreLight(const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore);
+
+		// Complète une clé light avec le seul maillon manquant (check_cross),
+		// et seulement si son `stage` laisse cette possibilité ouverte.
+		void upgradeLightToFull(EvaluatedMove& move, const t_BWBoard<Traits>& board,
+			Color color, int capturesBefore);
+
+		// Coups forcés : si l'adversaire aligne cinq au coup suivant, réduit la
+		// liste aux réponses qui peuvent encore changer l'issue. Renvoie true si
+		// une restriction a eu lieu.
+		bool restrictToForcedReplies(const t_BWBoard<Traits>& board,
+			MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>>& ordered, Color mover);
 
 		// Enrichit la clé d'ordonnancement : score = offense + défense/2.
 		// `offense` garde captures/légalité du camp au trait (pour makeMove) ;

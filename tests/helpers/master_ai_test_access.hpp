@@ -25,4 +25,19 @@ struct MasterAITestAccess
 	{
 		return ai._tt;
 	}
+
+	static EvaluatedMove lightKey(MasterAI<Traits>& ai, const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore)
+	{
+		return ai.rawShapeScoreLight(board, cell, color, capturesBefore);
+	}
+
+	static EvaluatedMove fullKey(MasterAI<Traits>& ai, const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore)
+	{
+		return ai.rawShapeScoreV2(board, cell, color, capturesBefore);
+	}
+
+	static void upgrade(MasterAI<Traits>& ai, EvaluatedMove& move, const t_BWBoard<Traits>& board, Color color, int capturesBefore)
+	{
+		ai.upgradeLightToFull(move, board, color, capturesBefore);
+	}
 };
