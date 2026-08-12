@@ -31,8 +31,9 @@ class ZobristHasher
 
     static uint64_t _table[TABLE_SIZE][2];
     static uint64_t _sideKey;
-    static uint64_t _captureBlackTable[5];
-    static uint64_t _captureWhiteTable[5];
+    // Pair counts 0..5 (10 stones = win). Index 0 unused; 1..5 keyed.
+    static uint64_t _captureBlackTable[6];
+    static uint64_t _captureWhiteTable[6];
     static bool     _initialized;
 
     static uint64_t random_u64()
@@ -56,7 +57,7 @@ class ZobristHasher
             }
         }
         _sideKey     = random_u64();
-        for (int i = 1; i < 5; ++i)
+        for (int i = 1; i < 6; ++i)
         {
             _captureBlackTable[i] = random_u64();
             _captureWhiteTable[i] = random_u64();
@@ -113,8 +114,8 @@ public:
 
 template<typename Traits> uint64_t ZobristHasher<Traits>::_table[ZobristHasher<Traits>::TABLE_SIZE][2] = {};
 template<typename Traits> uint64_t ZobristHasher<Traits>::_sideKey = 0;
-template<typename Traits> uint64_t ZobristHasher<Traits>::_captureBlackTable[5] = {};
-template<typename Traits> uint64_t ZobristHasher<Traits>::_captureWhiteTable[5] = {};
+template<typename Traits> uint64_t ZobristHasher<Traits>::_captureBlackTable[6] = {};
+template<typename Traits> uint64_t ZobristHasher<Traits>::_captureWhiteTable[6] = {};
 template<typename Traits> bool     ZobristHasher<Traits>::_initialized = false;
 
 using ZobristHasher19 = ZobristHasher<BoardTraits<19>>;

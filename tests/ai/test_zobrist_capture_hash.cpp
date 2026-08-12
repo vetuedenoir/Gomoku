@@ -33,11 +33,12 @@ TEST_CASE("[Zobrist] buildMoveHash retire les clés des pierres capturées")
 
     SearchPosition19 pos = SearchPosition19::fromBoard(before);
 
-    // Le coup tel que rawShapeScore le remplirait : la case posée + les victimes.
+    // Le coup tel que rawShapeScore le remplirait : la case posée + le masque
+    // des captures, d'où buildMoveHash redéduit les victimes (6,9) et (7,9).
     EvaluatedMove move {};
     move.move = { 5, 9 };
-    move.capturedStones.push({ 6, 9 });
-    move.capturedStones.push({ 7, 9 });
+    move.captureMask = detect_capture_mask(pos.board(), 5, 9, Color::Black);
+    REQUIRE(capture_mask_count(move.captureMask) == 2);
 
     const MoveStateHash msh = pos.buildMoveHash(move, Color::Black);
 

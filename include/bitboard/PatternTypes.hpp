@@ -14,14 +14,18 @@ template<typename Traits>
 struct t_PatternList5
 {
 	typename Traits::Bitboard masks[5];
+	// Inclusive word range of non-zero limbs in masks[i] (for matchPattern).
+	uint8_t firstWord[5];
+	uint8_t lastWord[5];
 	uint32_t count;
-	uint8_t padding[4];
 };
 
 template<typename Traits>
 struct t_super4
 {
 	typename Traits::Bitboard mask;
+	uint8_t firstWord;
+	uint8_t lastWord;
 	int hole_pos[2];
 };
 
@@ -36,6 +40,8 @@ template<typename Traits>
 struct t_Pattern4
 {
 	typename Traits::Bitboard mask;
+	uint8_t firstWord;
+	uint8_t lastWord;
 	int opposant_left;
 	int opposant_right;
 };
@@ -51,6 +57,8 @@ template<typename Traits>
 struct t_PatternGroup4
 {
 	typename Traits::Bitboard masks[3];
+	uint8_t firstWord[3];
+	uint8_t lastWord[3];
 	int hole_pos[3];
 };
 
@@ -59,21 +67,40 @@ struct t_PatternList_Groupe4
 {
 	t_PatternGroup4<Traits> patterns[5];
 	uint32_t count;
-	uint8_t padding[16];
 };
 
-typedef struct
+// Open-three pattern. stone_pos / hole_pos / oposant_pos stay as flat indices
+// for openness checks; stone masks let check_open_three match the 3-stone
+// shapes with a word-spanned AND instead of 3–4 get_bb_flate calls.
+template<typename Traits>
+struct t_PatternGroupe3
 {
 	int stone_pos[4];
 	int hole_pos[2];
 	int oposant_pos[5];
-} t_PatternGroupe3;
 
-typedef struct
+	// stones at [0],[1],[2]  → SCORE_3_FULL
+	typename Traits::Bitboard fullMask{};
+	uint8_t fullFirst = 0;
+	uint8_t fullLast  = 0;
+
+	// stones at [0],[2],[3] (hole at [1]) → SCORE_3_HOLE
+	typename Traits::Bitboard holeMask0{};
+	uint8_t hole0First = 0;
+	uint8_t hole0Last  = 0;
+
+	// stones at [0],[1],[3] (hole at [2]) → SCORE_3_HOLE
+	typename Traits::Bitboard holeMask1{};
+	uint8_t hole1First = 0;
+	uint8_t hole1Last  = 0;
+};
+
+template<typename Traits>
+struct t_PatternList_Groupe3
 {
-	t_PatternGroupe3 patterns[4];
+	t_PatternGroupe3<Traits> patterns[4];
 	uint32_t count;
-} t_PatternList_Groupe3;
+};
 
 typedef struct
 {
