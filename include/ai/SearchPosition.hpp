@@ -55,7 +55,11 @@ class SearchPosition
         void zoneRebuild();
 
     public:
-        static SearchPosition fromBoard(const GameBoard& src);
+        // capturesByBlack / capturesByWhite = stones each colour has taken
+        // (GameController tally). Mapped internally to victim counters.
+        static SearchPosition fromBoard(const GameBoard& src,
+                                        int capturesByBlack = 0,
+                                        int capturesByWhite = 0);
         
         static const ZobristHasher<Traits>& hasher();
     
@@ -64,18 +68,24 @@ class SearchPosition
         int  getTotalblackCaptures() const { return _blackCaptures; }
         int  getTotalwhiteCaptures() const { return _whiteCaptures; }
 
-        int getCapturesForside() const
-        {
-            return (sideToMove() == Color::Black) ? getTotalblackCaptures() : getTotalwhiteCaptures();
-        }
-
+        // Stones taken BY `color` (Black's score lives in _whiteCaptures, etc.).
         int getCapturesForColor(Color color) const
         {
             return (color == Color::Black) ? getTotalwhiteCaptures() : getTotalblackCaptures();
         }
 
+        // Stones taken by the side about to move.
+        int getCapturesForside() const
+        {
+            return getCapturesForColor(sideToMove());
+        }
+
         int getBlackCaptures() const { return _history.empty() ? 0 : _history.top().blackCaptures; }
         int getWhiteCaptures() const { return _history.empty() ? 0 : _history.top().whiteCaptures; }
+
+        void    setBlackCaptures(int count) { _blackCaptures = count; }
+        void    setWhiteCaptures(int count) { _whiteCaptures = count; }
+
     
         const t_BWBoard<Traits>& board()       const;
         uint64_t                 zobristHash() const;
@@ -164,13 +174,28 @@ typename Traits::Bitboard SearchPosition<Traits>::candidateMask() const
 }
 
 template<typename Traits>
-SearchPosition<Traits> SearchPosition<Traits>::fromBoard(const GameBoard& src)
+SearchPosition<Traits> SearchPosition<Traits>::fromBoard(const GameBoard& src,
+                                                        int capturesByBlack,
+                                                        int capturesByWhite)
 {
     const ZobristHasher<Traits>& h = SearchPosition<Traits>::hasher();
     t_BWBoard<Traits> bb   = GameBoard_to_bitboard<Traits>(src);
     uint64_t          hash = h.compute(bb);
     Color             side = src.currentColor();
-    return SearchPosition<Traits>(bb, hash, side, h);
+
+    // Match make/undo convention: XOR pair-count keys 1..N for each victim colour.
+    // SearchPosition stores victim tallies: Black's score → _whiteCaptures.
+    const int whiteVictimPairs = capturesByBlack >> 1;
+    const int blackVictimPairs = capturesByWhite >> 1;
+    for (int p = 1; p <= whiteVictimPairs; ++p)
+        hash ^= h.captureHash(Color::White, p);
+    for (int p = 1; p <= blackVictimPairs; ++p)
+        hash ^= h.captureHash(Color::Black, p);
+
+    SearchPosition<Traits> pos(bb, hash, side, h);
+    pos._whiteCaptures = capturesByBlack;
+    pos._blackCaptures = capturesByWhite;
+    return pos;
 }
 
 template<typename Traits>
@@ -316,17 +341,16 @@ MoveStateHash SearchPosition<Traits>::buildMoveHash(EvaluatedMove move, Color co
     stateHash.hash ^= _hasher.sideKey();
 
     
-    int caps = move.capturedStones.size();
+    const int caps = capture_mask_count(move.captureMask);
     if (caps > 0)
     {
-        stateHash.state.capturedStones = move.capturedStones;
-        
+        // Les victimes ne sont reconstruites qu'ici, pour le coup effectivement
+        // joué : l'ordonnancement, lui, n'a manipulé que le masque.
         const Color victimColor = (color == Color::Black) ? Color::White : Color::Black;
-        for (size_t k = 0; k < move.capturedStones.size(); ++k)
-        {
-            const t_cell& stone = move.capturedStones[k];
-            stateHash.hash ^= _hasher.key(stone.x, stone.y, victimColor);
-        }
+        for_each_captured_stone(move.captureMask, move.move.x, move.move.y, [&](int x, int y) {
+            stateHash.state.capturedStones.push({static_cast<int_fast16_t>(x), static_cast<int_fast16_t>(y)});
+            stateHash.hash ^= _hasher.key(x, y, victimColor);
+        });
 
         if (color == Color::Black)
         {

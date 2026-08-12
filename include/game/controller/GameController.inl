@@ -268,7 +268,8 @@ std::optional<Move> GameController<Traits>::requestAIMove()
 
     if (_phase == GamePhase::Standard)
     {
-        SearchPosition<Traits> pos = SearchPosition<Traits>::fromBoard(*_board);
+        SearchPosition<Traits> pos =
+            SearchPosition<Traits>::fromBoard(*_board, _capturesBlack, _capturesWhite);
         
         _tracker.start();
         
@@ -281,8 +282,15 @@ std::optional<Move> GameController<Traits>::requestAIMove()
             Logger::warn("AI", "requestAIMove — no standard move found");
             return std::nullopt;
         }
-        
-        submitMove(col, row);
+
+        if (submitMove(col, row) == MoveResult::Illegal)
+        {
+            // Should be unreachable if findBestMove only returns legal cells;
+            // returning nullopt avoids a soft-lock (same illegal retried forever).
+            Logger::warn("AI", "requestAIMove — engine picked illegal ("
+                + std::to_string(col) + "," + std::to_string(row) + ")");
+            return std::nullopt;
+        }
         
         return Move{ static_cast<int>(col), static_cast<int>(row), colorToCell(currentColor()) };
     }
@@ -298,7 +306,8 @@ std::optional<Move> GameController<Traits>::suggestMove()
 
     const Color side = currentColor();
 
-    SearchPosition<Traits> pos = SearchPosition<Traits>::fromBoard(*_board);
+    SearchPosition<Traits> pos =
+        SearchPosition<Traits>::fromBoard(*_board, _capturesBlack, _capturesWhite);
 
     const auto [col, row] = _masterAI.findBestMove(pos, side);
 

@@ -161,12 +161,32 @@ struct MoveList
 
 
 
+// Étage de la chaîne de motifs (five → four → cross → three) sur lequel la
+// cotation du coup s'est arrêtée. Les étages sont ordonnés du plus fort au plus
+// faible ; seul ThreeOrQuiet laisse encore la place à un check_cross.
+enum class ShapeStage : uint8_t
+{
+	Terminal,     // cinq alignés ou 10e capture
+	OpenFour,
+	HalfFour,
+	BrokenFour,
+	Cross,
+	ThreeOrQuiet  // open three, ou aucun motif
+};
+
+// Un nœud de recherche en instancie plusieurs centaines sur la pile : la
+// structure reste volontairement compacte. Les pierres capturées ne sont pas
+// stockées mais encodées dans un masque d'une demi-direction par bit (voir
+// detect_capture_mask), et ne sont matérialisées que pour les coups joués.
 struct EvaluatedMove
 {
 	t_cell					move;
 	int						score;
 	bool					isLegal;
-	MoveList<t_cell, 16>	capturedStones;
+	uint8_t					captureMask;
+	// Par défaut l'étage le plus bas : un consommateur qui l'ignore doit
+	// supposer que tous les motifs restent à vérifier.
+	ShapeStage				stage = ShapeStage::ThreeOrQuiet;
 };
 
 
