@@ -5,6 +5,7 @@
 #include "game/contracts/contracts.hpp"
 #include "game/validation/MoveValidator.hpp"
 #include "bitboard/bitboard.hpp"
+#include "ai/heuristique.hpp"
 #include "SearchPosition.hpp"
 #include "optimization/TranspositionTable.hpp"
 #include "logger/Logger.hpp"
@@ -90,10 +91,15 @@ class MasterAI
 		// Profondeur (ply) maximale gérée par les tables killer. Au-delà, on ignore
 		// simplement les heuristiques (aucun impact sur la correction).
 		static constexpr int    MAX_SEARCH_PLY = 64;
+
+
+
 		// Deux "killer moves" par ply : coups (souvent silencieux) ayant provoqué
 		// une coupure beta chez un frère au même ply. Réinitialisés à chaque
 		// recherche racine.
 		t_cell                  _killers[MAX_SEARCH_PLY][2];
+
+		
 		// History heuristic indexée [camp][case] : accumule depth^2 à chaque coupure
 		// pour départager les coups silencieux de score statique égal.
 		int                     _history[2][Traits::CELL_COUNT];
@@ -103,9 +109,7 @@ class MasterAI
 		int  historyScore(Color mover, t_cell move) const;
 		void recordCutoff(int ply, t_cell move, int depth, Color mover);
 
-		// Early opening replies that skip minimax. Returns {-1,-1} if none applies.
-		//   0 stones → centre; 1 stone → adjacent touch (AI second).
-		t_cell tryOpeningBookMove(const t_BWBoard<Traits>& board) const;
+		t_cell tryToPlayEarlyOpeningMove(const t_BWBoard<Traits>& board) const noexcept;
 
 		int signedFromAi(Color side, int raw) const;
 
@@ -124,14 +128,14 @@ class MasterAI
 		// ∩ zone active. Pas de défense (déjà dans createdSigned).
 		int bestThreatNear(const SearchPosition<Traits>& position, Color color, t_cell anchor);
 
-		EvaluatedMove rawShapeScore(const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore = 0);
+		EvaluatedMove computeRawScoreMove(const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore = 0);
 
 		// Clé full de référence : light + cross. Le tri ne l'appelle plus
-		// (rawShapeScoreLight puis upgradeLightToFull donnent le même résultat).
+		// (computeLightScore puis upgradeLightToFull donnent le même résultat).
 		EvaluatedMove rawShapeScoreV2(const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore);
 
 		// Clé light : caps + five/four/broken + open_three (légalité). Pas de cross.
-		EvaluatedMove rawShapeScoreLight(const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore);
+		EvaluatedMove computeLightScore(const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore);
 
 		// Complète une clé light avec le seul maillon manquant (check_cross),
 		// et seulement si son `stage` laisse cette possibilité ouverte.
@@ -141,7 +145,7 @@ class MasterAI
 		// Coups forcés : si l'adversaire aligne cinq au coup suivant, réduit la
 		// liste aux réponses qui peuvent encore changer l'issue. Renvoie true si
 		// une restriction a eu lieu.
-		bool restrictToForcedReplies(const t_BWBoard<Traits>& board,
+		bool filterForcedReplies(const t_BWBoard<Traits>& board,
 			MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>>& ordered, Color mover);
 
 		// Enrichit la clé d'ordonnancement : score = offense + défense/2.
@@ -155,6 +159,5 @@ using MasterAI19 = MasterAI<BoardTraits<19>>;
 using MasterAI15 = MasterAI<BoardTraits<15>>;
 
 #include "ai/MasterAI.inl"
-#include "ai/heuristique.inl"
 
 #endif

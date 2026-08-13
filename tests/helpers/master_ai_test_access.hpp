@@ -28,7 +28,7 @@ struct MasterAITestAccess
 
 	static EvaluatedMove lightKey(MasterAI<Traits>& ai, const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore)
 	{
-		return ai.rawShapeScoreLight(board, cell, color, capturesBefore);
+		return ai.computeLightScore(board, cell, color, capturesBefore);
 	}
 
 	static EvaluatedMove fullKey(MasterAI<Traits>& ai, const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore)
