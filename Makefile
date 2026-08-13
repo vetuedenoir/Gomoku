@@ -100,7 +100,9 @@ DOCKER_TMP   := gomoku-tmp
 
 .PHONY: all clean fclean re \
         test run_tests \
+        bench \
         docker-build docker-run docker-extract docker-clean \
+        docker-bench docker-perf docker-perf-record docker-perf-report \
 	podman-build podman-run podman-extract podman-clean \
 	help
 
@@ -174,6 +176,58 @@ run_tests: $(TEST_BIN)
 -include $(TEST_OBJS:.o=.d)
 
 # =============================================================================
+# BENCH  —  fixed-depth search, no SFML. Binary is gomoku-bench so it does not
+# collide with the bench/ source directory.
+# =============================================================================
+
+BENCH_BIN      := gomoku-bench
+BENCH_OBJ_DIR  := .build/bench
+BENCH_MAIN     := bench/bench.cpp
+BENCH_DEPTH    ?= 8
+BENCH_POS      ?= bench/positions.txt
+BENCH_OUT      ?= bench/ref.json
+
+BENCH_GAME_SRCS := $(wildcard $(SRC_DIR)/game/board/*.cpp) \
+                   $(wildcard $(SRC_DIR)/game/validation/rules/*.cpp) \
+                   $(wildcard $(SRC_DIR)/ai/*.cpp) \
+                   $(wildcard $(SRC_DIR)/logger/*.cpp) \
+                   $(wildcard $(SRC_DIR)/optimization/*.cpp) \
+                   $(wildcard $(SRC_DIR)/bitboard/*.cpp)
+
+BENCH_GAME_OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(BENCH_OBJ_DIR)/%.o,$(BENCH_GAME_SRCS))
+BENCH_MAIN_OBJ  := $(BENCH_OBJ_DIR)/main.o
+
+# Same optimisation as the game, plus -g so `perf report` has symbols.
+CXXFLAGS_BENCH := -std=c++17 -Wall -Wextra -Werror \
+                  -I$(INC_DIR) \
+                  $(CXXFLAGS_MODE) \
+                  -g \
+                  -MMD -MP
+ifeq ($(UNAME_S),Darwin)
+	CXXFLAGS_BENCH += -arch arm64
+endif
+
+$(BENCH_OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+	@mkdir -p $(dir $@)
+	@echo "$(CYAN)Compiling $< (bench)...$(NOC)"
+	$(CXX) $(CXXFLAGS_BENCH) -c $< -o $@
+
+$(BENCH_MAIN_OBJ): $(BENCH_MAIN)
+	@mkdir -p $(dir $@)
+	@echo "$(CYAN)Compiling $< (bench)...$(NOC)"
+	$(CXX) $(CXXFLAGS_BENCH) -c $< -o $@
+
+$(BENCH_BIN): $(BENCH_GAME_OBJS) $(BENCH_MAIN_OBJ)
+	@echo "$(CYAN)Linking $(BENCH_BIN)...$(NOC)"
+	$(CXX) $(CXXFLAGS_BENCH) -o $@ $^
+	@echo "$(GREEN)$(BENCH_BIN) built successfully$(NOC)"
+
+bench: $(BENCH_BIN)
+
+-include $(BENCH_GAME_OBJS:.o=.d)
+-include $(BENCH_MAIN_OBJ:.o=.d)
+
+# =============================================================================
 # CLEANING RULES
 # =============================================================================
 
@@ -184,7 +238,7 @@ clean:
 
 fclean: clean
 	@echo "$(CYAN)Removing binary...$(NOC)"
-	rm -f $(NAME) $(TEST_BIN)
+	rm -f $(NAME) $(TEST_BIN) $(BENCH_BIN)
 	@echo "$(GREEN)Done$(NOC)"
 
 re: fclean all
@@ -252,6 +306,38 @@ docker-clean:
 	docker rmi -f $(DOCKER_IMAGE)
 	@echo "$(GREEN)Done$(NOC)"
 
+# Bench + perf run inside Linux (`perf` is not available on macOS).
+# --privileged is required so the container can open perf_event.
+docker-bench: docker-build
+	@echo "$(CYAN)Running $(BENCH_BIN) in Docker...$(NOC)"
+	docker run --rm \
+		-v "$(CURDIR)/bench:/app/bench" \
+		$(DOCKER_IMAGE) \
+		./$(BENCH_BIN) --depth $(BENCH_DEPTH) --positions $(BENCH_POS) --out $(BENCH_OUT)
+
+docker-perf: docker-build
+	@echo "$(CYAN)perf stat on $(BENCH_BIN)...$(NOC)"
+	docker run --rm --privileged \
+		-v "$(CURDIR)/bench:/app/bench" \
+		$(DOCKER_IMAGE) \
+		perf stat -e cycles,instructions,cache-references,cache-misses,branches,branch-misses \
+			./$(BENCH_BIN) --depth $(BENCH_DEPTH) --positions $(BENCH_POS) --out $(BENCH_OUT)
+
+docker-perf-record: docker-build
+	@echo "$(CYAN)perf record on $(BENCH_BIN)...$(NOC)"
+	docker run --rm --privileged \
+		-v "$(CURDIR)/bench:/app/bench" \
+		$(DOCKER_IMAGE) \
+		perf record -g --call-graph dwarf -o bench/perf.data \
+			./$(BENCH_BIN) --depth $(BENCH_DEPTH) --positions $(BENCH_POS) --out $(BENCH_OUT)
+
+docker-perf-report: docker-build
+	@echo "$(CYAN)perf report...$(NOC)"
+	docker run --rm --privileged -it \
+		-v "$(CURDIR)/bench:/app/bench" \
+		$(DOCKER_IMAGE) \
+		perf report -i bench/perf.data
+
 -include $(DEPS)
 
 # =============================================================================
@@ -272,6 +358,16 @@ help:
 	@echo "  $(YELLOW)test$(NOC)             	Build the test runner ($(TEST_BIN))"
 	@echo "  $(YELLOW)run_tests$(NOC)        	Build and run all tests"
 	@echo "  $(YELLOW)run_tests FILTER=X$(NOC)	Run only test cases matching X"
+	@echo ""
+	@echo "$(CYAN)Bench targets:$(NOC)"
+	@echo "  $(YELLOW)bench$(NOC)            	Build $(BENCH_BIN) (no SFML)"
+	@echo "  $(YELLOW)docker-bench$(NOC)     	Run the suite in Docker"
+	@echo "  $(YELLOW)docker-perf$(NOC)      	perf stat around the suite (Linux/Docker)"
+	@echo "  $(YELLOW)docker-perf-record$(NOC)	perf record -g (writes bench/perf.data)"
+	@echo "  $(YELLOW)docker-perf-report$(NOC)	Interactive perf report on bench/perf.data"
+	@echo ""
+	@echo "  ./$(BENCH_BIN) --depth 8 --positions bench/positions.txt --out bench/ref.json"
+	@echo "  ./$(BENCH_BIN) --compare bench/ref.json bench/new.json"
 	@echo ""
 	@echo "$(CYAN)Docker targets:$(NOC)"
 	@echo "  $(YELLOW)docker-build$(NOC)     	Build the Docker image"

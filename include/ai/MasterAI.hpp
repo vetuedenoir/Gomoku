@@ -74,6 +74,9 @@ class MasterAI
 
 		const SearchStats& lastSearchStats() const noexcept { return _stats; }
 
+		// Drop TT entries so each bench position is independent of the previous one.
+		void clearTranspositionTable() { _tt.clear(); }
+
 	private:
 		int                     _maxDepth;
 		int					 	_stoneCapturedByAI = 0;

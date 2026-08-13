@@ -8,6 +8,38 @@ void BitboardTool<Traits>::buildAll()
 	build_lookup_table3();
 	build_lookup_table_super4();
 	build_lookup_table_cross();
+	build_direction_windows();
+}
+
+// Axis steps for DIR_HORIZ / DIR_VERT / DIR_DIAG_G / DIR_DIAG_D (same geometry
+// as PatternTypes builders). Bidirectional windows use k ∈ [-4, 4].
+template<typename Traits>
+void BitboardTool<Traits>::build_direction_windows()
+{
+	static constexpr int WIN_DX[4] = { 1, 0, -1, 1 };
+	static constexpr int WIN_DY[4] = { 0, 1,  1, 1 };
+
+	memset(_window, 0, sizeof(_window));
+
+	for (int y = 0; y < Traits::BOARD_SIZE; ++y)
+	{
+		for (int x = 0; x < Traits::BOARD_SIZE; ++x)
+		{
+			const int idx = idx_generic<Traits>(x, y);
+			for (int dir = 0; dir < 4; ++dir)
+			{
+				typename Traits::Bitboard mask {};
+				for (int k = -4; k <= 4; ++k)
+				{
+					const int nx = x + k * WIN_DX[dir];
+					const int ny = y + k * WIN_DY[dir];
+					if (in_board_generic<Traits>(nx, ny))
+						set_bb_generic<Traits>(mask, nx, ny);
+				}
+				_window[idx][dir] = CompactMask<Traits>::from(mask);
+			}
+		}
+	}
 }
 
 template<typename Traits>
@@ -35,10 +67,7 @@ void BitboardTool<Traits>::add_mask_to_lookup5(const typename Traits::Bitboard& 
 		
 		t_PatternList5<Traits> *list = &_lt5[idx][dir];
 		const uint32_t slot = list->count;
-		
-		for (int w = 0; w < Traits::WORD_COUNT; w++)
-			list->masks[slot][w] = mask[w];
-		computeMaskSpan(mask, list->firstWord[slot], list->lastWord[slot]);
+		list->masks[slot] = CompactMask<Traits>::from(mask);
 		list->count++;
 	}
 }
@@ -140,8 +169,6 @@ void BitboardTool<Traits>::add_mask_to_lookup4(t_Pattern4<Traits>* pattern, cons
 		dir = DIR_DIAG_D;
 	else return;
 
-	computeMaskSpan(pattern->mask, pattern->firstWord, pattern->lastWord);
-
 	for (int i = 0; i < 4; i++)
 	{
 		int pos = start_pos + i * stride;
@@ -166,6 +193,7 @@ void BitboardTool<Traits>::build_lookup_table4()
 		for (int x = 0; x < Traits::BOARD_SIZE - 3; x++)
 		{
 			t_Pattern4<Traits> pattern = {};
+			typename Traits::Bitboard tmp {};
 			int start_pos = y * Traits::STRIDE + x;
 
 			for (int i = 0; i < 4; i++)
@@ -173,10 +201,12 @@ void BitboardTool<Traits>::build_lookup_table4()
 				int bit = start_pos + i;
 				int idx = bit >> 6;
 				int offset = bit & 63;
-				pattern.mask[idx] |= (1ULL << offset);
+				tmp[static_cast<size_t>(idx)] |= (1ULL << offset);
 			}
-			pattern.opposant_left = (x > 0) ? (start_pos - 1) : -1;
-			pattern.opposant_right = (x + 4 < Traits::BOARD_SIZE) ? (start_pos + 4) : -1;
+			pattern.mask = CompactMask<Traits>::from(tmp);
+			pattern.opposant_left = static_cast<int16_t>((x > 0) ? (start_pos - 1) : -1);
+			pattern.opposant_right = static_cast<int16_t>(
+				(x + 4 < Traits::BOARD_SIZE) ? (start_pos + 4) : -1);
 
 			add_mask_to_lookup4( &pattern, start_pos, 1);
 		}
@@ -188,6 +218,7 @@ void BitboardTool<Traits>::build_lookup_table4()
 		for (int y = 0; y < Traits::BOARD_SIZE - 3; y++)
 		{
 			t_Pattern4<Traits> pattern = {};
+			typename Traits::Bitboard tmp {};
 			int start_pos = y * Traits::STRIDE + x;
 
 			for (int i = 0; i < 4; i++)
@@ -195,10 +226,13 @@ void BitboardTool<Traits>::build_lookup_table4()
 				int bit = start_pos + i * Traits::STRIDE;
 				int idx = bit >> 6;
 				int offset = bit & 63;
-				pattern.mask[idx] |= (1ULL << offset);
+				tmp[static_cast<size_t>(idx)] |= (1ULL << offset);
 			}
-			pattern.opposant_left = (y > 0) ? (start_pos - Traits::STRIDE) : -1;
-			pattern.opposant_right = (y + 4 < Traits::BOARD_SIZE) ? (start_pos + 4 * Traits::STRIDE) : -1;
+			pattern.mask = CompactMask<Traits>::from(tmp);
+			pattern.opposant_left = static_cast<int16_t>(
+				(y > 0) ? (start_pos - Traits::STRIDE) : -1);
+			pattern.opposant_right = static_cast<int16_t>(
+				(y + 4 < Traits::BOARD_SIZE) ? (start_pos + 4 * Traits::STRIDE) : -1);
 			add_mask_to_lookup4( &pattern, start_pos, Traits::STRIDE);
 		}
 	}
@@ -209,6 +243,7 @@ void BitboardTool<Traits>::build_lookup_table4()
 		for (int x = 0; x < Traits::BOARD_SIZE - 3; x++)
 		{
 			t_Pattern4<Traits> pattern = {};
+			typename Traits::Bitboard tmp {};
 			int start_pos = y * Traits::STRIDE + x;
 
 			for (int i = 0; i < 4; i++)
@@ -216,10 +251,14 @@ void BitboardTool<Traits>::build_lookup_table4()
 				int bit = start_pos + i * Traits::STRIDE_D;
 				int idx = bit >> 6;
 				int offset = bit & 63;
-				pattern.mask[idx] |= (1ULL << offset);
+				tmp[static_cast<size_t>(idx)] |= (1ULL << offset);
 			}
-			pattern.opposant_left = (y > 0 && x > 0) ? (start_pos - Traits::STRIDE_D) : -1;
-			pattern.opposant_right = (y + 4 < Traits::BOARD_SIZE && x + 4 < Traits::BOARD_SIZE) ? (start_pos + 4 * Traits::STRIDE_D) : -1;
+			pattern.mask = CompactMask<Traits>::from(tmp);
+			pattern.opposant_left = static_cast<int16_t>(
+				(y > 0 && x > 0) ? (start_pos - Traits::STRIDE_D) : -1);
+			pattern.opposant_right = static_cast<int16_t>(
+				(y + 4 < Traits::BOARD_SIZE && x + 4 < Traits::BOARD_SIZE)
+					? (start_pos + 4 * Traits::STRIDE_D) : -1);
 			add_mask_to_lookup4( &pattern, start_pos, Traits::STRIDE_D);
 		}
 	}
@@ -230,6 +269,7 @@ void BitboardTool<Traits>::build_lookup_table4()
 		for (int x = 3; x < Traits::BOARD_SIZE; x++)
 		{
 			t_Pattern4<Traits> pattern = {};
+			typename Traits::Bitboard tmp {};
 			int start_pos = y * Traits::STRIDE + x;
 
 			for (int i = 0; i < 4; i++)
@@ -237,10 +277,13 @@ void BitboardTool<Traits>::build_lookup_table4()
 				int bit = start_pos + i * Traits::BOARD_SIZE;
 				int idx = bit >> 6;
 				int offset = bit & 63;
-				pattern.mask[idx] |= (1ULL << offset);
+				tmp[static_cast<size_t>(idx)] |= (1ULL << offset);
 			}
-			pattern.opposant_left = (y > 0 && x + 4 < Traits::BOARD_SIZE) ? (start_pos - Traits::BOARD_SIZE) : -1;
-			pattern.opposant_right = (y + 4 < Traits::BOARD_SIZE && x > 0) ? (start_pos + Traits::BOARD_SIZE * 4) : -1;
+			pattern.mask = CompactMask<Traits>::from(tmp);
+			pattern.opposant_left = static_cast<int16_t>(
+				(y > 0 && x + 4 < Traits::BOARD_SIZE) ? (start_pos - Traits::BOARD_SIZE) : -1);
+			pattern.opposant_right = static_cast<int16_t>(
+				(y + 4 < Traits::BOARD_SIZE && x > 0) ? (start_pos + Traits::BOARD_SIZE * 4) : -1);
 			add_mask_to_lookup4( &pattern, start_pos, Traits::BOARD_SIZE);
 		}
 	}
@@ -249,9 +292,6 @@ void BitboardTool<Traits>::build_lookup_table4()
 template<typename Traits>
 void BitboardTool<Traits>::add_pattern_group4(t_PatternGroup4<Traits>* group, int start_x, int start_y, int dir)
 {
-	for (int m = 0; m < 3; ++m)
-		computeMaskSpan(group->masks[m], group->firstWord[m], group->lastWord[m]);
-
     for (int i = 0; i < 5; i++)
 	{
         int case_x = 0;
@@ -298,6 +338,7 @@ void BitboardTool<Traits>::build_lookup_table_groupe4()
 		for (int x = 0; x <= Traits::BOARD_SIZE - 5; x++)
 		{
 			t_PatternGroup4<Traits> gmask = {};
+			typename Traits::Bitboard tmp[3] = {};
 			int start_pos = y * Traits::STRIDE + x;
 
 			for (int i = 0; i < 5; i++)
@@ -305,14 +346,17 @@ void BitboardTool<Traits>::build_lookup_table_groupe4()
 				int bit = start_pos + i;
 				int idx = bit >> 6;
 				int offset = bit & 63;
-				gmask.masks[0][idx] |= (1ULL << offset);
-				gmask.masks[1][idx] |= (1ULL << offset);
-				gmask.masks[2][idx] |= (1ULL << offset);
+				const uint64_t bitv = (1ULL << offset);
+				tmp[0][static_cast<size_t>(idx)] |= bitv;
+				tmp[1][static_cast<size_t>(idx)] |= bitv;
+				tmp[2][static_cast<size_t>(idx)] |= bitv;
 			}
 			for (int i = 0; i < 3; i++)
 			{
-				clear_bit_generic<Traits>(gmask.masks[i], x + 1 + i, y );
-				gmask.hole_pos[i] = index_bb_generic<Traits>(x + 1 + i, y);
+				clear_bit_generic<Traits>(tmp[i], x + 1 + i, y);
+				gmask.hole_pos[i] = static_cast<int16_t>(
+					index_bb_generic<Traits>(x + 1 + i, y));
+				gmask.masks[i] = CompactMask<Traits>::from(tmp[i]);
 			}
 			add_pattern_group4(&gmask, x, y, DIR_HORIZ);
 		}
@@ -324,6 +368,7 @@ void BitboardTool<Traits>::build_lookup_table_groupe4()
 		for (int y = 0; y <= Traits::BOARD_SIZE - 5; y++)
 		{
 			t_PatternGroup4<Traits> gmask = {};
+			typename Traits::Bitboard tmp[3] = {};
 			int start_pos = y * Traits::STRIDE + x;
 
 			for (int i = 0; i < 5; i++)
@@ -331,14 +376,17 @@ void BitboardTool<Traits>::build_lookup_table_groupe4()
 				int bit = start_pos + i * Traits::STRIDE;
 				int idx = bit >> 6;
 				int offset = bit & 63;
-				gmask.masks[0][idx] |= (1ULL << offset);
-				gmask.masks[1][idx] |= (1ULL << offset);
-				gmask.masks[2][idx] |= (1ULL << offset);
+				const uint64_t bitv = (1ULL << offset);
+				tmp[0][static_cast<size_t>(idx)] |= bitv;
+				tmp[1][static_cast<size_t>(idx)] |= bitv;
+				tmp[2][static_cast<size_t>(idx)] |= bitv;
 			}
 			for (int i = 0; i < 3; i++)
 			{
-				clear_bit_generic<Traits>(gmask.masks[i], x, y + 1 + i);
-				gmask.hole_pos[i] = index_bb_generic<Traits>(x, y + 1 + i);
+				clear_bit_generic<Traits>(tmp[i], x, y + 1 + i);
+				gmask.hole_pos[i] = static_cast<int16_t>(
+					index_bb_generic<Traits>(x, y + 1 + i));
+				gmask.masks[i] = CompactMask<Traits>::from(tmp[i]);
 			}
 			add_pattern_group4(&gmask, x, y, DIR_VERT);
 		}
@@ -350,6 +398,7 @@ void BitboardTool<Traits>::build_lookup_table_groupe4()
 		for (int x = 0; x <= Traits::BOARD_SIZE - 5; x++)
 		{
 			t_PatternGroup4<Traits> gmask = {};
+			typename Traits::Bitboard tmp[3] = {};
 			int start_pos = y * Traits::STRIDE + x;
 
 			for (int i = 0; i < 5; i++)
@@ -357,14 +406,17 @@ void BitboardTool<Traits>::build_lookup_table_groupe4()
 				int bit = start_pos + i * Traits::STRIDE_D;
 				int idx = bit >> 6;
 				int offset = bit & 63;
-				gmask.masks[0][idx] |= (1ULL << offset);
-				gmask.masks[1][idx] |= (1ULL << offset);
-				gmask.masks[2][idx] |= (1ULL << offset);
+				const uint64_t bitv = (1ULL << offset);
+				tmp[0][static_cast<size_t>(idx)] |= bitv;
+				tmp[1][static_cast<size_t>(idx)] |= bitv;
+				tmp[2][static_cast<size_t>(idx)] |= bitv;
 			}
 			for (int i = 0; i < 3; i++)
 			{
-				clear_bit_generic<Traits>(gmask.masks[i], x + 1 + i, y + 1 + i);
-				gmask.hole_pos[i] = index_bb_generic<Traits>(x + 1 + i, y + 1 + i);
+				clear_bit_generic<Traits>(tmp[i], x + 1 + i, y + 1 + i);
+				gmask.hole_pos[i] = static_cast<int16_t>(
+					index_bb_generic<Traits>(x + 1 + i, y + 1 + i));
+				gmask.masks[i] = CompactMask<Traits>::from(tmp[i]);
 			}
 			add_pattern_group4(&gmask, x, y, DIR_DIAG_D);
 		}
@@ -376,6 +428,7 @@ void BitboardTool<Traits>::build_lookup_table_groupe4()
 		for (int x = 4; x < Traits::BOARD_SIZE; x++)
 		{
 			t_PatternGroup4<Traits> gmask = {};
+			typename Traits::Bitboard tmp[3] = {};
 			int start_pos = y * Traits::STRIDE + x;
 
 			for (int i = 0; i < 5; i++)
@@ -383,14 +436,17 @@ void BitboardTool<Traits>::build_lookup_table_groupe4()
 				int bit = start_pos + i * Traits::STRIDE_G;
 				int idx = bit >> 6;
 				int offset = bit & 63;
-				gmask.masks[0][idx] |= (1ULL << offset);
-				gmask.masks[1][idx] |= (1ULL << offset);
-				gmask.masks[2][idx] |= (1ULL << offset);
+				const uint64_t bitv = (1ULL << offset);
+				tmp[0][static_cast<size_t>(idx)] |= bitv;
+				tmp[1][static_cast<size_t>(idx)] |= bitv;
+				tmp[2][static_cast<size_t>(idx)] |= bitv;
 			}
 			for (int i = 0; i < 3; i++)
 			{
-				clear_bit_generic<Traits>(gmask.masks[i], x - 1 - i, y + 1 + i);
-				gmask.hole_pos[i] = index_bb_generic<Traits>(x - 1 - i, y + 1 + i);
+				clear_bit_generic<Traits>(tmp[i], x - 1 - i, y + 1 + i);
+				gmask.hole_pos[i] = static_cast<int16_t>(
+					index_bb_generic<Traits>(x - 1 - i, y + 1 + i));
+				gmask.masks[i] = CompactMask<Traits>::from(tmp[i]);
 			}
 			add_pattern_group4(&gmask, x, y, DIR_DIAG_G);
 		}
@@ -400,26 +456,26 @@ void BitboardTool<Traits>::build_lookup_table_groupe4()
 template<typename Traits>
 void BitboardTool<Traits>::finalize_group3_masks(t_PatternGroupe3<Traits>& pattern)
 {
-	pattern.fullMask = {};
-	pattern.holeMask0 = {};
-	pattern.holeMask1 = {};
+	typename Traits::Bitboard full {};
+	typename Traits::Bitboard hole0 {};
+	typename Traits::Bitboard hole1 {};
 
 	// SCORE_3_FULL : pierres en [0],[1],[2]
-	set_bb_flate<Traits>(pattern.fullMask, pattern.stone_pos[0]);
-	set_bb_flate<Traits>(pattern.fullMask, pattern.stone_pos[1]);
-	set_bb_flate<Traits>(pattern.fullMask, pattern.stone_pos[2]);
-	computeMaskSpan(pattern.fullMask, pattern.fullFirst, pattern.fullLast);
+	set_bb_flate<Traits>(full, pattern.stone_pos[0]);
+	set_bb_flate<Traits>(full, pattern.stone_pos[1]);
+	set_bb_flate<Traits>(full, pattern.stone_pos[2]);
+	pattern.fullMask = CompactMask<Traits>::from(full);
 
 	// SCORE_3_HOLE : [0],[2],[3] (trou en [1]) et [0],[1],[3] (trou en [2])
-	set_bb_flate<Traits>(pattern.holeMask0, pattern.stone_pos[0]);
-	set_bb_flate<Traits>(pattern.holeMask0, pattern.stone_pos[2]);
-	set_bb_flate<Traits>(pattern.holeMask0, pattern.stone_pos[3]);
-	computeMaskSpan(pattern.holeMask0, pattern.hole0First, pattern.hole0Last);
+	set_bb_flate<Traits>(hole0, pattern.stone_pos[0]);
+	set_bb_flate<Traits>(hole0, pattern.stone_pos[2]);
+	set_bb_flate<Traits>(hole0, pattern.stone_pos[3]);
+	pattern.holeMask0 = CompactMask<Traits>::from(hole0);
 
-	set_bb_flate<Traits>(pattern.holeMask1, pattern.stone_pos[0]);
-	set_bb_flate<Traits>(pattern.holeMask1, pattern.stone_pos[1]);
-	set_bb_flate<Traits>(pattern.holeMask1, pattern.stone_pos[3]);
-	computeMaskSpan(pattern.holeMask1, pattern.hole1First, pattern.hole1Last);
+	set_bb_flate<Traits>(hole1, pattern.stone_pos[0]);
+	set_bb_flate<Traits>(hole1, pattern.stone_pos[1]);
+	set_bb_flate<Traits>(hole1, pattern.stone_pos[3]);
+	pattern.holeMask1 = CompactMask<Traits>::from(hole1);
 }
 
 template<typename Traits>
@@ -539,11 +595,12 @@ void BitboardTool<Traits>::build_lookup_table3()
 			pattern.oposant_pos[2] = (y + 3 < Traits::BOARD_SIZE && x + 3 < Traits::BOARD_SIZE) ? (start_pos + 3 * Traits::STRIDE_D) : -1;
 			pattern.oposant_pos[3] = (y + 4 < Traits::BOARD_SIZE && x + 4 < Traits::BOARD_SIZE) ? (start_pos + 4 * Traits::STRIDE_D) : -1;
 			pattern.oposant_pos[4] = (y + 5 < Traits::BOARD_SIZE && x + 5 < Traits::BOARD_SIZE) ? (start_pos + 5 * Traits::STRIDE_D) : -1;
-			add_pattern_group3_to_lookup( &pattern, DIR_DIAG_G);
+			// STRIDE_D = (+1,+1) → DIR_DIAG_D (same slot as five/four/super4 windows).
+			add_pattern_group3_to_lookup( &pattern, DIR_DIAG_D);
 		}
 	}
 
-	// 4. Diagonale / (stride = Traits::BOARD_SIZE)
+	// 4. Diagonale / (stride = STRIDE_G)
 	for (int y = 0; y < Traits::BOARD_SIZE - 2; y++)
 	{
 		for (int x = 2; x < Traits::BOARD_SIZE; x++)
@@ -569,7 +626,8 @@ void BitboardTool<Traits>::build_lookup_table3()
 			pattern.oposant_pos[2] = (y + 3 < Traits::BOARD_SIZE && x - 3 >= 0) ? (start_pos + 3 * Traits::STRIDE_G) : -1;
 			pattern.oposant_pos[3] = (y + 4 < Traits::BOARD_SIZE && x - 4 >= 0) ? (start_pos + 4 * Traits::STRIDE_G) : -1;
 			pattern.oposant_pos[4] = (y + 5 < Traits::BOARD_SIZE && x - 5 >= 0) ? (start_pos + 5 * Traits::STRIDE_G) : -1;
-			add_pattern_group3_to_lookup( &pattern, DIR_DIAG_D);
+			// STRIDE_G = (-1,+1) → DIR_DIAG_G.
+			add_pattern_group3_to_lookup( &pattern, DIR_DIAG_G);
 		}
 	}
 }
@@ -577,8 +635,6 @@ void BitboardTool<Traits>::build_lookup_table3()
 template<typename Traits>
 void BitboardTool<Traits>::add_pattern_super4(t_super4<Traits>* pattern, int start_x, int start_y, int dir)
 {
-	computeMaskSpan(pattern->mask, pattern->firstWord, pattern->lastWord);
-
 	for (int i = 0; i < 7; i++)
 	{
 		int case_x = 0;
@@ -628,6 +684,7 @@ void BitboardTool<Traits>::build_lookup_table_super4()
 		for (int x = 0; x < Traits::BOARD_SIZE - 6; x++)
 		{
 			t_super4<Traits>	pattern = {};
+			typename Traits::Bitboard tmp {};
 			int			start_pos = y * Traits::STRIDE + x;
 
 			for (int i = 0; i < 7; i++)
@@ -636,12 +693,13 @@ void BitboardTool<Traits>::build_lookup_table_super4()
 				int	idx = bit >> 6;
 				int	offset = bit & 63;
 
-				pattern.mask[idx] |= (1ULL << offset);
+				tmp[static_cast<size_t>(idx)] |= (1ULL << offset);
 			}
-			clear_bit_generic<Traits>(pattern.mask, x + 1, y);
-			pattern.hole_pos[0] = index_bb_generic<Traits>(x + 1, y);
-			clear_bit_generic<Traits>(pattern.mask, x + 5, y);
-			pattern.hole_pos[1] = index_bb_generic<Traits>(x + 5, y);
+			clear_bit_generic<Traits>(tmp, x + 1, y);
+			pattern.hole_pos[0] = static_cast<int16_t>(index_bb_generic<Traits>(x + 1, y));
+			clear_bit_generic<Traits>(tmp, x + 5, y);
+			pattern.hole_pos[1] = static_cast<int16_t>(index_bb_generic<Traits>(x + 5, y));
+			pattern.mask = CompactMask<Traits>::from(tmp);
 			add_pattern_super4( &pattern, x, y, DIR_HORIZ);
 		}
 	}
@@ -652,6 +710,7 @@ void BitboardTool<Traits>::build_lookup_table_super4()
 		for (int x = 0; x < Traits::BOARD_SIZE; x++)
 		{
 			t_super4<Traits>	pattern = {};
+			typename Traits::Bitboard tmp {};
 			int			start_pos = y * Traits::STRIDE + x;
 
 			for (int i = 0; i < 7; i++)
@@ -660,12 +719,13 @@ void BitboardTool<Traits>::build_lookup_table_super4()
 				int	idx = bit >> 6;
 				int	offset = bit & 63;
 
-				pattern.mask[idx] |= (1ULL << offset);
+				tmp[static_cast<size_t>(idx)] |= (1ULL << offset);
 			}
-			clear_bit_generic<Traits>(pattern.mask, x, y + 1);
-			pattern.hole_pos[0] = index_bb_generic<Traits>(x, y + 1);
-			clear_bit_generic<Traits>(pattern.mask, x, y + 5);
-			pattern.hole_pos[1] = index_bb_generic<Traits>(x, y + 5);
+			clear_bit_generic<Traits>(tmp, x, y + 1);
+			pattern.hole_pos[0] = static_cast<int16_t>(index_bb_generic<Traits>(x, y + 1));
+			clear_bit_generic<Traits>(tmp, x, y + 5);
+			pattern.hole_pos[1] = static_cast<int16_t>(index_bb_generic<Traits>(x, y + 5));
+			pattern.mask = CompactMask<Traits>::from(tmp);
 			add_pattern_super4( &pattern, x, y, DIR_VERT);
 		}
 	}
@@ -676,6 +736,7 @@ void BitboardTool<Traits>::build_lookup_table_super4()
 		for (int x = 0; x < Traits::BOARD_SIZE - 6; x++)
 		{
 			t_super4<Traits>	pattern = {};
+			typename Traits::Bitboard tmp {};
 			int			start_pos = y * Traits::STRIDE + x;
 
 			for (int i = 0; i < 7; i++)
@@ -684,12 +745,13 @@ void BitboardTool<Traits>::build_lookup_table_super4()
 				int	idx = bit >> 6;
 				int	offset = bit & 63;
 
-				pattern.mask[idx] |= (1ULL << offset);
+				tmp[static_cast<size_t>(idx)] |= (1ULL << offset);
 			}
-			clear_bit_generic<Traits>(pattern.mask, x + 1, y + 1);
-			pattern.hole_pos[0] = index_bb_generic<Traits>(x + 1, y + 1);
-			clear_bit_generic<Traits>(pattern.mask, x + 5, y + 5);
-			pattern.hole_pos[1] = index_bb_generic<Traits>(x + 5, y + 5);
+			clear_bit_generic<Traits>(tmp, x + 1, y + 1);
+			pattern.hole_pos[0] = static_cast<int16_t>(index_bb_generic<Traits>(x + 1, y + 1));
+			clear_bit_generic<Traits>(tmp, x + 5, y + 5);
+			pattern.hole_pos[1] = static_cast<int16_t>(index_bb_generic<Traits>(x + 5, y + 5));
+			pattern.mask = CompactMask<Traits>::from(tmp);
 			add_pattern_super4( &pattern, x, y, DIR_DIAG_D);
 		}
 	}
@@ -700,6 +762,7 @@ void BitboardTool<Traits>::build_lookup_table_super4()
 		for (int x = 6; x < Traits::BOARD_SIZE; x++)
 		{
 			t_super4<Traits>	pattern = {};
+			typename Traits::Bitboard tmp {};
 			int	start_pos = y * Traits::STRIDE + x;
 
 			for (int i = 0; i < 7; i++)
@@ -708,12 +771,13 @@ void BitboardTool<Traits>::build_lookup_table_super4()
 				int	idx = bit >> 6;
 				int	offset = bit & 63;
 
-				pattern.mask[idx] |= (1ULL << offset);
+				tmp[static_cast<size_t>(idx)] |= (1ULL << offset);
 			}
-			clear_bit_generic<Traits>(pattern.mask, x - 1, y + 1);
-			pattern.hole_pos[0] = index_bb_generic<Traits>(x - 1, y + 1);
-			clear_bit_generic<Traits>(pattern.mask, x - 5, y + 5);
-			pattern.hole_pos[1] = index_bb_generic<Traits>(x - 5, y + 5);
+			clear_bit_generic<Traits>(tmp, x - 1, y + 1);
+			pattern.hole_pos[0] = static_cast<int16_t>(index_bb_generic<Traits>(x - 1, y + 1));
+			clear_bit_generic<Traits>(tmp, x - 5, y + 5);
+			pattern.hole_pos[1] = static_cast<int16_t>(index_bb_generic<Traits>(x - 5, y + 5));
+			pattern.mask = CompactMask<Traits>::from(tmp);
 			add_pattern_super4( &pattern, x, y, DIR_DIAG_G);
 		}
 	}

@@ -10,8 +10,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
         libsfml-dev \
         fonts-liberation \
-        # valgrind \
-    && rm -rf /var/lib/apt/lists/*
+        linux-perf \
+        linux-tools-common \
+        linux-tools-generic \
+        elfutils \
+    && rm -rf /var/lib/apt/lists/* \
+    && (command -v perf >/dev/null 2>&1 \
+        || ln -sf "$(find /usr/lib/linux-tools -type f -name perf 2>/dev/null | head -1)" /usr/local/bin/perf)
 
 WORKDIR /app
 
@@ -20,8 +25,9 @@ COPY Makefile .
 COPY assets/ assets/ 
 COPY include/ include/
 COPY src/ src/
+COPY bench/ bench/
 
-RUN make all -j"$(nproc)"
+RUN make all bench -j"$(nproc)"
 
 CMD ["./gomoku"]
 # CMD ["valgrind", "./gomoku"]

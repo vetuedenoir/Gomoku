@@ -27,7 +27,9 @@ static constexpr int FULL_ORDER_MIN_DEPTH = 4;
 // discriminant, on serre pour réduire le facteur de branchement effectif.
 // Index = profondeur restante ; au-delà, la valeur de la racine.
 // Table à tuner via le benchmark [PERF][BENCH].
-static constexpr int MOVES_SEARCHED_BY_DEPTH[]   = { 4, 4, 6, 8, 10, 12, 14 };
+// static constexpr int MOVES_SEARCHED_BY_DEPTH[]   = { 4, 4, 6, 8, 10, 12, 14 };
+
+static constexpr int MOVES_SEARCHED_BY_DEPTH[]   = { 4, 6, 8, 10, 12, 14, 16 };
 static constexpr int MOVES_SEARCHED_BY_DEPTH_LEN =
 	static_cast<int>(sizeof(MOVES_SEARCHED_BY_DEPTH) / sizeof(MOVES_SEARCHED_BY_DEPTH[0]));
 
@@ -230,6 +232,9 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 	_stats.ttRootHits      	= 0;
 	_stats.ttRootOrderingHits = 0;
 	_stats.ttRootExactSeeds   = 0;
+	_stats.forcedNodes        = 0;
+	_stats.bestScore          = 0;
+	_stats.bestMove           = {-1, -1};
 
 	const t_cell earlyOpeningMove = tryToPlayEarlyOpeningMove(position.board());
 	if (earlyOpeningMove.x >= 0)
@@ -266,8 +271,7 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 		{
 			EvaluatedMove scoredMove = computeRawScoreMove(board, rootMoves[i], color, capturesOfSideToMove);
 			
-			if (scoredMove.isLegal
-				&& _moveGenerator.isLegalMove(board, scoredMove.move.x, scoredMove.move.y, color))
+			if (scoredMove.isLegal)
 			{
 				if (scoredMove.score >= WIN_SCORE ||
 					capture_mask_count(scoredMove.captureMask) + capturesOfSideToMove >= 10)

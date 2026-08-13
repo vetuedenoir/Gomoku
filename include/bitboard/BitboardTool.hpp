@@ -3,6 +3,7 @@
 
 #include "bitboard/bitboard.hpp"
 #include "bitboard/PatternTypes.hpp"
+#include "bitboard/CompactMask.hpp"
 
 #include "game/contracts/contracts.hpp"
 
@@ -19,55 +20,8 @@ class BitboardTool
 	t_PatternList_super4<Traits>  _lts4[Traits::CELL_COUNT][4];
 	t_PatternList_Cross           _ltcross[Traits::CELL_COUNT];
 
-	// Inclusive word span of the non-zero limbs of `mask`. Empty mask → (0,0)
-	// (matchPattern then trivially succeeds, same as before).
-	static void computeMaskSpan(const typename Traits::Bitboard& mask,
-	                            uint8_t& first, uint8_t& last)
-	{
-		first = 0;
-		last  = 0;
-		bool found = false;
-		for (size_t i = 0; i < mask.size(); ++i)
-		{
-			if (mask[i] != 0)
-			{
-				if (!found)
-				{
-					first = static_cast<uint8_t>(i);
-					found = true;
-				}
-				last = static_cast<uint8_t>(i);
-			}
-		}
-	}
-
-	// Match only the words the pattern actually occupies (typically 1–2 of 6
-	// on 19×19). Semantically identical to scanning all words: zero limbs of
-	// `pat` always succeed the subset test.
-	static bool matchPattern(const typename Traits::Bitboard& pat,
-	                         const typename Traits::Bitboard& board,
-	                         uint8_t first, uint8_t last)
-	{
-		for (uint8_t i = first; i <= last; ++i)
-		{
-			if ((pat[i] & board[i]) != pat[i])
-				return false;
-		}
-		return true;
-	}
-
-	// Fallback: skip zero limbs (no precomputed span).
-	static bool matchPattern(const typename Traits::Bitboard& pat,
-	                         const typename Traits::Bitboard& board)
-	{
-		for (size_t i = 0; i < pat.size(); ++i)
-		{
-			const uint64_t p = pat[i];
-			if (p != 0 && (p & board[i]) != p)
-				return false;
-		}
-		return true;
-	}
+	// ±4 cell window per (cell, direction). Lot-2 popcount pre-filter.
+	CompactMask<Traits>           _window[Traits::CELL_COUNT][4];
 
 	void buildAll();
 	void build_lookup_table5();
@@ -76,6 +30,33 @@ class BitboardTool
 	void build_lookup_table3();
 	void build_lookup_table_super4();
 	void build_lookup_table_cross();
+	void build_direction_windows();
+
+	// Lot-2: skip direction (or whole cross) when ±4 window can't host the shape.
+	// Disable with -DGOMOKU_DISABLE_PATTERN_PREFILTER for A/B benches.
+#ifdef GOMOKU_DISABLE_PATTERN_PREFILTER
+	static constexpr bool kPatternPrefilter = false;
+#else
+	static constexpr bool kPatternPrefilter = true;
+#endif
+
+	bool is_five_in_a_row_impl(const typename Traits::Bitboard& stones,
+	                           int col, int row, bool prefilter) const;
+	int check_open_four_impl(const typename Traits::Bitboard& stones,
+	                         const typename Traits::Bitboard& opponent,
+	                         int col, int row, bool prefilter) const;
+	int check_broken_four_impl(const typename Traits::Bitboard& stones,
+	                           const typename Traits::Bitboard& opponent,
+	                           int col, int row, bool prefilter) const;
+	int check_open_three_impl(const typename Traits::Bitboard& stones,
+	                          const typename Traits::Bitboard& opponent,
+	                          int col, int row, bool prefilter) const;
+	int check_super_four_impl(const typename Traits::Bitboard& stones,
+	                          const typename Traits::Bitboard& opponent,
+	                          int col, int row, bool prefilter) const;
+	int check_cross_impl(const typename Traits::Bitboard& stones,
+	                     const typename Traits::Bitboard& opponent,
+	                     int col, int row, bool prefilter) const;
 
 	void add_mask_to_lookup5(const typename Traits::Bitboard& mask, int start_pos, int stride);
 	void add_mask_to_lookup4(t_Pattern4<Traits>* pattern, int start_pos, int stride);
@@ -95,6 +76,7 @@ public:
 		return tool;
 	}
 
+	// Hot path: Lot-2 window prefilter on (see kPatternPrefilter).
 	bool is_five_in_a_row(const typename Traits::Bitboard& stones, int col, int row) const;
 	int check_open_four(const typename Traits::Bitboard& stones,
 	                    const typename Traits::Bitboard& opponent, int col, int row) const;
@@ -106,6 +88,31 @@ public:
 	                     const typename Traits::Bitboard& opponent, int col, int row) const;
 	int check_cross(const typename Traits::Bitboard& stones,
 	                const typename Traits::Bitboard& opponent, int col, int row) const;
+
+	// Oracles without prefilter (equality tests / Lot-3 migration).
+	bool is_five_in_a_row_reference(const typename Traits::Bitboard& stones,
+	                                int col, int row) const;
+	int check_open_four_reference(const typename Traits::Bitboard& stones,
+	                              const typename Traits::Bitboard& opponent,
+	                              int col, int row) const;
+	int check_broken_four_reference(const typename Traits::Bitboard& stones,
+	                                const typename Traits::Bitboard& opponent,
+	                                int col, int row) const;
+	int check_open_three_reference(const typename Traits::Bitboard& stones,
+	                               const typename Traits::Bitboard& opponent,
+	                               int col, int row) const;
+	int check_super_four_reference(const typename Traits::Bitboard& stones,
+	                               const typename Traits::Bitboard& opponent,
+	                               int col, int row) const;
+	int check_cross_reference(const typename Traits::Bitboard& stones,
+	                          const typename Traits::Bitboard& opponent,
+	                          int col, int row) const;
+
+	// Always prefiltered (kept for older CompactMask equality tests).
+	int check_open_three_filtered(const typename Traits::Bitboard& stones,
+	                              const typename Traits::Bitboard& opponent,
+	                              int col, int row) const;
+
 	bool is_double_three_at(const typename Traits::Bitboard& stones,
 	                        const typename Traits::Bitboard& opponent, int col, int row) const;
 
@@ -113,6 +120,12 @@ public:
 
 	CaptureResult<Traits> resolveCaptures(t_BWBoard<Traits>& bb, int col,
                                                               int row, const Color color) const;
+
+	// Direction window for Lot-2 pre-filter / tests. `dir` = DIR_HORIZ..DIR_DIAG_D.
+	const CompactMask<Traits>& directionWindow(int col, int row, int dir) const
+	{
+		return _window[idx_generic<Traits>(col, row)][dir];
+	}
 };
 
 using BitboardTool19 = BitboardTool<BoardTraits<19>>;
