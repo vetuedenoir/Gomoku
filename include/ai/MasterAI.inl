@@ -750,21 +750,32 @@ EvaluatedMove MasterAI<Traits>::computeRawScoreMove(const t_BWBoard<Traits>& boa
 		return eval;
 	}
 
-	r = tool.check_cross(own, opp, cell.x, cell.y);
-	if (r) 
+	// Le three passe AVANT le cross : seul un four dispense de la regle du
+	// double-trois (cf. StandardRules::isLegal), une croix non. Tant que le
+	// check_cross sortait en premier, isLegal restait a true sur les croix qui
+	// sont aussi des doubles-trois, et l'IA proposait des coups interdits.
+	// Aucun des deux motifs ne domine l'autre en score (une CROSS_FULL vaut plus
+	// qu'un three simple, un double-trois interne vaut plus qu'une demi-croix) :
+	// on garde donc le max des deux au lieu de dependre de l'ordre des tests.
+	const int three = tool.check_open_three(own, opp, cell.x, cell.y);
+	if (three)
 	{
-		eval.score = cross_score(r) + captureScore;
-		eval.stage = ShapeStage::Cross;
-		return eval;
+		eval.score = score_open_three(three) + captureScore;
+		// Exemption = capture ON THIS MOVE only (not race progress).
+		eval.isLegal = !(tool.isDoubleThreeScore(three) && caps == 0);
+		if (!eval.isLegal)
+			return eval;  // coup interdit : inutile de l'affiner
 	}
 
-	r = tool.check_open_three(own, opp, cell.x, cell.y);
-	if (r)
+	const int cross = tool.check_cross(own, opp, cell.x, cell.y);
+	if (cross)
 	{
-		eval.score = score_open_three(r) + captureScore;
-		// Exemption = capture ON THIS MOVE only (not race progress).
-		eval.isLegal = !(tool.isDoubleThreeScore(r) && caps == 0);
-		return eval;
+		const int crossScore = cross_score(cross) + captureScore;
+		if (crossScore > eval.score)
+		{
+			eval.score = crossScore;
+			eval.stage = ShapeStage::Cross;
+		}
 	}
 	return eval;
 }
@@ -832,27 +843,33 @@ EvaluatedMove MasterAI<Traits>::rawShapeScoreV2(const t_BWBoard<Traits>& board, 
 		return eval;
 	}
 
-	r = tool.check_cross(own, opp, cell.x, cell.y);
-	if (r) 
+	// Meme ordre que computeRawScoreMove : le three (donc la legalite) d'abord,
+	// puis le cross, et on conserve le meilleur des deux scores.
+	const int three = tool.check_open_three(own, opp, cell.x, cell.y);
+	if (three)
 	{
-		eval.score = cross_score(r) + captureScore;
-		eval.stage = ShapeStage::Cross;
-		return eval;
+		eval.score = score_open_three(three) + captureScore;
+		// Exemption = capture ON THIS MOVE only (not race progress).
+		eval.isLegal = !(tool.isDoubleThreeScore(three) && caps == 0);
+		if (!eval.isLegal)
+			return eval;
 	}
 
-	r = tool.check_open_three(own, opp, cell.x, cell.y);
-	if (r)
+	const int cross = tool.check_cross(own, opp, cell.x, cell.y);
+	if (cross)
 	{
-		eval.score = score_open_three(r) + captureScore;
-		// Exemption = capture ON THIS MOVE only (not race progress).
-		eval.isLegal = !(tool.isDoubleThreeScore(r) && caps == 0);
-		return eval;
+		const int crossScore = cross_score(cross) + captureScore;
+		if (crossScore > eval.score)
+		{
+			eval.score = crossScore;
+			eval.stage = ShapeStage::Cross;
+		}
 	}
 	return eval;
 }
 
 // Clé light pour nœuds profonds : même captures/légalité que V2, mais sans
-// check_cross (coûteux et redondant avec open_three pour le tri).
+// check_cross (le seul maillon que V2 ajoute, et il ne touche qu'au score).
 // `stage` mémorise l'étage de sortie : c'est ce qui permet à upgradeLightToFull
 // de savoir si le check_cross omis peut encore changer quelque chose.
 template <typename Traits>
@@ -919,18 +936,19 @@ EvaluatedMove MasterAI<Traits>::computeLightScore(const t_BWBoard<Traits>& board
 }
 
 // Promeut une clé light en clé full. Light et V2 sont la même chaîne de tests à
-// un maillon près : le check_cross intercalé entre le broken-four et le three.
+// un maillon près : le check_cross placé après le three.
 // Tout ce que light a conclu au-dessus de cet étage (terminal, four, broken
 // four) est donc déjà le verdict de V2 — captures comprises, ce qui évite de
 // relancer detect_capture_mask. Il ne reste à traiter que les coups sortis
 // à l'étage three/quiet, et un seul scan suffit.
-// La légalité n'est jamais réévaluée : celle de light (`!caps`) est la bonne, et
-// V2 la relâchait à tort dès que le camp avait déjà capturé une paire.
+// La légalité n'est jamais réévaluée, et c'est désormais exact plutôt que
+// contourné : elle est entièrement décidée par le check_open_three, que light
+// exécute déjà. Un coup interdit sort tel quel — V2 s'arrête aussi là.
 template <typename Traits>
 void MasterAI<Traits>::upgradeLightToFull(EvaluatedMove& move, const t_BWBoard<Traits>& board,
 	Color color, int captureCount)
 {
-	if (move.stage != ShapeStage::ThreeOrQuiet)
+	if (move.stage != ShapeStage::ThreeOrQuiet || !move.isLegal)
 		return;
 
 	BitboardTool<Traits>& tool = BitboardTool<Traits>::instance();
@@ -944,9 +962,15 @@ void MasterAI<Traits>::upgradeLightToFull(EvaluatedMove& move, const t_BWBoard<T
 	if (!r)
 		return;
 
+	// Max et non écrasement : le three déjà scoré par light peut valoir plus que
+	// la croix (double-trois interne vs demi-croix), comme dans V2.
 	const int caps = capture_mask_count(move.captureMask);
-	move.score = cross_score(r) + captureProgressScore(captureCount, caps);
-	move.stage = ShapeStage::Cross;
+	const int crossScore = cross_score(r) + captureProgressScore(captureCount, caps);
+	if (crossScore > move.score)
+	{
+		move.score = crossScore;
+		move.stage = ShapeStage::Cross;
+	}
 }
 
 // Un cinq aligné gagne inconditionnellement (cf. isWinAfterMove) : si l'adversaire
