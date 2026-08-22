@@ -10,7 +10,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
         libsfml-dev \
         fonts-liberation \
-        linux-perf \
         linux-tools-common \
         linux-tools-generic \
         elfutils \

@@ -241,7 +241,9 @@ fclean: clean
 	rm -f $(NAME) $(TEST_BIN) $(BENCH_BIN)
 	@echo "$(GREEN)Done$(NOC)"
 
-re: fclean all
+re:
+	@$(MAKE) --no-print-directory fclean
+	@$(MAKE) --no-print-directory all
 
 
 # =============================================================================
