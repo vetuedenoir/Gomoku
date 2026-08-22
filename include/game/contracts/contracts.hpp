@@ -10,6 +10,7 @@ enum class Color { Black = 0, White = 1 };
 enum class GamePhase { Opening, ColorChoice, Standard };
 enum class MoveResult { Illegal, Ok, Win };
 enum class OpeningProtocol { Standard, Pro, LongPro, Swap, Swap2 };
+enum class OpeningChoice { Keep, Swap, PlaceTwo };
 
 struct GameConfig
 {
@@ -67,6 +68,14 @@ inline std::string seatStr(Seat s) {
 struct Actor {
   Seat seat;
   Color color;
+};
+
+// Recorded when the AI resolves a Swap / Swap2 colour decision.
+struct OpeningDecision
+{
+    Seat          chooser    = Seat::Second;
+    OpeningChoice choice     = OpeningChoice::Keep;
+    Color         colorTaken = Color::White;
 };
 
 template <typename Traits> struct CaptureResult {

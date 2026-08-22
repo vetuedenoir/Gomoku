@@ -27,9 +27,9 @@ static constexpr int FULL_ORDER_MIN_DEPTH = 4;
 // discriminant, on serre pour réduire le facteur de branchement effectif.
 // Index = profondeur restante ; au-delà, la valeur de la racine.
 // Table à tuner via le benchmark [PERF][BENCH].
-// static constexpr int MOVES_SEARCHED_BY_DEPTH[]   = { 4, 4, 6, 8, 10, 12, 14 };
+static constexpr int MOVES_SEARCHED_BY_DEPTH[]   = { 4, 4, 6, 8, 10, 12, 14 };
 
-static constexpr int MOVES_SEARCHED_BY_DEPTH[]   = { 4, 6, 8, 10, 12, 14, 16 };
+// static constexpr int MOVES_SEARCHED_BY_DEPTH[]   = { 4, 6, 8, 10, 12, 14, 16 };
 static constexpr int MOVES_SEARCHED_BY_DEPTH_LEN =
 	static_cast<int>(sizeof(MOVES_SEARCHED_BY_DEPTH) / sizeof(MOVES_SEARCHED_BY_DEPTH[0]));
 

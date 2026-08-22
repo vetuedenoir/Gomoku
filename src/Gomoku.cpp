@@ -16,6 +16,29 @@
     static const char *FONT = "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf";
 #endif
 
+static constexpr float WIN_REVEAL_SECONDS        = 2.5f;
+static constexpr float OPENING_DECISION_SECONDS  = 3.0f;
+
+static std::string formatOpeningDecision(const OpeningDecision& d, bool aiVsAi)
+{
+    const char* who = aiVsAi
+        ? (d.chooser == Seat::First ? "Seat 1" : "Seat 2")
+        : "AI";
+
+    std::string action = "Play White";
+    switch (d.choice)
+    {
+        case OpeningChoice::PlaceTwo:
+            action = "Place 2 more stones";
+            break;
+        case OpeningChoice::Keep:
+        case OpeningChoice::Swap:
+            action = (d.colorTaken == Color::Black) ? "Play Black" : "Play White";
+            break;
+    }
+    return std::string(who) + " chose " + action;
+}
+
 Gomoku::Gomoku()
     : _window(sf::VideoMode(WIN_W, WIN_H), "Gomoku", sf::Style::Titlebar | sf::Style::Close)
 {
@@ -118,6 +141,8 @@ void Gomoku::startGame()
     float boardSize = std::min(WIN_W, WIN_H) * 0.90f;
     _board      = std::make_unique<Board>(WIN_W / 2.f, WIN_H / 2.f, boardSize, _config.boardSize);
     _controller = makeGameController(_config);
+    _awaitingWinScreen = false;
+    _statusBanner.clear();
 
     LOG_INFO("GAME DEBUG", "player actor: " + seatStr(_controller->playerActor().seat) + " " + (_controller->playerActor().color == Color::Black ? "Black" : "White"));
     LOG_INFO("GAME DEBUG", "ai actor: " + seatStr(_controller->aiActor().seat) + " " + (_controller->aiActor().color == Color::Black ? "Black" : "White"));
@@ -129,6 +154,8 @@ void Gomoku::startGame()
 CellStatus Gomoku::computeGhostColor() const
 {
     if (!_controller)
+        return CellStatus::Empty;
+    if (_controller->getColorFromWinningActor().has_value())
         return CellStatus::Empty;
 
     switch (_controller->phase())
@@ -160,22 +187,38 @@ bool Gomoku::isAITurn() const
 
 bool Gomoku::isGameOver()
 {
+    if (!_controller)
+        return false;
+
     const auto winner = _controller->getColorFromWinningActor();
-    
     if (!winner.has_value())
         return false;
+
+    if (!_awaitingWinScreen)
+    {
+        _awaitingWinScreen = true;
+        _winRevealClock.restart();
+        return true;
+    }
+
+    if (_winRevealClock.getElapsedTime().asSeconds() < WIN_REVEAL_SECONDS)
+        return true;
 
     buildWinScreenPage(winner.value(),
                        _controller->blackCaptureCount(),
                        _controller->whiteCaptureCount());
     navigateTo(AppState::GameOver);
-    
+    _awaitingWinScreen = false;
     return true;
 }
 
 void Gomoku::requestSuggestion()
 {
     if (!_controller || _states.top() != AppState::Game)
+        return;
+    if (_awaitingWinScreen || _controller->getColorFromWinningActor().has_value())
+        return;
+    if (_statusBanner.blocking())
         return;
     if (_controller->phase() != GamePhase::Standard)
         return;
@@ -189,6 +232,40 @@ void Gomoku::requestSuggestion()
 void Gomoku::clearSuggestion()
 {
     _suggestion.reset();
+}
+
+void Gomoku::announceAiOpeningDecision()
+{
+    const auto decision = _controller->takeOpeningDecision();
+    if (!decision.has_value())
+        return;
+
+    _statusBanner.flash(
+        formatOpeningDecision(*decision, _controller->aiVsAi()),
+        GOLD, OPENING_DECISION_SECONDS);
+}
+
+void Gomoku::refreshStatusBanner()
+{
+    if (_statusBanner.blocking() || !_controller)
+        return;
+
+    if (_controller->phase() == GamePhase::Standard && !_controller->aiVsAi())
+    {
+        const bool active = _suggestion.has_value();
+        _statusBanner.setPersistent(
+            active ? "Suggested move shown  |  press H for another"
+                   : "Press H for a move suggestion",
+            active ? GOLD : DIM);
+    }
+    else if (_controller->aiVsAi() && _controller->phase() == GamePhase::Standard)
+    {
+        _statusBanner.setPersistent("AI vs AI — spectating", DIM);
+    }
+    else
+    {
+        _statusBanner.setPersistent("", DIM);
+    }
 }
 
 void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
@@ -220,7 +297,12 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
         return;
     }
 
-    // Spectate only — both seats are driven by the engine.
+    if (_awaitingWinScreen || _controller->getColorFromWinningActor().has_value())
+        return;
+    if (_statusBanner.blocking())
+        return;
+
+
     if (_controller->aiVsAi())
         return;
 
@@ -239,7 +321,7 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
 
             clearSuggestion();
 
-            if (_controller->phase() == GamePhase::ColorChoice)
+            if (_controller->phase() == GamePhase::ColorChoice && !isAITurn())
             {
                 LOG_INFO("ACTOR DEBUG", "buildColorChoicePage on opening click");
                 buildColorChoicePage();
@@ -261,7 +343,6 @@ void Gomoku::handleEvent(const sf::Event &event, sf::Vector2f mouse)
 
             _controller->submitMove(col, row);
             clearSuggestion();
-            isGameOver();
             break;
         }
     }
@@ -282,18 +363,28 @@ void Gomoku::update(sf::Vector2f mouse)
         currentPage().updateHover(mouse);
     }
 
-    if (_config.aiOpponent && _states.top() == AppState::Game && isAITurn())
+    if (_states.top() != AppState::Game || !_controller)
+        return;
+
+    if (isGameOver())
+        return;
+
+    if (_statusBanner.blocking())
+        return;
+
+    if (_config.aiOpponent && isAITurn())
     { 
         _controller->requestAIMove();
         clearSuggestion();
 
-        // Opening may land on ColorChoice; AI vs AI resolves it immediately
-        // so the next frame can start Standard search without a UI flash.
-        if (_controller->aiVsAi() && _controller->phase() == GamePhase::ColorChoice)
+        // Opening may land on ColorChoice. Resolve it now if the AI is the
+        // chooser so the banner can announce Keep / Swap / Place 2 this frame.
+        if (_controller->phase() == GamePhase::ColorChoice && isAITurn())
             _controller->requestAIMove();
         else if (_controller->phase() == GamePhase::ColorChoice)
             buildColorChoicePage();
 
+        announceAiOpeningDecision();
         isGameOver();
     }
 }
@@ -314,22 +405,8 @@ void Gomoku::render()
         _renderer.renderStats(_window, _font, *_board, *_controller);
         if (_controller->phase() == GamePhase::ColorChoice && !_controller->aiVsAi())
             _renderer.renderColorChoice(_window, _colorChoice);
-        else if (_controller->phase() == GamePhase::Standard && !_controller->aiVsAi())
-        {
-            const bool active = _suggestion.has_value();
-            sf::Text tip = makeText(
-                active ? "Suggested move shown  |  press H for another"
-                       : "Press H for a move suggestion",
-                _font, FONT_XS, active ? GOLD : DIM);
-            tip.setPosition(CX, WIN_H * 0.975f);
-            _window.draw(tip);
-        }
-        else if (_controller->aiVsAi() && _controller->phase() == GamePhase::Standard)
-        {
-            sf::Text tip = makeText("AI vs AI — spectating", _font, FONT_XS, DIM);
-            tip.setPosition(CX, WIN_H * 0.975f);
-            _window.draw(tip);
-        }
+        refreshStatusBanner();
+        _statusBanner.draw(_window, _font);
     }
     else
     {
@@ -347,6 +424,8 @@ void Gomoku::resetToMainMenu()
     _board.reset();
     _controller.reset();
     clearSuggestion();
+    _awaitingWinScreen = false;
+    _statusBanner.clear();
 }
 
 void Gomoku::buildColorChoicePage()
@@ -434,8 +513,19 @@ void Gomoku::buildWinScreenPage(const Color winner, int capturesBlack, int captu
     if (_config.aiOpponent)
     {
         std::ostringstream avgStream;
-        avgStream << std::fixed << std::setprecision(1)
-                  << "AI avg: " << _controller->aiMoveAverageMs() << " ms";
+        avgStream << std::fixed << std::setprecision(1);
+        if (_config.aiVsAi)
+        {
+            avgStream << "Black avg: " << _controller->aiMoveAverageMs(Color::Black)
+                      << " ms  |  White avg: " << _controller->aiMoveAverageMs(Color::White)
+                      << " ms";
+        }
+        else
+        {
+            avgStream << "AI avg: "
+                      << _controller->aiMoveAverageMs(_controller->aiActor().color)
+                      << " ms";
+        }
         sf::Text aiAvg = makeText(avgStream.str(), _font, FONT_MD, GOLD);
         aiAvg.setStyle(sf::Text::Bold);
         aiAvg.setPosition(CX, WIN_H * 0.478f);

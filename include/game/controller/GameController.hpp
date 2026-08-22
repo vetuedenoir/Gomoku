@@ -22,6 +22,7 @@ class GameController : public IGameController
         void continueOpeningPlacement() override;
 
         std::optional<Move> requestAIMove() override;
+        std::optional<OpeningDecision> takeOpeningDecision() override;
         std::optional<Move> suggestMove() override;
 
         const GameBoard&     visualBoard()      const override;
@@ -39,8 +40,8 @@ class GameController : public IGameController
         int                  stepIdx()          const override;
         std::optional<Color> getColorFromWinningActor() const override;
 
-        double               aiMoveLastMs()    const override;
-        double               aiMoveAverageMs() const override;
+        double               aiMoveLastMs(Color color)    const override;
+        double               aiMoveAverageMs(Color color) const override;
 
         int                  blackCaptureCount() const override;
         int                  whiteCaptureCount() const override;
@@ -52,6 +53,7 @@ class GameController : public IGameController
         void logPhaseTransition(GamePhase from, GamePhase to) const;
         void beginNormalPlay();
         void passTurn();
+        void playAiColorChoice();
 
         // Pure derivations over the single source of truth (_colorBySeat / _aiSeat / _currentSeat).
         Color colorOf(Seat s) const;
@@ -65,7 +67,7 @@ class GameController : public IGameController
         MoveValidator<Traits>      _validator;
         TurnController<Traits>     _turnController;
         MasterAI<Traits>           _masterAI;
-        Tracker                    _tracker;
+        std::array<Tracker, 2>     _trackers; // indexed by Color (Black=0, White=1)
         std::optional<Color>       _winner;
         int                        _capturesBlack = 0;
         int                        _capturesWhite = 0;
@@ -77,6 +79,7 @@ class GameController : public IGameController
         Seat                       _currentSeat;    // pure turn cursor; never touched by a swap
         bool                       _aiOpponent = true; // false ⇒ hotseat (both seats human)
         bool                       _aiVsAi     = false; // both seats driven by MasterAI
+        std::optional<OpeningDecision> _lastOpeningDecision;
 };
 
 #include "game/controller/GameController.inl"
