@@ -205,10 +205,10 @@ MoveResult GameController<Traits>::submitMove(int col, int row)
 
     t_BWBoard<Traits> bb = GameBoard_to_bitboard<Traits>(*_board);
     const TurnOutcome<Traits> outcome =
-        _turnController.play(bb, move, _capturesBlack, _capturesWhite);
+        _turnController.play(bb, move, _capturesBlack, _capturesWhite, _pendingWin);
 
     _board->placeStoneOfColor(move.col, move.row, move.forcedColor);
-    
+
     bb_for_each_bit<Traits>(outcome.capturedMask, [this](int x, int y) {
         _board->clearCell(x, y);
     });
@@ -217,6 +217,8 @@ MoveResult GameController<Traits>::submitMove(int col, int row)
         _capturesBlack += outcome.capturesAdded;
     else
         _capturesWhite += outcome.capturesAdded;
+
+    _pendingWin = outcome.pendingWin;
 
     if (outcome.result == MoveResult::Win && outcome.winnerByColor.has_value())
         _winner = outcome.winnerByColor;
@@ -381,6 +383,12 @@ template<typename Traits>
 std::optional<Color> GameController<Traits>::getColorFromWinningActor() const
 {
     return _winner;
+}
+
+template<typename Traits>
+std::optional<PendingWin> GameController<Traits>::pendingWin() const
+{
+    return _pendingWin;
 }
 
 template<typename Traits>

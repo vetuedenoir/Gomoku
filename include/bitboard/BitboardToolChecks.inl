@@ -37,6 +37,50 @@ bool BitboardTool<Traits>::is_five_in_a_row_impl(const typename Traits::Bitboard
 }
 
 template<typename Traits>
+int BitboardTool<Traits>::find_five_masks(const typename Traits::Bitboard& stones, int col, int row,
+                                          typename Traits::Bitboard* out, int maxOut) const
+{
+	return find_five_masks_impl(stones, col, row, out, maxOut, kPatternPrefilter);
+}
+
+template<typename Traits>
+int BitboardTool<Traits>::find_five_masks_reference(const typename Traits::Bitboard& stones,
+                                                    int col, int row,
+                                                    typename Traits::Bitboard* out,
+                                                    int maxOut) const
+{
+	return find_five_masks_impl(stones, col, row, out, maxOut, /*prefilter=*/false);
+}
+
+template<typename Traits>
+int BitboardTool<Traits>::find_five_masks_impl(const typename Traits::Bitboard& stones,
+                                               int col, int row,
+                                               typename Traits::Bitboard* out, int maxOut,
+                                               bool prefilter) const
+{
+	const int idx = idx_generic<Traits>(col, row);
+	int found = 0;
+
+	for (int dir = 0; dir < 4; dir++)
+	{
+		if (prefilter && popWindow(_window[idx][dir], stones) < 5)
+			continue;
+
+		const t_PatternList5<Traits>& list = _lt5[idx][dir];
+
+		for (uint32_t i = 0; i < list.count; i++)
+		{
+			if (!matchPattern(list.masks[i], stones))
+				continue;
+			if (found >= maxOut)
+				return found;
+			out[found++] = list.masks[i].toBitboard();
+		}
+	}
+	return found;
+}
+
+template<typename Traits>
 int BitboardTool<Traits>::check_open_four(const typename Traits::Bitboard& stones,
                                           const typename Traits::Bitboard& opponent,
                                           int col, int row) const

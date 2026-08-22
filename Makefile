@@ -139,7 +139,7 @@ TEST_GAME_SRCS := $(wildcard $(SRC_DIR)/game/*.cpp) \
                   $(wildcard $(SRC_DIR)/optimization/*.cpp) \
                   $(wildcard $(SRC_DIR)/bitboard/*.cpp) \
 				  $(wildcard $(SRC_DIR)/tracker/*.cpp)
-TEST_SRCS      := $(wildcard $(TEST_DIR)/*.cpp) $(wildcard $(TEST_DIR)/patterns/*.cpp) $(wildcard $(TEST_DIR)/move_generator/*.cpp) $(wildcard $(TEST_DIR)/ai/*.cpp) $(wildcard $(TEST_DIR)/performance/*.cpp)
+TEST_SRCS      := $(wildcard $(TEST_DIR)/*.cpp) $(wildcard $(TEST_DIR)/patterns/*.cpp) $(wildcard $(TEST_DIR)/move_generator/*.cpp) $(wildcard $(TEST_DIR)/ai/*.cpp) $(wildcard $(TEST_DIR)/rules/*.cpp) $(wildcard $(TEST_DIR)/performance/*.cpp)
 
 TEST_GAME_OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(TEST_OBJ_DIR)/%.o,$(TEST_GAME_SRCS))
 TEST_OBJS      := $(patsubst $(TEST_DIR)/%.cpp,$(TEST_OBJ_DIR)/%.o,$(TEST_SRCS))

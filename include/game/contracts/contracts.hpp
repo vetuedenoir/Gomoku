@@ -6,7 +6,15 @@
 #include <array>
 #include <cstdint>
 
+// Pierres (et non paires) à prendre pour gagner par capture.
+const int CAPTURES_TO_WIN = 10;
+
 enum class Color { Black = 0, White = 1 };
+
+inline Color opponentOf(Color c) noexcept
+{
+    return (c == Color::Black) ? Color::White : Color::Black;
+}
 enum class GamePhase { Opening, ColorChoice, Standard };
 enum class MoveResult { Illegal, Ok, Win };
 enum class OpeningProtocol { Standard, Pro, LongPro, Swap, Swap2 };
@@ -74,12 +82,25 @@ template <typename Traits> struct CaptureResult {
   int count;
 };
 
+// Cinq aligné qui ne gagne pas encore : l'adversaire dispose d'un coup pour le
+// casser (cf. WinDetector). On ne mémorise que la case qui a complété la ligne,
+// pas ses pierres — un cinq créé par ce coup passe forcément par elle, donc
+// interroger is_five_in_a_row sur cette case au coup suivant suffit à savoir si
+// l'alignement a survécu, y compris quand la pierre elle-même a été capturée.
+struct PendingWin {
+  Color owner;
+  int   col;
+  int   row;
+};
+
 template <typename Traits>
 struct TurnOutcome {
   MoveResult result;
   int capturesAdded; // for mover's color
   std::optional<Color> winnerByColor;
   typename Traits::Bitboard capturedMask{};
+  // État de sursis APRÈS le coup : nullopt si aucun cinq n'est en attente.
+  std::optional<PendingWin> pendingWin{};
 };
 
 

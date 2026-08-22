@@ -38,6 +38,7 @@ class GameController : public IGameController
         OpeningProtocol      openingProtocol()  const override;
         int                  stepIdx()          const override;
         std::optional<Color> getColorFromWinningActor() const override;
+        std::optional<PendingWin> pendingWin()          const override;
 
         double               aiMoveLastMs()    const override;
         double               aiMoveAverageMs() const override;
@@ -67,6 +68,9 @@ class GameController : public IGameController
         MasterAI<Traits>           _masterAI;
         Tracker                    _tracker;
         std::optional<Color>       _winner;
+        // Cinq aligné en sursis : son auteur gagne si l'adversaire ne le casse
+        // pas au coup suivant (règle de la capture finale).
+        std::optional<PendingWin>  _pendingWin;
         int                        _capturesBlack = 0;
         int                        _capturesWhite = 0;
 

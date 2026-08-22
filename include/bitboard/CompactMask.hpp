@@ -45,6 +45,17 @@ struct CompactMask
 			out.m[i] = bb[static_cast<size_t>(first + i)];
 		return out;
 	}
+
+	// Inverse of from(): scatter the occupied limbs back into a full board.
+	// Needed when a matched pattern must be handed to code that works on plain
+	// Bitboards (e.g. the five-in-a-row mask fed to the capture-break check).
+	typename Traits::Bitboard toBitboard() const
+	{
+		typename Traits::Bitboard out {};
+		for (uint8_t i = 0; i < words; ++i)
+			out[static_cast<size_t>(w + i)] = m[i];
+		return out;
+	}
 };
 
 // Stones of `board` that fall inside the compact window `p`.
