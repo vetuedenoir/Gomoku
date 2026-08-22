@@ -39,8 +39,8 @@ class GameController : public IGameController
         int                  stepIdx()          const override;
         std::optional<Color> getColorFromWinningActor() const override;
 
-        double               aiMoveLastMs()    const override;
-        double               aiMoveAverageMs() const override;
+        double               aiMoveLastMs(Color color)    const override;
+        double               aiMoveAverageMs(Color color) const override;
 
         int                  blackCaptureCount() const override;
         int                  whiteCaptureCount() const override;
@@ -65,7 +65,7 @@ class GameController : public IGameController
         MoveValidator<Traits>      _validator;
         TurnController<Traits>     _turnController;
         MasterAI<Traits>           _masterAI;
-        Tracker                    _tracker;
+        std::array<Tracker, 2>     _trackers; // indexed by Color (Black=0, White=1)
         std::optional<Color>       _winner;
         int                        _capturesBlack = 0;
         int                        _capturesWhite = 0;

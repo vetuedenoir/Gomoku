@@ -268,14 +268,17 @@ std::optional<Move> GameController<Traits>::requestAIMove()
 
     if (_phase == GamePhase::Standard)
     {
+        const Color side = currentColor();
+        Tracker& tracker = _trackers[static_cast<std::size_t>(side)];
+
         SearchPosition<Traits> pos =
             SearchPosition<Traits>::fromBoard(*_board, _capturesBlack, _capturesWhite);
         
-        _tracker.start();
+        tracker.start();
         
-        auto [col, row] = _masterAI.findBestMove(pos, currentColor());
+        auto [col, row] = _masterAI.findBestMove(pos, side);
        
-        _tracker.stop();
+        tracker.stop();
 
         if (col == -1)
         {
@@ -396,13 +399,13 @@ int GameController<Traits>::whiteCaptureCount() const
 }
 
 template<typename Traits>
-double GameController<Traits>::aiMoveLastMs() const
+double GameController<Traits>::aiMoveLastMs(Color color) const
 {
-    return _tracker.last();
+    return _trackers[static_cast<std::size_t>(color)].last();
 }
 
 template<typename Traits>
-double GameController<Traits>::aiMoveAverageMs() const
+double GameController<Traits>::aiMoveAverageMs(Color color) const
 {
-    return _tracker.average();
+    return _trackers[static_cast<std::size_t>(color)].average();
 }
