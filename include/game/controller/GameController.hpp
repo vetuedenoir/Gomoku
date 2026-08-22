@@ -22,6 +22,7 @@ class GameController : public IGameController
         void continueOpeningPlacement() override;
 
         std::optional<Move> requestAIMove() override;
+        std::optional<OpeningDecision> takeOpeningDecision() override;
         std::optional<Move> suggestMove() override;
 
         const GameBoard&     visualBoard()      const override;
@@ -52,6 +53,7 @@ class GameController : public IGameController
         void logPhaseTransition(GamePhase from, GamePhase to) const;
         void beginNormalPlay();
         void passTurn();
+        void playAiColorChoice();
 
         // Pure derivations over the single source of truth (_colorBySeat / _aiSeat / _currentSeat).
         Color colorOf(Seat s) const;
@@ -77,6 +79,7 @@ class GameController : public IGameController
         Seat                       _currentSeat;    // pure turn cursor; never touched by a swap
         bool                       _aiOpponent = true; // false ⇒ hotseat (both seats human)
         bool                       _aiVsAi     = false; // both seats driven by MasterAI
+        std::optional<OpeningDecision> _lastOpeningDecision;
 };
 
 #include "game/controller/GameController.inl"

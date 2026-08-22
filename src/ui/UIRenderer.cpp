@@ -135,14 +135,14 @@ void UIRenderer::renderStats(sf::RenderWindow& w, const sf::Font& font,
                    "Black", blackRole,
                    STONE_BLACK, blackPairs, maxPairs,
                    turn == Color::Black, blackIsAI,
-                   ctrl.aiMoveLastMs(), ctrl.aiMoveAverageMs());
+                   ctrl.aiMoveLastMs(Color::Black), ctrl.aiMoveAverageMs(Color::Black));
 
     // White on the right
     drawPlayerCard(w, font, rightCX, cy, cardW, cardH,
                    "White", whiteRole,
                    STONE_WHITE, whitePairs, maxPairs,
                    turn == Color::White, whiteIsAI,
-                   ctrl.aiMoveLastMs(), ctrl.aiMoveAverageMs());
+                   ctrl.aiMoveLastMs(Color::White), ctrl.aiMoveAverageMs(Color::White));
 }
 
 void UIRenderer::renderColorChoice(sf::RenderWindow& w, MenuPage& colorChoice)

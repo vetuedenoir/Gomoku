@@ -22,6 +22,8 @@ class IGameController
 
         virtual std::optional<Move> requestAIMove() = 0;
 
+        virtual std::optional<OpeningDecision> takeOpeningDecision() = 0;
+
         virtual std::optional<Move> suggestMove() = 0;
 
         virtual const GameBoard&     visualBoard()      const = 0;

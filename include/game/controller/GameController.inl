@@ -240,19 +240,12 @@ std::optional<Move> GameController<Traits>::requestAIMove()
 
     if (_phase == GamePhase::ColorChoice)
     {
-        static std::mt19937 rng{std::random_device{}()};
-        bool swapped = std::uniform_int_distribution<int>(0, 1)(rng);
-        Logger::info("AI", std::string("requestAIMove — ColorChoice, swapped=")
-                           + (swapped ? "true" : "false"));
-        resolveColorChoice(swapped);
+        playAiColorChoice();
         return std::nullopt;
     }
 
     if (_phase == GamePhase::Opening)
     {
-        _tracker.start();
-
-
         const std::vector<Move> candidates = _opening.legalMoves(*_board);
 
         static std::mt19937 rng{std::random_device{}()};
@@ -299,6 +292,51 @@ std::optional<Move> GameController<Traits>::requestAIMove()
     }
 
     return std::nullopt;
+}
+
+template<typename Traits>
+void GameController<Traits>::playAiColorChoice()
+{
+    const Seat chooser = _currentSeat;
+    const bool canPlaceTwo =
+        _opening.protocol() == OpeningProtocol::Swap2
+        && chooser == Seat::Second
+        && _opening.stepIndex() == 1;
+
+    static std::mt19937 rng{std::random_device{}()};
+    const int n    = canPlaceTwo ? 3 : 2;
+    const int pick = std::uniform_int_distribution<int>(0, n - 1)(rng);
+
+    OpeningDecision decision;
+    decision.chooser = chooser;
+
+    if (pick == 2)
+    {
+        decision.choice = OpeningChoice::PlaceTwo;
+        _lastOpeningDecision = decision;
+        Logger::info("AI", "requestAIMove — ColorChoice, place 2 more");
+        continueOpeningPlacement();
+        return;
+    }
+
+    const bool swapped = (pick == 1);
+    decision.choice = swapped ? OpeningChoice::Swap : OpeningChoice::Keep;
+    decision.colorTaken = (chooser == Seat::Second)
+        ? (swapped ? Color::Black : Color::White)
+        : (swapped ? Color::White : Color::Black);
+    _lastOpeningDecision = decision;
+
+    Logger::info("AI", std::string("requestAIMove — ColorChoice, swapped=")
+                       + (swapped ? "true" : "false"));
+    resolveColorChoice(swapped);
+}
+
+template<typename Traits>
+std::optional<OpeningDecision> GameController<Traits>::takeOpeningDecision()
+{
+    std::optional<OpeningDecision> decision = _lastOpeningDecision;
+    _lastOpeningDecision.reset();
+    return decision;
 }
 
 template<typename Traits>
