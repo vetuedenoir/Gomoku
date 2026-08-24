@@ -304,6 +304,11 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 
 		for (size_t i = 0; i < rootMoves.size(); ++i)
 		{
+			// generateEmptyMoves n'applique pas la règle du double-trois :
+			// StandardRules (même verdict que submitMove) décide, on passe au suivant.
+			if (!_moveGenerator.isLegalMove(board, rootMoves[i].x, rootMoves[i].y, color))
+				continue;
+
 			EvaluatedMove scoredMove = computeRawScoreMove(board, rootMoves[i], color, capturesOfSideToMove);
 
 			if (scoredMove.isLegal)
@@ -397,6 +402,9 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 
 		const t_cell& move = orderedRoot[i].move;
 
+		if (!_moveGenerator.isLegalMove(position.board(), move.x, move.y, color))
+			continue;
+
 		++legalRootSearched;
 
 		SearchPosition<Traits> newPosition = position;
@@ -423,25 +431,6 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 
 		alpha = std::max(alpha, bestScore);
 	}
-
-	// // Last resort: if TT/seed left an illegal bestMove and nothing beat it, pick
-	// // the first fully-legal ordered candidate (stops submitMove infinite loops).
-	// if (bestMove.x < 0
-	// 	|| !_moveGenerator.isLegalMove(position.board(), bestMove.x, bestMove.y, color))
-	// {
-	// 	bestMove = {-1, -1};
-	// 	for (size_t i = 0; i < orderedRoot.size(); ++i)
-	// 	{
-	// 		const t_cell& m = orderedRoot[i].move;
-	// 		if (_moveGenerator.isLegalMove(position.board(), m.x, m.y, color))
-	// 		{
-	// 			bestMove = m;
-	// 			LOG_WARN("AI", "[findBestMove] fallback to legal ("
-	// 				+ std::to_string(m.x) + "," + std::to_string(m.y) + ")");
-	// 			break;
-	// 		}
-	// 	}
-	// }
 
 	_stats.bestScore = bestScore;
 	_stats.bestMove  = bestMove;
@@ -859,6 +848,8 @@ EvaluatedMove MasterAI<Traits>::computeRawScoreMove(const t_BWBoard<Traits>& boa
 	{
 		eval.score = cross_score(r) + captureScore;
 		eval.stage = ShapeStage::Cross;
+		// Une croix n'exempte pas le double-trois (contrairement au four).
+		eval.isLegal = !(caps == 0 && tool.is_double_three_at(own, opp, cell.x, cell.y));
 		return eval;
 	}
 
@@ -941,6 +932,8 @@ EvaluatedMove MasterAI<Traits>::rawShapeScoreV2(const t_BWBoard<Traits>& board, 
 	{
 		eval.score = cross_score(r) + captureScore;
 		eval.stage = ShapeStage::Cross;
+		// Une croix n'exempte pas le double-trois (contrairement au four).
+		eval.isLegal = !(caps == 0 && tool.is_double_three_at(own, opp, cell.x, cell.y));
 		return eval;
 	}
 
