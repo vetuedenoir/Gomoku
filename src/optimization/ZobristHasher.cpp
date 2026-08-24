@@ -4,5 +4,5 @@
 // This translation unit triggers instantiation of the two board-size variants
 // so the static member definitions are emitted exactly once.
 
-template class ZobristHasher<BoardTraits<19>>;
-template class ZobristHasher<BoardTraits<15>>;
+template class ZobristHasher<BoardTraits<19> >;
+template class ZobristHasher<BoardTraits<15> >;

@@ -15,7 +15,7 @@
 // score/coup qu'une recherche à froid — en explorant moins de nœuds.
 // ────────────────────────────────────────────────────────────────────────────
 
-using Access = MasterAITestAccess<BoardTraits<19>>;
+using Access = MasterAITestAccess<BoardTraits<19> >;
 
 static SearchPosition19 posWithSideToMove(GameBoard& b, Color colorToMove)
 {
@@ -37,32 +37,31 @@ TEST_CASE("[Minimax] TT invariance: warm table same result, fewer nodes")
 
 	MasterAI19 ai = MasterAI19(4, 1, Color::Black);
 
-
 	// 1. Passe à froid (TT vide).
-	const t_cell move1     = ai.findBestMove(pos, Color::Black);
-	const int    score1    = ai.lastSearchStats().bestScore;
-	const int    visited1  = ai.lastSearchStats().nodesVisited;
+	const t_cell move1    = ai.findBestMove(pos, Color::Black);
+	const int    score1   = ai.lastSearchStats().bestScore;
+	const int    visited1 = ai.lastSearchStats().nodesVisited;
 
 	// 2. Passe à chaud (TT remplie par la passe précédente).
-	const t_cell move2     = ai.findBestMove(pos, Color::Black);
-	const int    score2    = ai.lastSearchStats().bestScore;
-	const int    visited2  = ai.lastSearchStats().nodesVisited;
+	const t_cell move2    = ai.findBestMove(pos, Color::Black);
+	const int    score2   = ai.lastSearchStats().bestScore;
+	const int    visited2 = ai.lastSearchStats().nodesVisited;
 
-	CHECK(score2 == score1);                       // même valeur
-	CHECK(move2.x == move1.x);                     // même coup
+	CHECK(score2 == score1);   // même valeur
+	CHECK(move2.x == move1.x); // même coup
 	CHECK(move2.y == move1.y);
-	CHECK(visited2 < visited1);                    // « seulement la vitesse »
+	CHECK(visited2 < visited1); // « seulement la vitesse »
 
 	// 3. Après clear(), on retombe sur la passe froide à l'identique.
 	Access::ttMutable(ai).clear();
-	const t_cell move3     = ai.findBestMove(pos, Color::Black);
-	const int    score3    = ai.lastSearchStats().bestScore;
-	const int    visited3  = ai.lastSearchStats().nodesVisited;
+	const t_cell move3    = ai.findBestMove(pos, Color::Black);
+	const int    score3   = ai.lastSearchStats().bestScore;
+	const int    visited3 = ai.lastSearchStats().nodesVisited;
 
-	CHECK(score3 == score1);                       // résultat inchangé
+	CHECK(score3 == score1); // résultat inchangé
 	CHECK(move3.x == move1.x);
 	CHECK(move3.y == move1.y);
-	CHECK(visited3 == visited1);                   // exploration redevenue froide
+	CHECK(visited3 == visited1); // exploration redevenue froide
 }
 
 // ── Invariance : pré-remplissage iterative deepening ────────────────────────
@@ -79,7 +78,7 @@ TEST_CASE("[Minimax] TT invariance: iterative-deepening pre-seed keeps the resul
 	SearchPosition19 pos = posWithSideToMove(b, Color::Black);
 
 	// 1. Référence : recherche froide directe à depth 4.
-	MasterAI19 aiRef = MasterAI19(4, 1, Color::Black);
+	MasterAI19   aiRef   = MasterAI19(4, 1, Color::Black);
 	const t_cell moveRef = aiRef.findBestMove(pos, Color::Black);
 	const int    vRef    = aiRef.lastSearchStats().bestScore;
 

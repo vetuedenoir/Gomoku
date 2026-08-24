@@ -1,5 +1,5 @@
 #ifndef COMPACT_MASK_HPP
-# define COMPACT_MASK_HPP
+#define COMPACT_MASK_HPP
 
 #include "bitboard/bitboard.hpp"
 
@@ -9,21 +9,20 @@
 // Compact view of a Bitboard mask that spans a small run of consecutive limbs.
 // Used for Lot-2 ±4 direction windows and Lot-3 pattern-table storage.
 // On 19×19 a ±4 diagonal window can cross 4 limbs (MAX_WORDS).
-template<typename Traits>
-struct CompactMask
+template<typename Traits> struct CompactMask
 {
 	static constexpr int MAX_WORDS = 4;
 
 	uint64_t m[MAX_WORDS] = {};
-	uint8_t  w     = 0; // index of the first occupied limb
-	uint8_t  words = 1; // 1 .. MAX_WORDS
+	uint8_t  w            = 0; // index of the first occupied limb
+	uint8_t  words        = 1; // 1 .. MAX_WORDS
 
 	// Build from a full bitboard. Empty mask → (w=0, words=1, m[0]=0).
 	static CompactMask from(const typename Traits::Bitboard& bb)
 	{
 		CompactMask out;
-		int first = -1;
-		int last  = -1;
+		int         first = -1;
+		int         last  = -1;
 		for (int i = 0; i < Traits::WORD_COUNT; ++i)
 		{
 			if (bb[static_cast<size_t>(i)] != 0)
@@ -51,7 +50,7 @@ struct CompactMask
 	// Bitboards (e.g. the five-in-a-row mask fed to the capture-break check).
 	typename Traits::Bitboard toBitboard() const
 	{
-		typename Traits::Bitboard out {};
+		typename Traits::Bitboard out{};
 		for (uint8_t i = 0; i < words; ++i)
 			out[static_cast<size_t>(w + i)] = m[i];
 		return out;
@@ -59,8 +58,7 @@ struct CompactMask
 };
 
 // Stones of `board` that fall inside the compact window `p`.
-template<typename Traits>
-inline int popWindow(const CompactMask<Traits>& p, const typename Traits::Bitboard& board)
+template<typename Traits> inline int popWindow(const CompactMask<Traits>& p, const typename Traits::Bitboard& board)
 {
 	int n = 0;
 	for (uint8_t i = 0; i < p.words; ++i)
@@ -69,8 +67,7 @@ inline int popWindow(const CompactMask<Traits>& p, const typename Traits::Bitboa
 }
 
 // True iff every set bit of `p` is also set on `board`.
-template<typename Traits>
-inline bool matchPattern(const CompactMask<Traits>& p, const typename Traits::Bitboard& board)
+template<typename Traits> inline bool matchPattern(const CompactMask<Traits>& p, const typename Traits::Bitboard& board)
 {
 	for (uint8_t i = 0; i < p.words; ++i)
 	{

@@ -1,48 +1,41 @@
 #ifndef ACTIVEZONE_HPP
-# define ACTIVEZONE_HPP
+#define ACTIVEZONE_HPP
 
 #include "bitboard/bitboard.hpp"
 #include "game/contracts/contracts.hpp"
 
-template<typename Traits>
-class ActiveZone
+template<typename Traits> class ActiveZone
 {
-	public:
-		explicit ActiveZone(int radius);
-		explicit ActiveZone();
-	
+public:
+	explicit ActiveZone(int radius);
+	explicit ActiveZone();
 
-		void initialize(const t_BWBoard<Traits>& board);
+	void initialize(const t_BWBoard<Traits>& board);
 
-		const typename Traits::Bitboard& getCandidateMask() const noexcept;
+	const typename Traits::Bitboard& getCandidateMask() const noexcept;
 
-		bool contains(int col, int row) const noexcept;
+	bool contains(int col, int row) const noexcept;
 
-		int size() const noexcept;
+	int size() const noexcept;
 
-		void clear();
+	void clear();
 
-		void setRadius(int radius) noexcept;
+	void setRadius(int radius) noexcept;
 
-		int getRadius() const noexcept;
+	int getRadius() const noexcept;
 
-	private:
-		typename Traits::Bitboard _candidateMask;
-		int                       _radius;
+private:
+	typename Traits::Bitboard _candidateMask;
+	int                       _radius;
 
-		void addNeighborBits(int cx, int cy);
+	void addNeighborBits(int cx, int cy);
 };
 
-template<typename Traits>
-ActiveZone<Traits>::ActiveZone(int radius) : _candidateMask({}), _radius(radius)
-{}
+template<typename Traits> ActiveZone<Traits>::ActiveZone(int radius) : _candidateMask({}), _radius(radius) {}
 
-template<typename Traits>
-ActiveZone<Traits>::ActiveZone() : _candidateMask({}), _radius(1)
-{}
+template<typename Traits> ActiveZone<Traits>::ActiveZone() : _candidateMask({}), _radius(1) {}
 
-template<typename Traits>
-void ActiveZone<Traits>::initialize(const t_BWBoard<Traits>& board)
+template<typename Traits> void ActiveZone<Traits>::initialize(const t_BWBoard<Traits>& board)
 {
 	_candidateMask = {};
 
@@ -50,10 +43,10 @@ void ActiveZone<Traits>::initialize(const t_BWBoard<Traits>& board)
 	{
 		for (int x = 0; x < Traits::BOARD_SIZE; x++)
 		{
-			if (get_bb_generic<Traits>(board.black, x, y) ||
-				get_bb_generic<Traits>(board.white, x, y)) {
-					addNeighborBits(x, y);
-				}
+			if (get_bb_generic<Traits>(board.black, x, y) || get_bb_generic<Traits>(board.white, x, y))
+			{
+				addNeighborBits(x, y);
+			}
 		}
 	}
 
@@ -61,8 +54,7 @@ void ActiveZone<Traits>::initialize(const t_BWBoard<Traits>& board)
 		_candidateMask[i] &= ~(board.black[i] | board.white[i]);
 }
 
-template<typename Traits>
-void ActiveZone<Traits>::addNeighborBits(int cx, int cy)
+template<typename Traits> void ActiveZone<Traits>::addNeighborBits(int cx, int cy)
 {
 	for (int dy = -_radius; dy <= _radius; dy++)
 	{
@@ -76,43 +68,37 @@ void ActiveZone<Traits>::addNeighborBits(int cx, int cy)
 	}
 }
 
-template<typename Traits>
-const typename Traits::Bitboard& ActiveZone<Traits>::getCandidateMask() const noexcept
+template<typename Traits> const typename Traits::Bitboard& ActiveZone<Traits>::getCandidateMask() const noexcept
 {
 	return _candidateMask;
 }
 
-template<typename Traits>
-bool ActiveZone<Traits>::contains(int col, int row) const noexcept
+template<typename Traits> bool ActiveZone<Traits>::contains(int col, int row) const noexcept
 {
 	return get_bb_generic<Traits>(_candidateMask, col, row);
 }
 
-template<typename Traits>
-int ActiveZone<Traits>::size() const noexcept
+template<typename Traits> int ActiveZone<Traits>::size() const noexcept
 {
 	return popcount_bb_generic<Traits>(_candidateMask);
 }
 
-template<typename Traits>
-void ActiveZone<Traits>::clear()
+template<typename Traits> void ActiveZone<Traits>::clear()
 {
 	_candidateMask = {};
 }
 
-template<typename Traits>
-void ActiveZone<Traits>::setRadius(int radius) noexcept
+template<typename Traits> void ActiveZone<Traits>::setRadius(int radius) noexcept
 {
 	_radius = radius;
 }
 
-template<typename Traits>
-int ActiveZone<Traits>::getRadius() const noexcept
+template<typename Traits> int ActiveZone<Traits>::getRadius() const noexcept
 {
 	return _radius;
 }
 
-using ActiveZone19 = ActiveZone<BoardTraits<19>>;
-using ActiveZone15 = ActiveZone<BoardTraits<15>>;
+using ActiveZone19 = ActiveZone<BoardTraits<19> >;
+using ActiveZone15 = ActiveZone<BoardTraits<15> >;
 
 #endif // ACTIVEZONE_HPP

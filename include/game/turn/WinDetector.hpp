@@ -1,5 +1,5 @@
 #ifndef WINDETECTOR_HPP
-# define WINDETECTOR_HPP
+#define WINDETECTOR_HPP
 
 #include "bitboard/bitboard.hpp"
 #include "bitboard/BitboardTool.hpp"
@@ -7,14 +7,11 @@
 
 #include <optional>
 
-
 // fonction qui ne detecte pas les captures gagnantes, mais seulement les alignements de 5
 // surement à compléter plus tard pour les captures
-template<typename Traits>
-bool isWinAfterMove(const t_BWBoard<Traits>& bb, const Color color, int col, int row)
+template<typename Traits> bool isWinAfterMove(const t_BWBoard<Traits>& bb, const Color color, int col, int row)
 {
-	return BitboardTool<Traits>::instance().is_five_in_a_row(
-		bitboardForColor(bb, color), col, row);
+	return BitboardTool<Traits>::instance().is_five_in_a_row(bitboardForColor(bb, color), col, row);
 }
 
 // ─── Règle de la capture finale ──────────────────────────────────────────────
@@ -29,11 +26,9 @@ bool isWinAfterMove(const t_BWBoard<Traits>& bb, const Color color, int col, int
 // nulle. Le butin d'un coup n'étant pas borné à une paire, cela peut arriver
 // depuis n'importe quel compteur de départ.
 
-template<typename Traits>
-inline bool isEmptyCell(const t_BWBoard<Traits>& bb, int x, int y)
+template<typename Traits> inline bool isEmptyCell(const t_BWBoard<Traits>& bb, int x, int y)
 {
-	return !get_bb_generic<Traits>(bb.black, x, y)
-	    && !get_bb_generic<Traits>(bb.white, x, y);
+	return !get_bb_generic<Traits>(bb.black, x, y) && !get_bb_generic<Traits>(bb.white, x, y);
 }
 
 // Parcourt les prises adverses dont au moins une des deux pierres appartient à
@@ -58,66 +53,65 @@ void forEachCaptureLandingWithin(const t_BWBoard<Traits>& bb, const Color victim
 
 	bool stop = false;
 
-	bb_for_each_bit<Traits>(stones, [&](int x, int y)
-	{
-		if (stop)
-			return;
+	bb_for_each_bit<Traits>(stones,
+	                        [&](int x, int y)
+	                        {
+								if (stop)
+									return;
 
-		for (int d = 0; d < 4 && !stop; ++d)
-		{
-			for (int s = 0; s < 2 && !stop; ++s)
-			{
-				const int stepX = (s ? 1 : -1) * dx(LINE_DIRS[d]);
-				const int stepY = (s ? 1 : -1) * dy(LINE_DIRS[d]);
+								for (int d = 0; d < 4 && !stop; ++d)
+								{
+									for (int s = 0; s < 2 && !stop; ++s)
+									{
+										const int stepX = (s ? 1 : -1) * dx(LINE_DIRS[d]);
+										const int stepY = (s ? 1 : -1) * dy(LINE_DIRS[d]);
 
-				// paire = (x,y) + (qx,qy) ; flancs en (bx,by) et (fx,fy).
-				const int qx = x + stepX,     qy = y + stepY;
-				const int bx = x - stepX,     by = y - stepY;
-				const int fx = x + 2 * stepX, fy = y + 2 * stepY;
+										// paire = (x,y) + (qx,qy) ; flancs en (bx,by) et (fx,fy).
+										const int qx = x + stepX, qy = y + stepY;
+										const int bx = x - stepX, by = y - stepY;
+										const int fx = x + 2 * stepX, fy = y + 2 * stepY;
 
-				if (!in_board_generic<Traits>(qx, qy)
-				 || !in_board_generic<Traits>(bx, by)
-				 || !in_board_generic<Traits>(fx, fy))
-					continue;
+										if (!in_board_generic<Traits>(qx, qy) || !in_board_generic<Traits>(bx, by) ||
+				                            !in_board_generic<Traits>(fx, fy))
+											continue;
 
-				if (!get_bb_generic<Traits>(own, qx, qy))
-					continue; // pas une paire de la victime
+										if (!get_bb_generic<Traits>(own, qx, qy))
+											continue; // pas une paire de la victime
 
-				const bool backOpp   = get_bb_generic<Traits>(opp, bx, by);
-				const bool backFree  = isEmptyCell<Traits>(bb, bx, by);
-				const bool frontOpp  = get_bb_generic<Traits>(opp, fx, fy);
-				const bool frontFree = isEmptyCell<Traits>(bb, fx, fy);
+										const bool backOpp   = get_bb_generic<Traits>(opp, bx, by);
+										const bool backFree  = isEmptyCell<Traits>(bb, bx, by);
+										const bool frontOpp  = get_bb_generic<Traits>(opp, fx, fy);
+										const bool frontFree = isEmptyCell<Traits>(bb, fx, fy);
 
-				if (backOpp && frontFree)
-					stop = !fn(fx, fy);
-				else if (backFree && frontOpp)
-					stop = !fn(bx, by);
-			}
-		}
-	});
+										if (backOpp && frontFree)
+											stop = !fn(fx, fy);
+										else if (backFree && frontOpp)
+											stop = !fn(bx, by);
+									}
+								}
+							});
 }
 
 // Existe-t-il une prise adverse dont au moins une des deux pierres appartient à
 // `stones` ?
 template<typename Traits>
-bool canCapturePairWithin(const t_BWBoard<Traits>& bb, const Color victim,
-                          const typename Traits::Bitboard& stones)
+bool canCapturePairWithin(const t_BWBoard<Traits>& bb, const Color victim, const typename Traits::Bitboard& stones)
 {
 	bool capturable = false;
 
-	forEachCaptureLandingWithin<Traits>(bb, victim, stones, [&](int, int)
-	{
-		capturable = true;
-		return false;
-	});
+	forEachCaptureLandingWithin<Traits>(bb, victim, stones,
+	                                    [&](int, int)
+	                                    {
+											capturable = true;
+											return false;
+										});
 
 	return capturable;
 }
 
 // L'adversaire de `owner` peut-il casser l'alignement décrit par `fiveMask` ?
 template<typename Traits>
-bool canBreakFive(const t_BWBoard<Traits>& bb, const Color owner,
-                  const typename Traits::Bitboard& fiveMask)
+bool canBreakFive(const t_BWBoard<Traits>& bb, const Color owner, const typename Traits::Bitboard& fiveMask)
 {
 	return canCapturePairWithin<Traits>(bb, owner, fiveMask);
 }
@@ -126,8 +120,7 @@ bool canBreakFive(const t_BWBoard<Traits>& bb, const Color owner,
 // C'est le même test appliqué à toutes les pierres de la victime.
 // N'entre PAS dans la règle de fin de partie : une prise qui ne casse pas
 // l'alignement ne sauve pas le défenseur. Conservé comme primitive de test.
-template<typename Traits>
-bool hasAnyCapture(const t_BWBoard<Traits>& bb, const Color capturer)
+template<typename Traits> bool hasAnyCapture(const t_BWBoard<Traits>& bb, const Color capturer)
 {
 	const Color victim = opponentOf(capturer);
 	return canCapturePairWithin<Traits>(bb, victim, bitboardForColor(bb, victim));
@@ -138,15 +131,13 @@ bool hasAnyCapture(const t_BWBoard<Traits>& bb, const Color capturer)
 // le plateau, même si elle complète les cinq paires du défenseur, ne compte pas
 // — l'alignement se résout avant elle.
 template<typename Traits>
-bool isFiveRefutable(const t_BWBoard<Traits>& bb, const Color owner,
-                     const typename Traits::Bitboard& fiveMask)
+bool isFiveRefutable(const t_BWBoard<Traits>& bb, const Color owner, const typename Traits::Bitboard& fiveMask)
 {
 	return canBreakFive<Traits>(bb, owner, fiveMask);
 }
 
 template<typename Traits>
-inline bool bitboardsIntersect(const typename Traits::Bitboard& a,
-                               const typename Traits::Bitboard& b)
+inline bool bitboardsIntersect(const typename Traits::Bitboard& a, const typename Traits::Bitboard& b)
 {
 	for (std::size_t i = 0; i < a.size(); ++i)
 		if (a[i] & b[i])
@@ -168,30 +159,31 @@ inline bool bitboardsIntersect(const typename Traits::Bitboard& a,
 // Une prise qui les casse tous casse en particulier masks[0] : balayer les
 // pierres de ce seul masque suffit à énumérer les candidates.
 template<typename Traits>
-bool hasDrawingBreak(const t_BWBoard<Traits>& bb, const Color owner,
-                     const typename Traits::Bitboard* masks, int n,
+bool hasDrawingBreak(const t_BWBoard<Traits>& bb, const Color owner, const typename Traits::Bitboard* masks, int n,
                      int defenderCaptures)
 {
 	const Color defender = opponentOf(owner);
-	bool found = false;
+	bool        found    = false;
 
-	forEachCaptureLandingWithin<Traits>(bb, owner, masks[0], [&](int lx, int ly)
-	{
-		typename Traits::Bitboard captured{};
-		detect_captures<Traits>(bb, lx, ly, defender, captured);
+	forEachCaptureLandingWithin<Traits>(bb, owner, masks[0],
+	                                    [&](int lx, int ly)
+	                                    {
+											typename Traits::Bitboard captured{};
+											detect_captures<Traits>(bb, lx, ly, defender, captured);
 
-		if (defenderCaptures + popcount_bb_generic<Traits>(captured) < CAPTURES_TO_WIN)
-			return true;
+											if (defenderCaptures + popcount_bb_generic<Traits>(captured) <
+		                                        CAPTURES_TO_WIN)
+												return true;
 
-		for (int i = 0; i < n; ++i)
-		{
-			if (!bitboardsIntersect<Traits>(captured, masks[i]))
-				return true;
-		}
+											for (int i = 0; i < n; ++i)
+											{
+												if (!bitboardsIntersect<Traits>(captured, masks[i]))
+													return true;
+											}
 
-		found = true;
-		return false;
-	});
+											found = true;
+											return false;
+										});
 
 	return found;
 }
@@ -201,21 +193,25 @@ bool hasDrawingBreak(const t_BWBoard<Traits>& bb, const Color owner,
 //   Won     — cinq imparable, la partie s'arrête
 //   Draw    — cinq cassable par une prise qui porte le défenseur à dix : nulle
 //   Pending — cinq réfutable : l'adversaire a un coup pour le casser
-enum class FiveVerdict { None, Won, Draw, Pending };
+enum class FiveVerdict
+{
+	None,
+	Won,
+	Draw,
+	Pending
+};
 
 // `defenderCaptures` = pierres déjà prises par l'adversaire de `mover`, AVANT sa
 // réponse. Plusieurs cinq peuvent passer par la case jouée : il suffit qu'un
 // seul soit imprenable pour gagner, l'adversaire ne pouvant pas tous les casser
 // d'un coup.
 template<typename Traits>
-FiveVerdict judgeFiveAfterMove(const t_BWBoard<Traits>& bb, const Color mover,
-                               int col, int row, int defenderCaptures)
+FiveVerdict judgeFiveAfterMove(const t_BWBoard<Traits>& bb, const Color mover, int col, int row, int defenderCaptures)
 {
 	using Tool = BitboardTool<Traits>;
 
 	typename Traits::Bitboard masks[Tool::MAX_FIVE_MASKS];
-	const int n = Tool::instance().find_five_masks(bitboardForColor(bb, mover), col, row,
-	                                               masks, Tool::MAX_FIVE_MASKS);
+	const int n = Tool::instance().find_five_masks(bitboardForColor(bb, mover), col, row, masks, Tool::MAX_FIVE_MASKS);
 	if (n == 0)
 		return FiveVerdict::None;
 
@@ -234,8 +230,7 @@ FiveVerdict judgeFiveAfterMove(const t_BWBoard<Traits>& bb, const Color mover,
 // Le cinq mis en sursis au coup précédent tient-il encore ? Il ne survit que si
 // une ligne complète passe toujours par la case qui l'avait créée : une capture
 // ayant emporté l'une de ses pierres (la case elle-même comprise) l'invalide.
-template<typename Traits>
-bool pendingFiveSurvives(const t_BWBoard<Traits>& bb, const PendingWin& pending)
+template<typename Traits> bool pendingFiveSurvives(const t_BWBoard<Traits>& bb, const PendingWin& pending)
 {
 	return isWinAfterMove<Traits>(bb, pending.owner, pending.col, pending.row);
 }
@@ -245,19 +240,19 @@ bool pendingFiveSurvives(const t_BWBoard<Traits>& bb, const PendingWin& pending)
 // la recherche : si l'adversaire a un alignement sur le plateau alors que c'est
 // à nous de jouer, c'est forcément un cinq en sursis (sinon la partie serait
 // terminée), et le moteur doit le savoir pour chercher la capture qui le casse.
-template<typename Traits>
-std::optional<PendingWin> findExistingFive(const t_BWBoard<Traits>& bb, const Color owner)
+template<typename Traits> std::optional<PendingWin> findExistingFive(const t_BWBoard<Traits>& bb, const Color owner)
 {
 	const typename Traits::Bitboard& stones = bitboardForColor(bb, owner);
-	std::optional<PendingWin> found;
+	std::optional<PendingWin>        found;
 
-	bb_for_each_bit<Traits>(stones, [&](int x, int y)
-	{
-		if (found.has_value())
-			return;
-		if (isWinAfterMove<Traits>(bb, owner, x, y))
-			found = PendingWin{ owner, x, y };
-	});
+	bb_for_each_bit<Traits>(stones,
+	                        [&](int x, int y)
+	                        {
+								if (found.has_value())
+									return;
+								if (isWinAfterMove<Traits>(bb, owner, x, y))
+									found = PendingWin{ owner, x, y };
+							});
 
 	return found;
 }

@@ -10,8 +10,7 @@
 #include <cstddef>
 #include <cstring>
 
-template<typename Traits>
-class BitboardTool
+template<typename Traits> class BitboardTool
 {
 	t_PatternList5<Traits>        _lt5[Traits::CELL_COUNT][4];
 	t_PatternList4<Traits>        _lt4[Traits::CELL_COUNT][4];
@@ -21,7 +20,7 @@ class BitboardTool
 	t_PatternList_Cross           _ltcross[Traits::CELL_COUNT];
 
 	// ±4 cell window per (cell, direction). Lot-2 popcount pre-filter.
-	CompactMask<Traits>           _window[Traits::CELL_COUNT][4];
+	CompactMask<Traits> _window[Traits::CELL_COUNT][4];
 
 	void buildAll();
 	void build_lookup_table5();
@@ -40,25 +39,19 @@ class BitboardTool
 	static constexpr bool kPatternPrefilter = true;
 #endif
 
-	bool is_five_in_a_row_impl(const typename Traits::Bitboard& stones,
-	                           int col, int row, bool prefilter) const;
-	int find_five_masks_impl(const typename Traits::Bitboard& stones, int col, int row,
-	                         typename Traits::Bitboard* out, int maxOut, bool prefilter) const;
-	int check_open_four_impl(const typename Traits::Bitboard& stones,
-	                         const typename Traits::Bitboard& opponent,
-	                         int col, int row, bool prefilter) const;
-	int check_broken_four_impl(const typename Traits::Bitboard& stones,
-	                           const typename Traits::Bitboard& opponent,
-	                           int col, int row, bool prefilter) const;
-	int check_open_three_impl(const typename Traits::Bitboard& stones,
-	                          const typename Traits::Bitboard& opponent,
+	bool is_five_in_a_row_impl(const typename Traits::Bitboard& stones, int col, int row, bool prefilter) const;
+	int  find_five_masks_impl(const typename Traits::Bitboard& stones, int col, int row, typename Traits::Bitboard* out,
+	                          int maxOut, bool prefilter) const;
+	int  check_open_four_impl(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent,
 	                          int col, int row, bool prefilter) const;
-	int check_super_four_impl(const typename Traits::Bitboard& stones,
-	                          const typename Traits::Bitboard& opponent,
-	                          int col, int row, bool prefilter) const;
-	int check_cross_impl(const typename Traits::Bitboard& stones,
-	                     const typename Traits::Bitboard& opponent,
-	                     int col, int row, bool prefilter) const;
+	int  check_broken_four_impl(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent,
+	                            int col, int row, bool prefilter) const;
+	int  check_open_three_impl(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent,
+	                           int col, int row, bool prefilter) const;
+	int  check_super_four_impl(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent,
+	                           int col, int row, bool prefilter) const;
+	int  check_cross_impl(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent, int col,
+	                      int row, bool prefilter) const;
 
 	void add_mask_to_lookup5(const typename Traits::Bitboard& mask, int start_pos, int stride);
 	void add_mask_to_lookup4(t_Pattern4<Traits>* pattern, int start_pos, int stride);
@@ -67,7 +60,6 @@ class BitboardTool
 	void finalize_group3_masks(t_PatternGroupe3<Traits>& pattern);
 	void add_pattern_super4(t_super4<Traits>* pattern, int start_x, int start_y, int dir);
 	void add_pattern_cross_to_lookup(t_cross* pattern);
-
 
 public:
 	BitboardTool() { buildAll(); }
@@ -91,52 +83,44 @@ public:
 	// the opponent cannot capture a pair *inside it*, so the caller needs the
 	// actual cells. Two distinct fives through the same stone yield two masks,
 	// and the alignment wins as soon as one of them is unbreakable.
-	int find_five_masks(const typename Traits::Bitboard& stones, int col, int row,
-	                    typename Traits::Bitboard* out, int maxOut) const;
-	int check_open_four(const typename Traits::Bitboard& stones,
-	                    const typename Traits::Bitboard& opponent, int col, int row) const;
-	int check_broken_four(const typename Traits::Bitboard& stones,
-	                      const typename Traits::Bitboard& opponent, int col, int row) const;
-	int check_open_three(const typename Traits::Bitboard& stones,
-	                     const typename Traits::Bitboard& opponent, int col, int row) const;
-	int check_super_four(const typename Traits::Bitboard& stones,
-	                     const typename Traits::Bitboard& opponent, int col, int row) const;
-	int check_cross(const typename Traits::Bitboard& stones,
-	                const typename Traits::Bitboard& opponent, int col, int row) const;
+	int find_five_masks(const typename Traits::Bitboard& stones, int col, int row, typename Traits::Bitboard* out,
+	                    int maxOut) const;
+	int check_open_four(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent, int col,
+	                    int row) const;
+	int check_broken_four(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent, int col,
+	                      int row) const;
+	int check_open_three(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent, int col,
+	                     int row) const;
+	int check_super_four(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent, int col,
+	                     int row) const;
+	int check_cross(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent, int col,
+	                int row) const;
 
 	// Oracles without prefilter (equality tests / Lot-3 migration).
-	bool is_five_in_a_row_reference(const typename Traits::Bitboard& stones,
-	                                int col, int row) const;
-	int find_five_masks_reference(const typename Traits::Bitboard& stones, int col, int row,
-	                              typename Traits::Bitboard* out, int maxOut) const;
-	int check_open_four_reference(const typename Traits::Bitboard& stones,
-	                              const typename Traits::Bitboard& opponent,
-	                              int col, int row) const;
-	int check_broken_four_reference(const typename Traits::Bitboard& stones,
-	                                const typename Traits::Bitboard& opponent,
-	                                int col, int row) const;
-	int check_open_three_reference(const typename Traits::Bitboard& stones,
-	                               const typename Traits::Bitboard& opponent,
+	bool is_five_in_a_row_reference(const typename Traits::Bitboard& stones, int col, int row) const;
+	int  find_five_masks_reference(const typename Traits::Bitboard& stones, int col, int row,
+	                               typename Traits::Bitboard* out, int maxOut) const;
+	int  check_open_four_reference(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent,
 	                               int col, int row) const;
-	int check_super_four_reference(const typename Traits::Bitboard& stones,
-	                               const typename Traits::Bitboard& opponent,
-	                               int col, int row) const;
-	int check_cross_reference(const typename Traits::Bitboard& stones,
-	                          const typename Traits::Bitboard& opponent,
-	                          int col, int row) const;
+	int  check_broken_four_reference(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent,
+	                                 int col, int row) const;
+	int  check_open_three_reference(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent,
+	                                int col, int row) const;
+	int  check_super_four_reference(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent,
+	                                int col, int row) const;
+	int  check_cross_reference(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent,
+	                           int col, int row) const;
 
 	// Always prefiltered (kept for older CompactMask equality tests).
-	int check_open_three_filtered(const typename Traits::Bitboard& stones,
-	                              const typename Traits::Bitboard& opponent,
+	int check_open_three_filtered(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent,
 	                              int col, int row) const;
 
-	bool is_double_three_at(const typename Traits::Bitboard& stones,
-	                        const typename Traits::Bitboard& opponent, int col, int row) const;
+	bool is_double_three_at(const typename Traits::Bitboard& stones, const typename Traits::Bitboard& opponent, int col,
+	                        int row) const;
 
 	bool isDoubleThreeScore(const int score) const;
 
-	CaptureResult<Traits> resolveCaptures(t_BWBoard<Traits>& bb, int col,
-                                                              int row, const Color color) const;
+	CaptureResult<Traits> resolveCaptures(t_BWBoard<Traits>& bb, int col, int row, const Color color) const;
 
 	// Direction window for Lot-2 pre-filter / tests. `dir` = DIR_HORIZ..DIR_DIAG_D.
 	const CompactMask<Traits>& directionWindow(int col, int row, int dir) const
@@ -145,8 +129,8 @@ public:
 	}
 };
 
-using BitboardTool19 = BitboardTool<BoardTraits<19>>;
-using BitboardTool15 = BitboardTool<BoardTraits<15>>;
+using BitboardTool19 = BitboardTool<BoardTraits<19> >;
+using BitboardTool15 = BitboardTool<BoardTraits<15> >;
 
 #include "bitboard/BitboardToolBuild.inl"
 #include "bitboard/BitboardToolChecks.inl"

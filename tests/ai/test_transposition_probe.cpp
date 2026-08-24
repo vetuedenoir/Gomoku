@@ -16,7 +16,7 @@
 // ++nodesVisited) d'une recherche complète.
 // ────────────────────────────────────────────────────────────────────────────
 
-using Access = MasterAITestAccess<BoardTraits<19>>;
+using Access = MasterAITestAccess<BoardTraits<19> >;
 
 static constexpr int NEG_INF = std::numeric_limits<int>::min();
 static constexpr int POS_INF = std::numeric_limits<int>::max();
@@ -44,17 +44,16 @@ TEST_CASE("[Minimax] TT: exact hit returns cached value without re-exploring")
 
 	MasterAI19 ai = MasterAI19(2, 1, Color::Black);
 
-
 	// 1. Première recherche : remplit la TT et explore tout le sous-arbre.
-	const int cached = Access::search(ai, pos, previousHarmlessMove, 2, NEG_INF, POS_INF);
+	const int cached            = Access::search(ai, pos, previousHarmlessMove, 2, NEG_INF, POS_INF);
 	const int visitedAfterFirst = ai.lastSearchStats().nodesVisited;
-	const int hitsAfterFirst     = ai.lastSearchStats().ttHits;
+	const int hitsAfterFirst    = ai.lastSearchStats().ttHits;
 	CHECK(visitedAfterFirst > 1); // un vrai sous-arbre a bien été parcouru
 
 	// 2. Seconde recherche, même hash et même profondeur : hit Exact instantané.
-	const int reused = Access::search(ai, pos, previousHarmlessMove, 2, NEG_INF, POS_INF);
+	const int reused             = Access::search(ai, pos, previousHarmlessMove, 2, NEG_INF, POS_INF);
 	const int visitedAfterSecond = ai.lastSearchStats().nodesVisited;
-	const int hitsAfterSecond     = ai.lastSearchStats().ttHits;
+	const int hitsAfterSecond    = ai.lastSearchStats().ttHits;
 
 	// 3. Vérifications : même valeur, et le hit Exact coupe AVANT ++nodesVisited,
 	//    donc le 2nd passage ne compte aucun nœud visité.
@@ -76,26 +75,25 @@ TEST_CASE("[Minimax] TT: shallow entry is rejected, full search runs")
 	SearchPosition19 pos = posWithSideToMove(b, Color::Black);
 
 	// 1. Référence : recherche complète à depth = 4 sans entrée injectée.
-	MasterAI19 aiRef = MasterAI19(4, 1, Color::Black);
-	const int refValue   = Access::search(aiRef, pos, previousHarmlessMove, 4, NEG_INF, POS_INF);
-	const int refVisited = aiRef.lastSearchStats().nodesVisited;
-	const int refHits    = aiRef.lastSearchStats().ttHits; // hits internes légitimes (transpositions)
+	MasterAI19 aiRef      = MasterAI19(4, 1, Color::Black);
+	const int  refValue   = Access::search(aiRef, pos, previousHarmlessMove, 4, NEG_INF, POS_INF);
+	const int  refVisited = aiRef.lastSearchStats().nodesVisited;
+	const int  refHits    = aiRef.lastSearchStats().ttHits; // hits internes légitimes (transpositions)
 
 	// 2. Injection d'une entrée Exact peu profonde (depth = 2) au hash de la racine.
 	MasterAI19 ai = MasterAI19(4, 1, Color::Black);
 
 	const int sentinel = 123456; // valeur que la vraie recherche ne produit jamais
-	Access::ttMutable(ai).store(pos.zobristHash(), sentinel, 2, TTFlag::Exact,
-	                            { -1, -1 });
+	Access::ttMutable(ai).store(pos.zobristHash(), sentinel, 2, TTFlag::Exact, { -1, -1 });
 
 	// 3. Recherche à depth = 4 : l'entrée depth = 2 doit être rejetée.
 	const int value = Access::search(ai, pos, previousHarmlessMove, 4, NEG_INF, POS_INF);
 
 	// 4. Vérifications : la sentinelle est ignorée et la recherche complète a tourné.
-	CHECK(value != sentinel);                                   // valeur cachée non utilisée
-	CHECK(value == refValue);                                   // résultat identique à la référence
-	CHECK(ai.lastSearchStats().nodesVisited == refVisited);     // exploration complète
-	CHECK(ai.lastSearchStats().ttHits == refHits);              // l'entrée injectée n'ajoute aucun hit
+	CHECK(value != sentinel);                               // valeur cachée non utilisée
+	CHECK(value == refValue);                               // résultat identique à la référence
+	CHECK(ai.lastSearchStats().nodesVisited == refVisited); // exploration complète
+	CHECK(ai.lastSearchStats().ttHits == refHits);          // l'entrée injectée n'ajoute aucun hit
 
 	// La recherche a remplacé l'entrée peu profonde par son propre résultat (depth = 4).
 	const TTEntry* root = Access::tt(ai).probe(pos.zobristHash());

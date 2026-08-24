@@ -20,27 +20,26 @@ static constexpr int kWinScore = 1000000;
 namespace
 {
 
-// Noir a quatre pierres sur la ligne 5 : (7,5) complète le cinq.
-void black_four_on_row5(GameBoard& b)
-{
-	for (int x = 3; x <= 6; ++x)
-		place(b, x, 5, CellStatus::Black);
-}
+	// Noir a quatre pierres sur la ligne 5 : (7,5) complète le cinq.
+	void black_four_on_row5(GameBoard& b)
+	{
+		for (int x = 3; x <= 6; ++x)
+			place(b, x, 5, CellStatus::Black);
+	}
 
-// La paire (5,5)+(5,6) est prenable par Blanc en (5,4) : toute ligne passant
-// par (5,5) — donc tout cinq de la ligne 5 — est cassable.
-void white_can_break_row5(GameBoard& b)
-{
-	place(b, 5, 6, CellStatus::Black);
-	place(b, 5, 7, CellStatus::White);
-}
+	// La paire (5,5)+(5,6) est prenable par Blanc en (5,4) : toute ligne passant
+	// par (5,5) — donc tout cinq de la ligne 5 — est cassable.
+	void white_can_break_row5(GameBoard& b)
+	{
+		place(b, 5, 6, CellStatus::Black);
+		place(b, 5, 7, CellStatus::White);
+	}
 
-SearchPosition19 positionOf(GameBoard& b, Color toMove,
-                            int capturesByBlack = 0, int capturesByWhite = 0)
-{
-	b.setCurrentColor(toMove);
-	return SearchPosition19::fromBoard(b, capturesByBlack, capturesByWhite);
-}
+	SearchPosition19 positionOf(GameBoard& b, Color toMove, int capturesByBlack = 0, int capturesByWhite = 0)
+	{
+		b.setCurrentColor(toMove);
+		return SearchPosition19::fromBoard(b, capturesByBlack, capturesByWhite);
+	}
 
 } // namespace
 
@@ -52,7 +51,7 @@ TEST_CASE("[Minimax] an unbreakable five is still announced as mate")
 	black_four_on_row5(b);
 
 	SearchPosition19 pos = positionOf(b, Color::Black);
-	MasterAI19 ai(1, 1, Color::Black);
+	MasterAI19       ai(1, 1, Color::Black);
 
 	const t_cell move = ai.findBestMove(pos, Color::Black);
 
@@ -72,7 +71,7 @@ TEST_CASE("[Minimax] a breakable five is not announced as mate")
 	white_can_break_row5(b);
 
 	SearchPosition19 pos = positionOf(b, Color::Black);
-	MasterAI19 ai(1, 1, Color::Black);
+	MasterAI19       ai(1, 1, Color::Black);
 
 	ai.findBestMove(pos, Color::Black);
 
@@ -85,10 +84,10 @@ TEST_CASE("[Minimax] the same four is mate again once the capture is gone")
 	// rendait la prise possible, tout le reste est identique.
 	GameBoard b = empty_board();
 	black_four_on_row5(b);
-	place(b, 5, 6, CellStatus::Black);   // la paire reste, mais sans ancre blanche
+	place(b, 5, 6, CellStatus::Black); // la paire reste, mais sans ancre blanche
 
 	SearchPosition19 pos = positionOf(b, Color::Black);
-	MasterAI19 ai(1, 1, Color::Black);
+	MasterAI19       ai(1, 1, Color::Black);
 
 	ai.findBestMove(pos, Color::Black);
 
@@ -110,7 +109,7 @@ TEST_CASE("[Minimax] the engine spends its move breaking an opposing five")
 	white_can_break_row5(b);
 
 	SearchPosition19 pos = positionOf(b, Color::White);
-	MasterAI19 ai(2, 1, Color::White);
+	MasterAI19       ai(2, 1, Color::White);
 
 	const t_cell move = ai.findBestMove(pos, Color::White);
 
@@ -128,22 +127,20 @@ TEST_CASE("[Minimax] ignoring an opposing five is scored as a loss")
 	white_can_break_row5(b);
 
 	SearchPosition19 pos = positionOf(b, Color::White);
-	MasterAI19 ai(2, 1, Color::White);
+	MasterAI19       ai(2, 1, Color::White);
 
-	const std::optional<PendingWin> pending =
-		findExistingFive<BoardTraits<19>>(pos.board(), Color::Black);
+	const std::optional<PendingWin> pending = findExistingFive<BoardTraits<19> >(pos.board(), Color::Black);
 	REQUIRE(pending.has_value());
 
 	// Blanc joue loin de la ligne ; le nœud enfant hérite du sursis.
 	const EvaluatedMove quiet =
-		MasterAITestAccess<BoardTraits<19>>::lightKey(ai, pos.board(), {15, 15}, Color::White, 0);
+		MasterAITestAccess<BoardTraits<19> >::lightKey(ai, pos.board(), { 15, 15 }, Color::White, 0);
 	const MoveStateHash hash = pos.buildMoveHash(quiet, Color::White);
 	pos.makeMove(15, 15, Color::White, hash);
 
 	// Profondeur 0 : on isole la résolution du sursis, sans laisser Noir rejouer.
-	const int score = MasterAITestAccess<BoardTraits<19>>::searchWithPending(
-		ai, pos, {15, 15}, 0,
-		std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), pending);
+	const int score = MasterAITestAccess<BoardTraits<19> >::searchWithPending(
+		ai, pos, { 15, 15 }, 0, std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), pending);
 
 	CHECK(score <= -(kWinScore - 10));
 }
@@ -158,22 +155,20 @@ TEST_CASE("[Minimax] breaking the line clears the pending mate")
 	white_can_break_row5(b);
 
 	SearchPosition19 pos = positionOf(b, Color::White);
-	MasterAI19 ai(2, 1, Color::White);
+	MasterAI19       ai(2, 1, Color::White);
 
-	const std::optional<PendingWin> pending =
-		findExistingFive<BoardTraits<19>>(pos.board(), Color::Black);
+	const std::optional<PendingWin> pending = findExistingFive<BoardTraits<19> >(pos.board(), Color::Black);
 	REQUIRE(pending.has_value());
 
 	const EvaluatedMove capture =
-		MasterAITestAccess<BoardTraits<19>>::lightKey(ai, pos.board(), {5, 4}, Color::White, 0);
+		MasterAITestAccess<BoardTraits<19> >::lightKey(ai, pos.board(), { 5, 4 }, Color::White, 0);
 	REQUIRE(capture.captureMask != 0);
 
 	const MoveStateHash hash = pos.buildMoveHash(capture, Color::White);
 	pos.makeMove(5, 4, Color::White, hash);
 
-	const int score = MasterAITestAccess<BoardTraits<19>>::searchWithPending(
-		ai, pos, {5, 4}, 0,
-		std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), pending);
+	const int score = MasterAITestAccess<BoardTraits<19> >::searchWithPending(
+		ai, pos, { 5, 4 }, 0, std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), pending);
 
 	CHECK(score > -(kWinScore - 10));
 }
@@ -196,7 +191,7 @@ TEST_CASE("[Minimax] the tenth capture does not save against a five it does not 
 	place(b, 14, 14, CellStatus::White);
 
 	SearchPosition19 pos = positionOf(b, Color::White, /*byBlack=*/0, /*byWhite=*/8);
-	MasterAI19 ai(2, 1, Color::White);
+	MasterAI19       ai(2, 1, Color::White);
 
 	ai.findBestMove(pos, Color::White);
 
@@ -216,7 +211,7 @@ TEST_CASE("[Minimax] a break that reaches ten captures scores a draw")
 	white_can_break_row5(b);
 
 	SearchPosition19 pos = positionOf(b, Color::Black, /*byBlack=*/0, /*byWhite=*/8);
-	MasterAI19 ai(2, 1, Color::Black);
+	MasterAI19       ai(2, 1, Color::Black);
 
 	ai.findBestMove(pos, Color::Black);
 
@@ -233,7 +228,7 @@ TEST_CASE("[Minimax] the same break below ten is only a pending five")
 	white_can_break_row5(b);
 
 	SearchPosition19 pos = positionOf(b, Color::Black, /*byBlack=*/0, /*byWhite=*/6);
-	MasterAI19 ai(2, 1, Color::Black);
+	MasterAI19       ai(2, 1, Color::Black);
 
 	ai.findBestMove(pos, Color::Black);
 

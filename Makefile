@@ -104,6 +104,7 @@ DOCKER_TMP   := gomoku-tmp
         docker-build docker-run docker-extract docker-clean \
         docker-bench docker-perf docker-perf-record docker-perf-report \
 	podman-build podman-run podman-extract podman-clean \
+	format format-check \
 	help
 
 all: $(NAME)
@@ -339,6 +340,15 @@ docker-perf-report: docker-build
 		-v "$(CURDIR)/bench:/app/bench" \
 		$(DOCKER_IMAGE) \
 		perf report -i bench/perf.data
+
+FORMAT_FILES := $(shell git ls-files '*.cpp' '*.hpp' '*.inl')
+
+format:
+	@clang-format -i $(FORMAT_FILES)
+
+format-check:
+	@clang-format --dry-run --Werror $(FORMAT_FILES)
+
 
 -include $(DEPS)
 

@@ -1,11 +1,10 @@
 #ifndef INTERFACE_HPP
-# define INTERFACE_HPP
+#define INTERFACE_HPP
 
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <string>
 #include <functional>
-
 
 constexpr unsigned int WIN_W = 1000;
 constexpr unsigned int WIN_H = 800;
@@ -25,29 +24,27 @@ constexpr unsigned FONT_SM   = static_cast<unsigned>(WIN_H * 0.023f); //  ~18
 constexpr unsigned FONT_XS   = static_cast<unsigned>(WIN_H * 0.020f); //  ~16
 
 // Colors
-inline const sf::Color BG        (18,  18,  32);
-inline const sf::Color GOLD      (220, 175,  80);
-inline const sf::Color WHITE     (230, 230, 230);
-inline const sf::Color DIM       (100, 100, 120);
+inline const sf::Color BG(18, 18, 32);
+inline const sf::Color GOLD(220, 175, 80);
+inline const sf::Color WHITE(230, 230, 230);
+inline const sf::Color DIM(100, 100, 120);
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
-void centerOrigin(sf::Text &t);
+void centerOrigin(sf::Text& t);
 
-sf::Text makeText(const std::string &str, const sf::Font &font,
-						  unsigned int size, sf::Color color);
+sf::Text makeText(const std::string& str, const sf::Font& font, unsigned int size, sf::Color color);
 
-void drawGrid(sf::RenderWindow &window);
+void drawGrid(sf::RenderWindow& window);
 
 // ── menu item ─────────────────────────────────────────────────────────────────
 
 struct Item
 {
-	sf::Text        label;
+	sf::Text           label;
 	sf::RectangleShape bg;
 
-	Item(const std::string &str, const sf::Font &font, float x, float y)
-		: label(makeText(str, font, FONT_ITEM, WHITE))
+	Item(const std::string& str, const sf::Font& font, float x, float y) : label(makeText(str, font, FONT_ITEM, WHITE))
 	{
 		label.setPosition(x, y);
 
@@ -61,10 +58,7 @@ struct Item
 		bg.setOutlineColor(DIM);
 	}
 
-	bool contains(sf::Vector2f pt) const
-	{
-		return bg.getGlobalBounds().contains(pt);
-	}
+	bool contains(sf::Vector2f pt) const { return bg.getGlobalBounds().contains(pt); }
 
 	void setHovered(bool hovered)
 	{
@@ -72,22 +66,19 @@ struct Item
 		bg.setOutlineColor(hovered ? GOLD : DIM);
 	}
 
-	void draw(sf::RenderWindow &w) const
+	void draw(sf::RenderWindow& w) const
 	{
 		w.draw(bg);
 		w.draw(label);
 	}
 };
 
-struct	FonctionItem
+struct FonctionItem
 {
-	struct Item	item;
-	std::function<void()>	onclick;
+	struct Item           item;
+	std::function<void()> onclick;
 
-	FonctionItem(const Item& i, std::function<void()> f)
-        : item(i), onclick(f) {}
+	FonctionItem(const Item& i, std::function<void()> f) : item(i), onclick(f) {}
 };
-
-
 
 #endif

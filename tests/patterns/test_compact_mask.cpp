@@ -8,25 +8,26 @@
 // that windows are well-formed and that Lot-2 popcount thresholds would not
 // false-negative on a representative board for every pattern family.
 
-namespace {
-
-int maxPopOverDirs(const typename TestTraits::Bitboard& stones, int x, int y)
+namespace
 {
-	auto& tool = patternTool();
-	int best = 0;
-	for (int dir = 0; dir < 4; ++dir)
+
+	int maxPopOverDirs(const typename TestTraits::Bitboard& stones, int x, int y)
 	{
-		const int n = popWindow(tool.directionWindow(x, y, dir), stones);
-		if (n > best)
-			best = n;
+		auto& tool = patternTool();
+		int   best = 0;
+		for (int dir = 0; dir < 4; ++dir)
+		{
+			const int n = popWindow(tool.directionWindow(x, y, dir), stones);
+			if (n > best)
+				best = n;
+		}
+		return best;
 	}
-	return best;
-}
 
-int popOnDir(const typename TestTraits::Bitboard& stones, int x, int y, int dir)
-{
-	return popWindow(patternTool().directionWindow(x, y, dir), stones);
-}
+	int popOnDir(const typename TestTraits::Bitboard& stones, int x, int y, int dir)
+	{
+		return popWindow(patternTool().directionWindow(x, y, dir), stones);
+	}
 
 } // namespace
 
@@ -52,8 +53,8 @@ TEST_CASE("CompactMask: windows cover all pattern families without false-negativ
 	// Centre horizontal window: 9 cells (k=-4..4). May span 1–2 limbs if the
 	// row crosses a 64-bit boundary (STRIDE packing).
 	{
-		const auto& w = tool.directionWindow(9, 9, DIR_HORIZ);
-		int bits = 0;
+		const auto& w    = tool.directionWindow(9, 9, DIR_HORIZ);
+		int         bits = 0;
 		for (uint8_t i = 0; i < w.words; ++i)
 			bits += __builtin_popcountll(w.m[i]);
 		CHECK(bits == 9);
@@ -68,7 +69,7 @@ TEST_CASE("CompactMask: windows cover all pattern families without false-negativ
 
 	// ── 2. CompactMask::from + popWindow basics ─────────────────────────────
 	{
-		typename TestTraits::Bitboard bb {};
+		typename TestTraits::Bitboard bb{};
 		set_bb19(bb, 5, 5);
 		set_bb19(bb, 6, 5);
 		set_bb19(bb, 7, 5);
@@ -76,7 +77,7 @@ TEST_CASE("CompactMask: windows cover all pattern families without false-negativ
 		CHECK(cm.words == 1);
 		CHECK(popWindow(cm, bb) == 3);
 
-		typename TestTraits::Bitboard empty {};
+		typename TestTraits::Bitboard empty{};
 		CHECK(popWindow(cm, empty) == 0);
 	}
 
@@ -164,22 +165,15 @@ TEST_CASE("CompactMask: filtered check_* ≡ *_reference")
 {
 	auto& tool = patternTool();
 
-	auto expectEqual = [&](typename TestTraits::Bitboard& own,
-	                       typename TestTraits::Bitboard& opp, int x, int y) {
-		CHECK(tool.is_five_in_a_row(own, x, y)
-		      == tool.is_five_in_a_row_reference(own, x, y));
-		CHECK(tool.check_open_four(own, opp, x, y)
-		      == tool.check_open_four_reference(own, opp, x, y));
-		CHECK(tool.check_broken_four(own, opp, x, y)
-		      == tool.check_broken_four_reference(own, opp, x, y));
-		CHECK(tool.check_open_three(own, opp, x, y)
-		      == tool.check_open_three_reference(own, opp, x, y));
-		CHECK(tool.check_open_three_filtered(own, opp, x, y)
-		      == tool.check_open_three_reference(own, opp, x, y));
-		CHECK(tool.check_super_four(own, opp, x, y)
-		      == tool.check_super_four_reference(own, opp, x, y));
-		CHECK(tool.check_cross(own, opp, x, y)
-		      == tool.check_cross_reference(own, opp, x, y));
+	auto expectEqual = [&](typename TestTraits::Bitboard& own, typename TestTraits::Bitboard& opp, int x, int y)
+	{
+		CHECK(tool.is_five_in_a_row(own, x, y) == tool.is_five_in_a_row_reference(own, x, y));
+		CHECK(tool.check_open_four(own, opp, x, y) == tool.check_open_four_reference(own, opp, x, y));
+		CHECK(tool.check_broken_four(own, opp, x, y) == tool.check_broken_four_reference(own, opp, x, y));
+		CHECK(tool.check_open_three(own, opp, x, y) == tool.check_open_three_reference(own, opp, x, y));
+		CHECK(tool.check_open_three_filtered(own, opp, x, y) == tool.check_open_three_reference(own, opp, x, y));
+		CHECK(tool.check_super_four(own, opp, x, y) == tool.check_super_four_reference(own, opp, x, y));
+		CHECK(tool.check_cross(own, opp, x, y) == tool.check_cross_reference(own, opp, x, y));
 	};
 
 	// Hand boards (stone already on `own`, as in rawShapeScore).
@@ -275,13 +269,13 @@ TEST_CASE("CompactMask: filtered check_* ≡ *_reference")
 	for (unsigned seed = 1; seed <= 200; ++seed)
 	{
 		t_BWBoard19 board = empty_bb();
-		const int qx = static_cast<int>(seed % 19);
-		const int qy = static_cast<int>((seed * 7) % 19);
+		const int   qx    = static_cast<int>(seed % 19);
+		const int   qy    = static_cast<int>((seed * 7) % 19);
 		set_bb19(board.black, qx, qy);
 		unsigned s = seed * 2654435761u;
 		for (int k = 0; k < 12; ++k)
 		{
-			s = s * 1664525u + 1013904223u;
+			s           = s * 1664525u + 1013904223u;
 			const int x = static_cast<int>(s % 19);
 			const int y = static_cast<int>((s >> 8) % 19);
 			if ((s & 1u) != 0)

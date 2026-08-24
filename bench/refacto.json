@@ -1,0 +1,545 @@
+{
+  "depth": 10,
+  "positions": [
+    {
+      "name": "empty",
+      "bestMove": {"x": 9, "y": 9},
+      "bestScore": 0,
+      "timeUs": 1,
+      "stats": {
+        "nodesVisited": 0,
+        "nodesEvaluated": 0,
+        "nodesPruned": 0,
+        "maxDepthSeen": 0,
+        "ttHits": 0,
+        "ttCutoffs": 0,
+        "ttStores": 0,
+        "ttOrderingHits": 0,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 0
+      }
+    },
+    {
+      "name": "one-stone-center",
+      "bestMove": {"x": 10, "y": 10},
+      "bestScore": 0,
+      "timeUs": 0,
+      "stats": {
+        "nodesVisited": 0,
+        "nodesEvaluated": 0,
+        "nodesPruned": 0,
+        "maxDepthSeen": 0,
+        "ttHits": 0,
+        "ttCutoffs": 0,
+        "ttStores": 0,
+        "ttOrderingHits": 0,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 0
+      }
+    },
+    {
+      "name": "opening-star",
+      "bestMove": {"x": 10, "y": 8},
+      "bestScore": 0,
+      "timeUs": 615681,
+      "stats": {
+        "nodesVisited": 150252,
+        "nodesEvaluated": 60168,
+        "nodesPruned": 73846,
+        "maxDepthSeen": 10,
+        "ttHits": 11155,
+        "ttCutoffs": 11139,
+        "ttStores": 90084,
+        "ttOrderingHits": 16,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 8022
+      }
+    },
+    {
+      "name": "menaces-croisees",
+      "bestMove": {"x": 4, "y": 4},
+      "bestScore": 999997,
+      "timeUs": 2017,
+      "stats": {
+        "nodesVisited": 461,
+        "nodesEvaluated": 165,
+        "nodesPruned": 229,
+        "maxDepthSeen": 10,
+        "ttHits": 7,
+        "ttCutoffs": 7,
+        "ttStores": 296,
+        "ttOrderingHits": 0,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 67
+      }
+    },
+    {
+      "name": "threes-opposes",
+      "bestMove": {"x": 11, "y": 3},
+      "bestScore": 999997,
+      "timeUs": 4283,
+      "stats": {
+        "nodesVisited": 1029,
+        "nodesEvaluated": 329,
+        "nodesPruned": 513,
+        "maxDepthSeen": 10,
+        "ttHits": 33,
+        "ttCutoffs": 33,
+        "ttStores": 700,
+        "ttOrderingHits": 0,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 192
+      }
+    },
+    {
+      "name": "captures",
+      "bestMove": {"x": 5, "y": 4},
+      "bestScore": 0,
+      "timeUs": 786546,
+      "stats": {
+        "nodesVisited": 200676,
+        "nodesEvaluated": 84531,
+        "nodesPruned": 92887,
+        "maxDepthSeen": 10,
+        "ttHits": 13802,
+        "ttCutoffs": 13703,
+        "ttStores": 116145,
+        "ttOrderingHits": 99,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 15079
+      }
+    },
+    {
+      "name": "croix",
+      "bestMove": {"x": 3, "y": 6},
+      "bestScore": 999993,
+      "timeUs": 90562,
+      "stats": {
+        "nodesVisited": 19602,
+        "nodesEvaluated": 8145,
+        "nodesPruned": 9779,
+        "maxDepthSeen": 10,
+        "ttHits": 949,
+        "ttCutoffs": 949,
+        "ttStores": 11457,
+        "ttOrderingHits": 0,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 4336
+      }
+    },
+    {
+      "name": "open-four-black",
+      "bestMove": {"x": 3, "y": 9},
+      "bestScore": 999999,
+      "timeUs": 7,
+      "stats": {
+        "nodesVisited": 0,
+        "nodesEvaluated": 0,
+        "nodesPruned": 0,
+        "maxDepthSeen": 0,
+        "ttHits": 0,
+        "ttCutoffs": 0,
+        "ttStores": 0,
+        "ttOrderingHits": 0,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 0
+      }
+    },
+    {
+      "name": "open-four-white-block",
+      "bestMove": {"x": 4, "y": 5},
+      "bestScore": -999998,
+      "timeUs": 202366,
+      "stats": {
+        "nodesVisited": 71926,
+        "nodesEvaluated": 44914,
+        "nodesPruned": 13619,
+        "maxDepthSeen": 10,
+        "ttHits": 603,
+        "ttCutoffs": 603,
+        "ttStores": 27012,
+        "ttOrderingHits": 0,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 1885
+      }
+    },
+    {
+      "name": "broken-four-black",
+      "bestMove": {"x": 6, "y": 9},
+      "bestScore": 999999,
+      "timeUs": 8,
+      "stats": {
+        "nodesVisited": 0,
+        "nodesEvaluated": 0,
+        "nodesPruned": 0,
+        "maxDepthSeen": 0,
+        "ttHits": 0,
+        "ttCutoffs": 0,
+        "ttStores": 0,
+        "ttOrderingHits": 0,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 0
+      }
+    },
+    {
+      "name": "diagonal-open-four",
+      "bestMove": {"x": 5, "y": 1},
+      "bestScore": 999999,
+      "timeUs": 3,
+      "stats": {
+        "nodesVisited": 0,
+        "nodesEvaluated": 0,
+        "nodesPruned": 0,
+        "maxDepthSeen": 0,
+        "ttHits": 0,
+        "ttCutoffs": 0,
+        "ttStores": 0,
+        "ttOrderingHits": 0,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 0
+      }
+    },
+    {
+      "name": "diagonal-three-white",
+      "bestMove": {"x": 13, "y": 4},
+      "bestScore": 999997,
+      "timeUs": 64881,
+      "stats": {
+        "nodesVisited": 18165,
+        "nodesEvaluated": 7475,
+        "nodesPruned": 9086,
+        "maxDepthSeen": 10,
+        "ttHits": 1262,
+        "ttCutoffs": 1262,
+        "ttStores": 10690,
+        "ttOrderingHits": 0,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 1307
+      }
+    },
+    {
+      "name": "capture-pair-east",
+      "bestMove": {"x": 11, "y": 2},
+      "bestScore": -800,
+      "timeUs": 648201,
+      "stats": {
+        "nodesVisited": 203227,
+        "nodesEvaluated": 93537,
+        "nodesPruned": 82685,
+        "maxDepthSeen": 10,
+        "ttHits": 11834,
+        "ttCutoffs": 10034,
+        "ttStores": 109690,
+        "ttOrderingHits": 1800,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 11897
+      }
+    },
+    {
+      "name": "capture-double",
+      "bestMove": {"x": 9, "y": 4},
+      "bestScore": -968,
+      "timeUs": 240821,
+      "stats": {
+        "nodesVisited": 65068,
+        "nodesEvaluated": 30262,
+        "nodesPruned": 24999,
+        "maxDepthSeen": 10,
+        "ttHits": 3473,
+        "ttCutoffs": 2869,
+        "ttStores": 34806,
+        "ttOrderingHits": 604,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 7585
+      }
+    },
+    {
+      "name": "capture-race",
+      "bestMove": {"x": 11, "y": 4},
+      "bestScore": -999990,
+      "timeUs": 150385,
+      "stats": {
+        "nodesVisited": 35750,
+        "nodesEvaluated": 18496,
+        "nodesPruned": 11191,
+        "maxDepthSeen": 10,
+        "ttHits": 1544,
+        "ttCutoffs": 1502,
+        "ttStores": 17254,
+        "ttOrderingHits": 42,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 3844
+      }
+    },
+    {
+      "name": "midgame-clash",
+      "bestMove": {"x": 9, "y": 1},
+      "bestScore": -4200,
+      "timeUs": 676356,
+      "stats": {
+        "nodesVisited": 156186,
+        "nodesEvaluated": 85881,
+        "nodesPruned": 42239,
+        "maxDepthSeen": 10,
+        "ttHits": 4142,
+        "ttCutoffs": 3215,
+        "ttStores": 70305,
+        "ttOrderingHits": 927,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 19668
+      }
+    },
+    {
+      "name": "midgame-white",
+      "bestMove": {"x": 5, "y": 4},
+      "bestScore": -5911,
+      "timeUs": 432999,
+      "stats": {
+        "nodesVisited": 102278,
+        "nodesEvaluated": 54891,
+        "nodesPruned": 28785,
+        "maxDepthSeen": 10,
+        "ttHits": 4484,
+        "ttCutoffs": 3158,
+        "ttStores": 47387,
+        "ttOrderingHits": 1326,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 11076
+      }
+    },
+    {
+      "name": "two-open-threes",
+      "bestMove": {"x": 4, "y": 7},
+      "bestScore": 999997,
+      "timeUs": 53337,
+      "stats": {
+        "nodesVisited": 13986,
+        "nodesEvaluated": 5770,
+        "nodesPruned": 6951,
+        "maxDepthSeen": 10,
+        "ttHits": 1260,
+        "ttCutoffs": 1260,
+        "ttStores": 8216,
+        "ttOrderingHits": 0,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 3120
+      }
+    },
+    {
+      "name": "l-shape-attack",
+      "bestMove": {"x": 8, "y": 1},
+      "bestScore": 999997,
+      "timeUs": 51192,
+      "stats": {
+        "nodesVisited": 13898,
+        "nodesEvaluated": 5769,
+        "nodesPruned": 6885,
+        "maxDepthSeen": 10,
+        "ttHits": 1002,
+        "ttCutoffs": 1002,
+        "ttStores": 8129,
+        "ttOrderingHits": 0,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 3663
+      }
+    },
+    {
+      "name": "edge-fight",
+      "bestMove": {"x": 3, "y": 3},
+      "bestScore": 0,
+      "timeUs": 476319,
+      "stats": {
+        "nodesVisited": 84074,
+        "nodesEvaluated": 33787,
+        "nodesPruned": 38520,
+        "maxDepthSeen": 10,
+        "ttHits": 6722,
+        "ttCutoffs": 6410,
+        "ttStores": 50287,
+        "ttOrderingHits": 312,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 7596
+      }
+    },
+    {
+      "name": "corner-cluster",
+      "bestMove": {"x": 2, "y": 3},
+      "bestScore": -160,
+      "timeUs": 1766039,
+      "stats": {
+        "nodesVisited": 416617,
+        "nodesEvaluated": 171466,
+        "nodesPruned": 197546,
+        "maxDepthSeen": 10,
+        "ttHits": 49750,
+        "ttCutoffs": 45192,
+        "ttStores": 245151,
+        "ttOrderingHits": 4558,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 34303
+      }
+    },
+    {
+      "name": "dense-center",
+      "bestMove": {"x": 6, "y": 4},
+      "bestScore": -1648,
+      "timeUs": 542089,
+      "stats": {
+        "nodesVisited": 123161,
+        "nodesEvaluated": 59119,
+        "nodesPruned": 50059,
+        "maxDepthSeen": 10,
+        "ttHits": 5889,
+        "ttCutoffs": 4820,
+        "ttStores": 64042,
+        "ttOrderingHits": 1069,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 22357
+      }
+    },
+    {
+      "name": "long-diagonal",
+      "bestMove": {"x": 10, "y": 6},
+      "bestScore": 0,
+      "timeUs": 674166,
+      "stats": {
+        "nodesVisited": 135048,
+        "nodesEvaluated": 56837,
+        "nodesPruned": 56825,
+        "maxDepthSeen": 10,
+        "ttHits": 6114,
+        "ttCutoffs": 5419,
+        "ttStores": 78211,
+        "ttOrderingHits": 695,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 16777
+      }
+    },
+    {
+      "name": "split-wings",
+      "bestMove": {"x": 1, "y": 1},
+      "bestScore": 999997,
+      "timeUs": 5024,
+      "stats": {
+        "nodesVisited": 1295,
+        "nodesEvaluated": 451,
+        "nodesPruned": 646,
+        "maxDepthSeen": 10,
+        "ttHits": 55,
+        "ttCutoffs": 55,
+        "ttStores": 844,
+        "ttOrderingHits": 0,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 155
+      }
+    },
+    {
+      "name": "sandwich-vertical",
+      "bestMove": {"x": 7, "y": 0},
+      "bestScore": -968,
+      "timeUs": 1147906,
+      "stats": {
+        "nodesVisited": 349365,
+        "nodesEvaluated": 164597,
+        "nodesPruned": 132174,
+        "maxDepthSeen": 10,
+        "ttHits": 17767,
+        "ttCutoffs": 15415,
+        "ttStores": 184768,
+        "ttOrderingHits": 2352,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 30435
+      }
+    },
+    {
+      "name": "live-four-vs-three",
+      "bestMove": {"x": 4, "y": 1},
+      "bestScore": -999998,
+      "timeUs": 9451,
+      "stats": {
+        "nodesVisited": 2842,
+        "nodesEvaluated": 1490,
+        "nodesPruned": 768,
+        "maxDepthSeen": 10,
+        "ttHits": 67,
+        "ttCutoffs": 67,
+        "ttStores": 1352,
+        "ttOrderingHits": 0,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 431
+      }
+    },
+    {
+      "name": "messy-19",
+      "bestMove": {"x": 9, "y": 8},
+      "bestScore": 0,
+      "timeUs": 422756,
+      "stats": {
+        "nodesVisited": 73107,
+        "nodesEvaluated": 31831,
+        "nodesPruned": 33483,
+        "maxDepthSeen": 10,
+        "ttHits": 3045,
+        "ttCutoffs": 2443,
+        "ttStores": 41276,
+        "ttOrderingHits": 602,
+        "ttRootHits": 0,
+        "ttRootOrderingHits": 0,
+        "ttRootExactSeeds": 0,
+        "forcedNodes": 16935
+      }
+    }
+  ]
+}

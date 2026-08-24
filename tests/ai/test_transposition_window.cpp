@@ -16,7 +16,7 @@
 // simple rétrécissement de fenêtre.
 // ────────────────────────────────────────────────────────────────────────────
 
-using Access = MasterAITestAccess<BoardTraits<19>>;
+using Access = MasterAITestAccess<BoardTraits<19> >;
 
 static constexpr int NEG_INF = std::numeric_limits<int>::min();
 static constexpr int POS_INF = std::numeric_limits<int>::max();
@@ -43,17 +43,16 @@ TEST_CASE("[Minimax] TT: LowerBound raises alpha and cuts instantly")
 
 	MasterAI19 ai = MasterAI19(2, 1, Color::Black);
 
-	Access::ttMutable(ai).store(pos.zobristHash(), 15, 2, TTFlag::LowerBound,
-	                            { -1, -1 });
+	Access::ttMutable(ai).store(pos.zobristHash(), 15, 2, TTFlag::LowerBound, { -1, -1 });
 
 	const int value = Access::search(ai, pos, previousHarmlessMove, 2, 5, 10);
 
 	const SearchStats& stats = ai.lastSearchStats();
-	CHECK(value == 15);                 // borne renvoyée telle quelle
-	CHECK(stats.ttHits == 1);           // le probe a servi
-	CHECK(stats.nodesVisited == 0);     // coupure TT AVANT ++nodesVisited : aucun nœud compté
-	CHECK(stats.nodesEvaluated == 0);   // aucune feuille évaluée
-	CHECK(stats.nodesPruned == 0);      // coupure TT, pas une coupure de boucle
+	CHECK(value == 15);               // borne renvoyée telle quelle
+	CHECK(stats.ttHits == 1);         // le probe a servi
+	CHECK(stats.nodesVisited == 0);   // coupure TT AVANT ++nodesVisited : aucun nœud compté
+	CHECK(stats.nodesEvaluated == 0); // aucune feuille évaluée
+	CHECK(stats.nodesPruned == 0);    // coupure TT, pas une coupure de boucle
 }
 
 // Coupure instantanée via UpperBound ─────────────────────────────
@@ -69,17 +68,16 @@ TEST_CASE("[Minimax] TT: UpperBound lowers beta and cuts instantly")
 
 	MasterAI19 ai = MasterAI19(2, 1, Color::Black);
 
-	Access::ttMutable(ai).store(pos.zobristHash(), 2, 2, TTFlag::UpperBound,
-	                            { -1, -1 });
+	Access::ttMutable(ai).store(pos.zobristHash(), 2, 2, TTFlag::UpperBound, { -1, -1 });
 
 	const int value = Access::search(ai, pos, previousHarmlessMove, 2, 5, 10);
 
 	const SearchStats& stats = ai.lastSearchStats();
-	CHECK(value == 2);                  // borne renvoyée telle quelle
-	CHECK(stats.ttHits == 1);           // le probe a servi
-	CHECK(stats.nodesVisited == 0);     // coupure TT AVANT ++nodesVisited : aucun nœud compté
-	CHECK(stats.nodesEvaluated == 0);   // aucune feuille évaluée
-	CHECK(stats.nodesPruned == 0);      // coupure TT, pas une coupure de boucle
+	CHECK(value == 2);                // borne renvoyée telle quelle
+	CHECK(stats.ttHits == 1);         // le probe a servi
+	CHECK(stats.nodesVisited == 0);   // coupure TT AVANT ++nodesVisited : aucun nœud compté
+	CHECK(stats.nodesEvaluated == 0); // aucune feuille évaluée
+	CHECK(stats.nodesPruned == 0);    // coupure TT, pas une coupure de boucle
 }
 
 // Rétrécissement de la fenêtre sans coupure instantanée ──────────
@@ -99,28 +97,27 @@ TEST_CASE("[Minimax] TT: UpperBound shrinks window and enables a later beta-cuto
 
 	// 1. Découvrir la vraie valeur du nœud (meilleur enfant) en fenêtre complète.
 	MasterAI19 aiProbe = MasterAI19(1, 1, Color::Black);
-	const int best = Access::search(aiProbe, pos, previousHarmlessMove, 1, NEG_INF, POS_INF);
+	const int  best    = Access::search(aiProbe, pos, previousHarmlessMove, 1, NEG_INF, POS_INF);
 	REQUIRE(best > 1); // marge pour placer alpha=0 < (best-1)
 
-	const int wideBeta     = best + 1;  // « beta original » : best ne coupe pas
+	const int wideBeta      = best + 1; // « beta original » : best ne coupe pas
 	const int injectedUpper = best - 1; // beta resserré : best coupe désormais
 
 	// 2. Référence sans injection, fenêtre [0, best+1] : aucune coupure.
-	MasterAI19 aiRef = MasterAI19(1, 1, Color::Black);
-	const int refValue = Access::search(aiRef, pos, previousHarmlessMove, 1, 0, wideBeta);
+	MasterAI19 aiRef    = MasterAI19(1, 1, Color::Black);
+	const int  refValue = Access::search(aiRef, pos, previousHarmlessMove, 1, 0, wideBeta);
 	CHECK(aiRef.lastSearchStats().nodesPruned == 0); // best < beta original => pas de coupure
 
 	// 3. Avec UpperBound = best-1 : le probe descend beta, la recherche continue,
 	//    puis le coup valant `best` provoque la coupure Beta.
 	MasterAI19 ai = MasterAI19(1, 1, Color::Black);
 
-	Access::ttMutable(ai).store(pos.zobristHash(), injectedUpper, 1, TTFlag::UpperBound,
-	                            { -1, -1 });
+	Access::ttMutable(ai).store(pos.zobristHash(), injectedUpper, 1, TTFlag::UpperBound, { -1, -1 });
 	const int value = Access::search(ai, pos, previousHarmlessMove, 1, 0, wideBeta);
 
 	const SearchStats& stats = ai.lastSearchStats();
-	CHECK(stats.ttHits == 1);          // le probe a servi
-	CHECK(stats.nodesVisited > 1);     // pas de coupure instantanée : la recherche a continué
-	CHECK(stats.nodesPruned == 1);     // coupure Beta rendue possible par le rétrécissement
-	CHECK(value == refValue);          // même valeur fail-soft que la référence
+	CHECK(stats.ttHits == 1);      // le probe a servi
+	CHECK(stats.nodesVisited > 1); // pas de coupure instantanée : la recherche a continué
+	CHECK(stats.nodesPruned == 1); // coupure Beta rendue possible par le rétrécissement
+	CHECK(value == refValue);      // même valeur fail-soft que la référence
 }

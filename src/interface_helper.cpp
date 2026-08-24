@@ -1,14 +1,12 @@
 #include "interface.hpp"
 
-
-void centerOrigin(sf::Text &t)
+void centerOrigin(sf::Text& t)
 {
 	sf::FloatRect b = t.getLocalBounds();
 	t.setOrigin(b.left + b.width / 2.f, b.top + b.height / 2.f);
 }
 
-sf::Text makeText(const std::string &str, const sf::Font &font,
-						  unsigned int size, sf::Color color)
+sf::Text makeText(const std::string& str, const sf::Font& font, unsigned int size, sf::Color color)
 {
 	sf::Text t(str, font, size);
 	t.setFillColor(color);
@@ -16,13 +14,13 @@ sf::Text makeText(const std::string &str, const sf::Font &font,
 	return t;
 }
 
-void drawGrid(sf::RenderWindow &window)
+void drawGrid(sf::RenderWindow& window)
 {
-	const int	lines = 12;
-	const float  step = 48.f;
-	const float  ox = (WIN_W - step * (lines - 1)) / 2.f;
-	const float  oy = (WIN_H - step * (lines - 1)) / 2.f;
-	sf::Color    c(255, 255, 255, 12);
+	const int   lines = 12;
+	const float step  = 48.f;
+	const float ox    = (WIN_W - step * (lines - 1)) / 2.f;
+	const float oy    = (WIN_H - step * (lines - 1)) / 2.f;
+	sf::Color   c(255, 255, 255, 12);
 
 	sf::RectangleShape line;
 	line.setFillColor(c);

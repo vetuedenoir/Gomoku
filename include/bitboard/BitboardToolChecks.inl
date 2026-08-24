@@ -1,22 +1,20 @@
 // BitboardTool pattern checks (included from BitboardTool.hpp)
 
 template<typename Traits>
-bool BitboardTool<Traits>::is_five_in_a_row(const typename Traits::Bitboard& stones,
-                                            int col, int row) const
+bool BitboardTool<Traits>::is_five_in_a_row(const typename Traits::Bitboard& stones, int col, int row) const
 {
 	return is_five_in_a_row_impl(stones, col, row, kPatternPrefilter);
 }
 
 template<typename Traits>
-bool BitboardTool<Traits>::is_five_in_a_row_reference(const typename Traits::Bitboard& stones,
-                                                      int col, int row) const
+bool BitboardTool<Traits>::is_five_in_a_row_reference(const typename Traits::Bitboard& stones, int col, int row) const
 {
 	return is_five_in_a_row_impl(stones, col, row, /*prefilter=*/false);
 }
 
 template<typename Traits>
-bool BitboardTool<Traits>::is_five_in_a_row_impl(const typename Traits::Bitboard& stones,
-                                                 int col, int row, bool prefilter) const
+bool BitboardTool<Traits>::is_five_in_a_row_impl(const typename Traits::Bitboard& stones, int col, int row,
+                                                 bool prefilter) const
 {
 	const int idx = idx_generic<Traits>(col, row);
 
@@ -44,22 +42,18 @@ int BitboardTool<Traits>::find_five_masks(const typename Traits::Bitboard& stone
 }
 
 template<typename Traits>
-int BitboardTool<Traits>::find_five_masks_reference(const typename Traits::Bitboard& stones,
-                                                    int col, int row,
-                                                    typename Traits::Bitboard* out,
-                                                    int maxOut) const
+int BitboardTool<Traits>::find_five_masks_reference(const typename Traits::Bitboard& stones, int col, int row,
+                                                    typename Traits::Bitboard* out, int maxOut) const
 {
 	return find_five_masks_impl(stones, col, row, out, maxOut, /*prefilter=*/false);
 }
 
 template<typename Traits>
-int BitboardTool<Traits>::find_five_masks_impl(const typename Traits::Bitboard& stones,
-                                               int col, int row,
-                                               typename Traits::Bitboard* out, int maxOut,
-                                               bool prefilter) const
+int BitboardTool<Traits>::find_five_masks_impl(const typename Traits::Bitboard& stones, int col, int row,
+                                               typename Traits::Bitboard* out, int maxOut, bool prefilter) const
 {
-	const int idx = idx_generic<Traits>(col, row);
-	int found = 0;
+	const int idx   = idx_generic<Traits>(col, row);
+	int       found = 0;
 
 	for (int dir = 0; dir < 4; dir++)
 	{
@@ -82,35 +76,33 @@ int BitboardTool<Traits>::find_five_masks_impl(const typename Traits::Bitboard& 
 
 template<typename Traits>
 int BitboardTool<Traits>::check_open_four(const typename Traits::Bitboard& stones,
-                                          const typename Traits::Bitboard& opponent,
-                                          int col, int row) const
+                                          const typename Traits::Bitboard& opponent, int col, int row) const
 {
 	return check_open_four_impl(stones, opponent, col, row, kPatternPrefilter);
 }
 
 template<typename Traits>
 int BitboardTool<Traits>::check_open_four_reference(const typename Traits::Bitboard& stones,
-                                                    const typename Traits::Bitboard& opponent,
-                                                    int col, int row) const
+                                                    const typename Traits::Bitboard& opponent, int col, int row) const
 {
 	return check_open_four_impl(stones, opponent, col, row, /*prefilter=*/false);
 }
 
 template<typename Traits>
 int BitboardTool<Traits>::check_open_four_impl(const typename Traits::Bitboard& stones,
-                                               const typename Traits::Bitboard& opponent,
-                                               int col, int row, bool prefilter) const
+                                               const typename Traits::Bitboard& opponent, int col, int row,
+                                               bool prefilter) const
 {
-	const int idx = idx_generic<Traits>(col, row);
-	int opening_score = 2;
+	const int idx           = idx_generic<Traits>(col, row);
+	int       opening_score = 2;
 
 	for (int dir = 0; dir < 4; dir++)
 	{
 		if (prefilter && popWindow(_window[idx][dir], stones) < 4)
 			continue;
 
-		const t_PatternList4<Traits>& list = _lt4[idx][dir];
-		const int count = list.count;
+		const t_PatternList4<Traits>& list  = _lt4[idx][dir];
+		const int                     count = list.count;
 
 		for (int i = 0; i < count; i++)
 		{
@@ -118,11 +110,9 @@ int BitboardTool<Traits>::check_open_four_impl(const typename Traits::Bitboard& 
 
 			if (!matchPattern(pattern.mask, stones))
 				continue;
-			if (pattern.opposant_left == -1
-			    || get_bb_flate<Traits>(opponent, pattern.opposant_left))
+			if (pattern.opposant_left == -1 || get_bb_flate<Traits>(opponent, pattern.opposant_left))
 				opening_score -= 1;
-			if (pattern.opposant_right == -1
-			    || get_bb_flate<Traits>(opponent, pattern.opposant_right))
+			if (pattern.opposant_right == -1 || get_bb_flate<Traits>(opponent, pattern.opposant_right))
 				opening_score -= 1;
 			return opening_score;
 		}
@@ -132,24 +122,22 @@ int BitboardTool<Traits>::check_open_four_impl(const typename Traits::Bitboard& 
 
 template<typename Traits>
 int BitboardTool<Traits>::check_broken_four(const typename Traits::Bitboard& stones,
-                                            const typename Traits::Bitboard& opponent,
-                                            int col, int row) const
+                                            const typename Traits::Bitboard& opponent, int col, int row) const
 {
 	return check_broken_four_impl(stones, opponent, col, row, kPatternPrefilter);
 }
 
 template<typename Traits>
 int BitboardTool<Traits>::check_broken_four_reference(const typename Traits::Bitboard& stones,
-                                                      const typename Traits::Bitboard& opponent,
-                                                      int col, int row) const
+                                                      const typename Traits::Bitboard& opponent, int col, int row) const
 {
 	return check_broken_four_impl(stones, opponent, col, row, /*prefilter=*/false);
 }
 
 template<typename Traits>
 int BitboardTool<Traits>::check_broken_four_impl(const typename Traits::Bitboard& stones,
-                                                 const typename Traits::Bitboard& opponent,
-                                                 int col, int row, bool prefilter) const
+                                                 const typename Traits::Bitboard& opponent, int col, int row,
+                                                 bool prefilter) const
 {
 	const int idx = idx_generic<Traits>(col, row);
 
@@ -159,20 +147,17 @@ int BitboardTool<Traits>::check_broken_four_impl(const typename Traits::Bitboard
 			continue;
 
 		const t_PatternList_Groupe4<Traits>& list_groupe = _ltg4[idx][dir];
-		const int count = list_groupe.count;
+		const int                            count       = list_groupe.count;
 
 		for (int i = 0; i < count; i++)
 		{
 			const t_PatternGroup4<Traits>& groupe = list_groupe.patterns[i];
 
-			if (!get_bb_flate<Traits>(opponent, groupe.hole_pos[0])
-			    && matchPattern(groupe.masks[0], stones))
+			if (!get_bb_flate<Traits>(opponent, groupe.hole_pos[0]) && matchPattern(groupe.masks[0], stones))
 				return 1;
-			if (!get_bb_flate<Traits>(opponent, groupe.hole_pos[1])
-			    && matchPattern(groupe.masks[1], stones))
+			if (!get_bb_flate<Traits>(opponent, groupe.hole_pos[1]) && matchPattern(groupe.masks[1], stones))
 				return 2;
-			if (!get_bb_flate<Traits>(opponent, groupe.hole_pos[2])
-			    && matchPattern(groupe.masks[2], stones))
+			if (!get_bb_flate<Traits>(opponent, groupe.hole_pos[2]) && matchPattern(groupe.masks[2], stones))
 				return 3;
 		}
 	}
@@ -181,36 +166,33 @@ int BitboardTool<Traits>::check_broken_four_impl(const typename Traits::Bitboard
 
 template<typename Traits>
 int BitboardTool<Traits>::check_open_three(const typename Traits::Bitboard& stones,
-                                           const typename Traits::Bitboard& opponent,
-                                           int col, int row) const
+                                           const typename Traits::Bitboard& opponent, int col, int row) const
 {
 	return check_open_three_impl(stones, opponent, col, row, kPatternPrefilter);
 }
 
 template<typename Traits>
 int BitboardTool<Traits>::check_open_three_reference(const typename Traits::Bitboard& stones,
-                                                     const typename Traits::Bitboard& opponent,
-                                                     int col, int row) const
+                                                     const typename Traits::Bitboard& opponent, int col, int row) const
 {
 	return check_open_three_impl(stones, opponent, col, row, /*prefilter=*/false);
 }
 
 template<typename Traits>
 int BitboardTool<Traits>::check_open_three_filtered(const typename Traits::Bitboard& stones,
-                                                    const typename Traits::Bitboard& opponent,
-                                                    int col, int row) const
+                                                    const typename Traits::Bitboard& opponent, int col, int row) const
 {
 	return check_open_three_impl(stones, opponent, col, row, /*prefilter=*/true);
 }
 
 template<typename Traits>
 int BitboardTool<Traits>::check_open_three_impl(const typename Traits::Bitboard& stones,
-                                                const typename Traits::Bitboard& opponent,
-                                                int col, int row, bool prefilter) const
+                                                const typename Traits::Bitboard& opponent, int col, int row,
+                                                bool prefilter) const
 {
-	const int idx = idx_generic<Traits>(col, row);
-	int total_score = 0;
-	int double_three = 0;
+	const int idx          = idx_generic<Traits>(col, row);
+	int       total_score  = 0;
+	int       double_three = 0;
 
 	for (int dir = 0; dir < 4; dir++)
 	{
@@ -220,24 +202,20 @@ int BitboardTool<Traits>::check_open_three_impl(const typename Traits::Bitboard&
 			continue;
 
 		const t_PatternList_Groupe3<Traits>& list_groupe = _lt3[idx][dir];
-		const int count = list_groupe.count;
+		const int                            count       = list_groupe.count;
 
 		for (int pos = 0; pos < count; pos++)
 		{
 			const t_PatternGroupe3<Traits>& pattern = list_groupe.patterns[pos];
-			int score = 0;
+			int                             score   = 0;
 
-			if (pattern.oposant_pos[1] == -1
-			    || get_bb_flate<Traits>(opponent, pattern.oposant_pos[1]))
+			if (pattern.oposant_pos[1] == -1 || get_bb_flate<Traits>(opponent, pattern.oposant_pos[1]))
 				score = 256;
-			else if (pattern.oposant_pos[0] == -1
-			         || get_bb_flate<Traits>(opponent, pattern.oposant_pos[0]))
+			else if (pattern.oposant_pos[0] == -1 || get_bb_flate<Traits>(opponent, pattern.oposant_pos[0]))
 				score = 128;
-			if (pattern.oposant_pos[2] == -1
-			    || get_bb_flate<Traits>(opponent, pattern.oposant_pos[2]))
+			if (pattern.oposant_pos[2] == -1 || get_bb_flate<Traits>(opponent, pattern.oposant_pos[2]))
 				score += 256;
-			else if (pattern.oposant_pos[3] == -1
-			         || get_bb_flate<Traits>(opponent, pattern.oposant_pos[3]))
+			else if (pattern.oposant_pos[3] == -1 || get_bb_flate<Traits>(opponent, pattern.oposant_pos[3]))
 				score += 128;
 
 			if (score > 256)
@@ -251,11 +229,9 @@ int BitboardTool<Traits>::check_open_three_impl(const typename Traits::Bitboard&
 				continue;
 			}
 
-			if (pattern.oposant_pos[3] == -1
-			    || get_bb_flate<Traits>(opponent, pattern.oposant_pos[3]))
+			if (pattern.oposant_pos[3] == -1 || get_bb_flate<Traits>(opponent, pattern.oposant_pos[3]))
 				score += 128;
-			else if (pattern.oposant_pos[4] == -1
-			         || get_bb_flate<Traits>(opponent, pattern.oposant_pos[4]))
+			else if (pattern.oposant_pos[4] == -1 || get_bb_flate<Traits>(opponent, pattern.oposant_pos[4]))
 				score += 128;
 			if (score > 256)
 				continue;
@@ -264,15 +240,13 @@ int BitboardTool<Traits>::check_open_three_impl(const typename Traits::Bitboard&
 				continue;
 
 			// SCORE_3_HOLE : trois pierres avec un trou — même match masqué.
-			if (!get_bb_flate<Traits>(opponent, pattern.hole_pos[0])
-			    && matchPattern(pattern.holeMask0, stones))
+			if (!get_bb_flate<Traits>(opponent, pattern.hole_pos[0]) && matchPattern(pattern.holeMask0, stones))
 			{
 				total_score += score + 12;
 				double_three += 1;
 				continue;
 			}
-			if (!get_bb_flate<Traits>(opponent, pattern.hole_pos[1])
-			    && matchPattern(pattern.holeMask1, stones))
+			if (!get_bb_flate<Traits>(opponent, pattern.hole_pos[1]) && matchPattern(pattern.holeMask1, stones))
 			{
 				total_score += score + 12;
 				double_three += 1;
@@ -289,24 +263,22 @@ int BitboardTool<Traits>::check_open_three_impl(const typename Traits::Bitboard&
 
 template<typename Traits>
 int BitboardTool<Traits>::check_super_four(const typename Traits::Bitboard& stones,
-                                           const typename Traits::Bitboard& opponent,
-                                           int col, int row) const
+                                           const typename Traits::Bitboard& opponent, int col, int row) const
 {
 	return check_super_four_impl(stones, opponent, col, row, kPatternPrefilter);
 }
 
 template<typename Traits>
 int BitboardTool<Traits>::check_super_four_reference(const typename Traits::Bitboard& stones,
-                                                     const typename Traits::Bitboard& opponent,
-                                                     int col, int row) const
+                                                     const typename Traits::Bitboard& opponent, int col, int row) const
 {
 	return check_super_four_impl(stones, opponent, col, row, /*prefilter=*/false);
 }
 
 template<typename Traits>
 int BitboardTool<Traits>::check_super_four_impl(const typename Traits::Bitboard& stones,
-                                                const typename Traits::Bitboard& opponent,
-                                                int col, int row, bool prefilter) const
+                                                const typename Traits::Bitboard& opponent, int col, int row,
+                                                bool prefilter) const
 {
 	const int idx = idx_generic<Traits>(col, row);
 
@@ -316,15 +288,14 @@ int BitboardTool<Traits>::check_super_four_impl(const typename Traits::Bitboard&
 			continue;
 
 		const t_PatternList_super4<Traits>& list_super4 = _lts4[idx][dir];
-		const int count = list_super4.count;
+		const int                           count       = list_super4.count;
 
 		for (int i = 0; i < count; i++)
 		{
 			const t_super4<Traits>& pattern = list_super4.patterns[i];
 
-			if (matchPattern(pattern.mask, stones)
-			    && !get_bb_flate<Traits>(opponent, pattern.hole_pos[0])
-			    && !get_bb_flate<Traits>(opponent, pattern.hole_pos[1]))
+			if (matchPattern(pattern.mask, stones) && !get_bb_flate<Traits>(opponent, pattern.hole_pos[0]) &&
+			    !get_bb_flate<Traits>(opponent, pattern.hole_pos[1]))
 				return 1;
 		}
 	}
@@ -333,24 +304,22 @@ int BitboardTool<Traits>::check_super_four_impl(const typename Traits::Bitboard&
 
 template<typename Traits>
 int BitboardTool<Traits>::check_cross(const typename Traits::Bitboard& stones,
-                                      const typename Traits::Bitboard& opponent,
-                                      int col, int row) const
+                                      const typename Traits::Bitboard& opponent, int col, int row) const
 {
 	return check_cross_impl(stones, opponent, col, row, kPatternPrefilter);
 }
 
 template<typename Traits>
 int BitboardTool<Traits>::check_cross_reference(const typename Traits::Bitboard& stones,
-                                                const typename Traits::Bitboard& opponent,
-                                                int col, int row) const
+                                                const typename Traits::Bitboard& opponent, int col, int row) const
 {
 	return check_cross_impl(stones, opponent, col, row, /*prefilter=*/false);
 }
 
 template<typename Traits>
 int BitboardTool<Traits>::check_cross_impl(const typename Traits::Bitboard& stones,
-                                           const typename Traits::Bitboard& opponent,
-                                           int col, int row, bool prefilter) const
+                                           const typename Traits::Bitboard& opponent, int col, int row,
+                                           bool prefilter) const
 {
 	const int idx = idx_generic<Traits>(col, row);
 
@@ -358,7 +327,7 @@ int BitboardTool<Traits>::check_cross_impl(const typename Traits::Bitboard& ston
 	// union of the four ±4 windows: scoring crosses need ≥ 4 (DEMI_*).
 	if (prefilter)
 	{
-		typename Traits::Bitboard neigh {};
+		typename Traits::Bitboard neigh{};
 		for (int dir = 0; dir < 4; ++dir)
 		{
 			const CompactMask<Traits>& w = _window[idx][dir];
@@ -376,40 +345,30 @@ int BitboardTool<Traits>::check_cross_impl(const typename Traits::Bitboard& ston
 
 	for (int p = 0; p < list_cross.count; p++)
 	{
-		const t_cross& cross = list_cross.cross[p];
-		int opposant_score = 0;
-		int score = 0;
+		const t_cross& cross          = list_cross.cross[p];
+		int            opposant_score = 0;
+		int            score          = 0;
 
-		if (get_bb_flate<Traits>(opponent, cross.middle)
-		    || get_bb_flate<Traits>(opponent, cross.up)
-		    || get_bb_flate<Traits>(opponent, cross.down)
-		    || get_bb_flate<Traits>(opponent, cross.left)
-		    || get_bb_flate<Traits>(opponent, cross.right))
+		if (get_bb_flate<Traits>(opponent, cross.middle) || get_bb_flate<Traits>(opponent, cross.up) ||
+		    get_bb_flate<Traits>(opponent, cross.down) || get_bb_flate<Traits>(opponent, cross.left) ||
+		    get_bb_flate<Traits>(opponent, cross.right))
 			continue;
 
-		if (cross.opposant_up[1] == -1
-		    || get_bb_flate<Traits>(opponent, cross.opposant_up[1]))
+		if (cross.opposant_up[1] == -1 || get_bb_flate<Traits>(opponent, cross.opposant_up[1]))
 			opposant_score = 64;
-		else if (cross.opposant_up[0] == -1
-		         || get_bb_flate<Traits>(opponent, cross.opposant_up[0]))
+		else if (cross.opposant_up[0] == -1 || get_bb_flate<Traits>(opponent, cross.opposant_up[0]))
 			opposant_score = 32;
-		if (cross.opposant_down[1] == -1
-		    || get_bb_flate<Traits>(opponent, cross.opposant_down[1]))
+		if (cross.opposant_down[1] == -1 || get_bb_flate<Traits>(opponent, cross.opposant_down[1]))
 			opposant_score += 64;
-		else if (cross.opposant_down[0] == -1
-		         || get_bb_flate<Traits>(opponent, cross.opposant_down[0]))
+		else if (cross.opposant_down[0] == -1 || get_bb_flate<Traits>(opponent, cross.opposant_down[0]))
 			opposant_score += 32;
-		if (cross.opposant_left[1] == -1
-		    || get_bb_flate<Traits>(opponent, cross.opposant_left[1]))
+		if (cross.opposant_left[1] == -1 || get_bb_flate<Traits>(opponent, cross.opposant_left[1]))
 			opposant_score += 64;
-		else if (cross.opposant_left[0] == -1
-		         || get_bb_flate<Traits>(opponent, cross.opposant_left[0]))
+		else if (cross.opposant_left[0] == -1 || get_bb_flate<Traits>(opponent, cross.opposant_left[0]))
 			opposant_score += 32;
-		if (cross.opposant_right[1] == -1
-		    || get_bb_flate<Traits>(opponent, cross.opposant_right[1]))
+		if (cross.opposant_right[1] == -1 || get_bb_flate<Traits>(opponent, cross.opposant_right[1]))
 			opposant_score += 64;
-		else if (cross.opposant_right[0] == -1
-		         || get_bb_flate<Traits>(opponent, cross.opposant_right[0]))
+		else if (cross.opposant_right[0] == -1 || get_bb_flate<Traits>(opponent, cross.opposant_right[0]))
 			opposant_score += 32;
 
 		if (opposant_score > 64)
@@ -432,15 +391,13 @@ int BitboardTool<Traits>::check_cross_impl(const typename Traits::Bitboard& ston
 	return 0;
 }
 
-template<typename Traits>
-bool BitboardTool<Traits>::isDoubleThreeScore(const int score) const
+template<typename Traits> bool BitboardTool<Traits>::isDoubleThreeScore(const int score) const
 {
 	if (score <= 0)
 		return false;
 	if (score < SCORE_3_FULL)
 		return true;
-	if (score >= SCORE_DOUBLE_FULL_FULL_EXTERN
-	    && score <= SCORE_DOUBLE_HOLE_HOLE_EXTERN)
+	if (score >= SCORE_DOUBLE_FULL_FULL_EXTERN && score <= SCORE_DOUBLE_HOLE_HOLE_EXTERN)
 		return true;
 	// if (score == SCORE_3_FULL || score == SCORE_3_HOLE || score >= SCORE_FULL_EXTERN)
 	// 	return false;
@@ -449,23 +406,21 @@ bool BitboardTool<Traits>::isDoubleThreeScore(const int score) const
 
 template<typename Traits>
 bool BitboardTool<Traits>::is_double_three_at(const typename Traits::Bitboard& stones,
-                                              const typename Traits::Bitboard& opponent,
-                                              int col, int row) const
+                                              const typename Traits::Bitboard& opponent, int col, int row) const
 {
 	const int score = check_open_three(stones, opponent, col, row);
 	return isDoubleThreeScore(score);
 }
 
-
 template<typename Traits>
-CaptureResult<Traits> BitboardTool<Traits>::resolveCaptures(t_BWBoard<Traits>& bb, int col,
-                                                              int row, const Color color) const
+CaptureResult<Traits> BitboardTool<Traits>::resolveCaptures(t_BWBoard<Traits>& bb, int col, int row,
+                                                            const Color color) const
 {
-    typename Traits::Bitboard capturedMask = {};
+	typename Traits::Bitboard capturedMask = {};
 
-    detect_captures<Traits>(bb, col, row, color, capturedMask);
+	detect_captures<Traits>(bb, col, row, color, capturedMask);
 
-    const int newCaptures = popcount_bb_generic<Traits>(capturedMask);
+	const int newCaptures = popcount_bb_generic<Traits>(capturedMask);
 
-    return { capturedMask, newCaptures };
+	return { capturedMask, newCaptures };
 }

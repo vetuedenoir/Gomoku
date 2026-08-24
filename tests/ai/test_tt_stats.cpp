@@ -21,7 +21,7 @@
 //     sans jamais couper tôt.
 // ────────────────────────────────────────────────────────────────────────────
 
-using Access = MasterAITestAccess<BoardTraits<19>>;
+using Access = MasterAITestAccess<BoardTraits<19> >;
 
 static constexpr int NEG_INF = std::numeric_limits<int>::min();
 static constexpr int POS_INF = std::numeric_limits<int>::max();
@@ -42,7 +42,7 @@ static SearchPosition19 threatPos(GameBoard& b)
 // raisonne par différence entre les deux appels.
 TEST_CASE("[TT-stats][minimax] stores then hits are counted")
 {
-	GameBoard b = empty_board();
+	GameBoard        b   = empty_board();
 	SearchPosition19 pos = threatPos(b);
 
 	MasterAI19 ai = MasterAI19(2, 1, Color::Black);
@@ -52,10 +52,10 @@ TEST_CASE("[TT-stats][minimax] stores then hits are counted")
 	const int hits1   = ai.lastSearchStats().ttHits;
 
 	Access::search(ai, pos, previousHarmlessMove, 2, NEG_INF, POS_INF);
-	const int hits2   = ai.lastSearchStats().ttHits;
+	const int hits2 = ai.lastSearchStats().ttHits;
 
-	CHECK(stores1 > 0);          // le sous-arbre a écrit des entrées
-	CHECK(hits2 - hits1 >= 1);   // le 2nd passage a réutilisé au moins la racine
+	CHECK(stores1 > 0);        // le sous-arbre a écrit des entrées
+	CHECK(hits2 - hits1 >= 1); // le 2nd passage a réutilisé au moins la racine
 }
 
 // ── Niveau racine : aucune entrée → aucun hit racine ────────────────────────
@@ -63,10 +63,10 @@ TEST_CASE("[TT-stats][minimax] stores then hits are counted")
 // vierge, le probe racine ne peut donc pas toucher.
 TEST_CASE("[TT-stats][root] empty table yields no root hit")
 {
-	GameBoard b = empty_board();
+	GameBoard        b   = empty_board();
 	SearchPosition19 pos = threatPos(b);
 
-	MasterAI19 ai = MasterAI19(2, 1, Color::Black);
+	MasterAI19   ai   = MasterAI19(2, 1, Color::Black);
 	const t_cell best = ai.findBestMove(pos, Color::Black);
 
 	const SearchStats& s = ai.lastSearchStats();
@@ -85,12 +85,12 @@ TEST_CASE("[TT-stats][root] empty table yields no root hit")
 // … sans jamais couper tôt (la boucle explore quand même les candidats).
 TEST_CASE("[TT-stats][root] exact injected entry is counted (hit + ordering + seed)")
 {
-	GameBoard b = empty_board();
+	GameBoard        b   = empty_board();
 	SearchPosition19 pos = threatPos(b);
 
 	// Coup racine légal de référence, obtenu sur une TT vierge.
-	MasterAI19 aiRef = MasterAI19(2, 1, Color::Black);
-	const t_cell best = aiRef.findBestMove(pos, Color::Black);
+	MasterAI19   aiRef = MasterAI19(2, 1, Color::Black);
+	const t_cell best  = aiRef.findBestMove(pos, Color::Black);
 	REQUIRE(best.x >= 0);
 
 	// Entrée EXACT injectée au hash racine, bestMove = un candidat réel.
@@ -110,11 +110,11 @@ TEST_CASE("[TT-stats][root] exact injected entry is counted (hit + ordering + se
 // l'ordonnancement (hit + ordering), mais le score EXACT n'amorce PAS bestScore.
 TEST_CASE("[TT-stats][root] shallow exact entry orders but does not seed")
 {
-	GameBoard b = empty_board();
+	GameBoard        b   = empty_board();
 	SearchPosition19 pos = threatPos(b);
 
-	MasterAI19 aiRef = MasterAI19(4, 1, Color::Black);
-	const t_cell best = aiRef.findBestMove(pos, Color::Black);
+	MasterAI19   aiRef = MasterAI19(4, 1, Color::Black);
+	const t_cell best  = aiRef.findBestMove(pos, Color::Black);
 	REQUIRE(best.x >= 0);
 
 	MasterAI19 ai = MasterAI19(4, 1, Color::Black);
@@ -132,7 +132,7 @@ TEST_CASE("[TT-stats][root] shallow exact entry orders but does not seed")
 // _tt persiste entre les appels, mais les stats doivent refléter UN seul search.
 TEST_CASE("[TT-stats] counters reset each findBestMove call")
 {
-	GameBoard b = empty_board();
+	GameBoard        b   = empty_board();
 	SearchPosition19 pos = threatPos(b);
 
 	MasterAI19 ai = MasterAI19(2, 1, Color::Black);
