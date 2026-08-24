@@ -18,10 +18,8 @@
 // capture, les deux chemins doivent produire le même score, le même masque de
 // captures et le même étage.
 //
-// Seule la légalité diverge, et dans un seul sens : light applique la règle du
-// double-trois avant que le cross ne court-circuite la chaîne, il est donc plus
-// strict que V2. La recherche n'appelle l'upgrade que sur des coups déjà jugés
-// légaux par light, où les deux verdicts coïncident.
+// La légalité suit la même règle que StandardRules : un four exempte le
+// double-trois, une croix non. Light et V2 doivent donc s'accorder.
 // ────────────────────────────────────────────────────────────────────────────
 
 using Access = MasterAITestAccess<BoardTraits<19>>;
@@ -57,8 +55,8 @@ std::vector<NamedBoard> orderingPositions()
         "......WWB..........",
     }, Color::Black) });
 
-    // Croix et double-trois enchevêtrés : l'étage où les deux chemins peuvent
-    // diverger sur la légalité.
+    // Croix et double-trois enchevêtrés : V2 sort au check_cross, light au
+    // open_three ; la légalité du double-trois doit rester la même.
     positions.push_back({ "croix", boardFromAscii({
         "...................",
         "....B..............",
@@ -109,9 +107,7 @@ TEST_CASE("[Ordering] light+upgrade reproduit exactement la clé full")
                         CHECK(light.score == full.score);
                         CHECK(light.stage == full.stage);
                         CHECK(light.captureMask == full.captureMask);
-
-                        // Light est plus strict, jamais plus permissif.
-                        CHECK((!light.isLegal || full.isLegal));
+                        CHECK(light.isLegal == full.isLegal);
 
                         if (lightStage == ShapeStage::ThreeOrQuiet && light.stage == ShapeStage::Cross)
                             ++upgraded;

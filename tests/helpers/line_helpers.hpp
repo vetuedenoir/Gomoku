@@ -7,7 +7,7 @@
 
 inline t_cell cellAt(int x0, int y0, Direction dir, int step)
 {
-	return { x0 + step * dx(dir), y0 + step * dy(dir) };
+	return { static_cast<int_fast16_t>(x0 + step * dx(dir)), static_cast<int_fast16_t>(y0 + step * dy(dir)) };
 }
 
 inline void placeRun(GameBoard& b, int x0, int y0, Direction dir,

@@ -1,7 +1,9 @@
 #include "doctest.h"
 #include "logger/Logger.hpp"
 #include "ai/MasterAI.hpp"
+#include "ai/MoveGenerator.hpp"
 #include "ai/SearchPosition.hpp"
+#include "helpers/board.hpp"
 #include "helpers/helpers.hpp"
 #include "helpers/helpers_19.hpp"
 #include "helpers/line_helpers.hpp"
@@ -152,5 +154,42 @@ TEST_CASE("MasterAI: blocks open-four threat at depth 2")
 		SearchPosition19 pos = posWithSideToMove(b, Color::White);
 		t_cell move = ai.findBestMove(pos, Color::White);
 		CHECK(moveIsOneOf(move, blockCells(line)));
+	}
+}
+
+TEST_CASE("MasterAI: findBestMove skips a double-three and returns another legal cell")
+{
+	MoveGenerator19 gen(2);
+
+	SUBCASE("plain double-three")
+	{
+		GameBoard b = empty_board();
+		place(b, 3, 9, CellStatus::Black);
+		place(b, 4, 9, CellStatus::Black);
+		place(b, 5, 7, CellStatus::Black);
+		place(b, 5, 8, CellStatus::Black);
+		SearchPosition19 pos = posWithSideToMove(b, Color::Black);
+		MasterAI19 ai = makeAI(2, Color::Black);
+		const t_cell move = ai.findBestMove(pos, Color::Black);
+		CHECK_FALSE((move.x == 5 && move.y == 9));
+		CHECK(move.x >= 0);
+		CHECK(gen.isLegalMove(pos.board(), move.x, move.y, Color::Black));
+	}
+
+	SUBCASE("cross that is also a double-three")
+	{
+		GameBoard b = boardFromAscii({
+			"...................",
+			"....B..............",
+			".....B.............",
+			"..BB.............BB",
+			".....B.............",
+			"....B..............",
+		}, Color::Black);
+		SearchPosition19 pos = posWithSideToMove(b, Color::Black);
+		MasterAI19 ai = makeAI(2, Color::Black);
+		const t_cell move = ai.findBestMove(pos, Color::Black);
+		CHECK(move.x >= 0);
+		CHECK(gen.isLegalMove(pos.board(), move.x, move.y, Color::Black));
 	}
 }

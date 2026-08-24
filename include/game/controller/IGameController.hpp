@@ -48,6 +48,9 @@ class IGameController
 
         virtual int                  blackCaptureCount() const = 0;
         virtual int                  whiteCaptureCount() const = 0;
+
+        // Charge un goban déjà préparé et entre en phase Standard (hotseat / démo).
+        virtual void seedStandardPosition(const GameBoard& stones, Color toMove) = 0;
 };
 
 std::unique_ptr<IGameController> makeGameController(const GameConfig& config);

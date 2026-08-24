@@ -2,6 +2,7 @@
 
 #include "bitboard/bitboard.hpp"
 #include "ai/MoveGenerator.hpp"
+#include <atomic>
 #include <vector>
 
 /* Move t_cell */
@@ -20,7 +21,7 @@ static std::vector<t_cell> legalMovesList(const MoveGenerator<Traits>& gen,
 	std::vector<t_cell> out;
 	typename Traits::Bitboard mask{};
 	gen.getMaskOfLegalMoves(board, color, mask);
-	bb_for_each_bit<Traits>(mask, [&](int x, int y) { out.push_back({x, y}); });
+	bb_for_each_bit<Traits>(mask, [&](int x, int y) { out.push_back({static_cast<int_fast16_t>(x), static_cast<int_fast16_t>(y)}); });
 	return out;
 }
 

@@ -47,6 +47,7 @@ Gomoku::Gomoku()
     _font.loadFromFile(FONT);
 
     buildMainMenuPage();
+    buildRuleDemosPage();
     buildBoardSizePage();
     buildStoneColorPage();
     buildOpeningPage();
@@ -76,6 +77,7 @@ MenuPage &Gomoku::currentPage()
 {
     switch (_states.top())
     {
+        case AppState::RuleDemos:  return _ruleDemos;
         case AppState::BoardSize:  return _boardSize;
         case AppState::StoneColor: return _stoneColor;
         case AppState::Opening:    return _opening;
@@ -147,6 +149,27 @@ void Gomoku::startGame()
     LOG_INFO("GAME DEBUG", "player actor: " + seatStr(_controller->playerActor().seat) + " " + (_controller->playerActor().color == Color::Black ? "Black" : "White"));
     LOG_INFO("GAME DEBUG", "ai actor: " + seatStr(_controller->aiActor().seat) + " " + (_controller->aiActor().color == Color::Black ? "Black" : "White"));
     LOG_INFO("GAME DEBUG", "current actor: " + seatStr(_controller->currentActor().seat) + " " + (_controller->currentActor().color == Color::Black ? "Black" : "White"));
+}
+
+void Gomoku::clearRuleDemo()
+{
+    _demoHint.clear();
+    _demoKeyCell.reset();
+}
+
+void Gomoku::startRuleDemo(const RuleDemo& demo)
+{
+    _config.boardSize       = 19;
+    _config.playerColor     = Color::Black;
+    _config.openingProtocol = OpeningProtocol::Standard;
+    _config.aiOpponent      = false;
+    _config.aiVsAi          = false;
+
+    _demoHint = demo.hint;
+    _demoKeyCell = Move{ demo.keyCol, demo.keyRow, CellStatus::Empty };
+
+    navigateTo(AppState::Game);
+    _controller->seedStandardPosition(makeDemoBoard(demo), demo.toMove);
 }
 
 // ── Ghost-colour computation ──────────────────────────────────────────────────
@@ -249,6 +272,12 @@ void Gomoku::refreshStatusBanner()
 {
     if (_statusBanner.blocking() || !_controller)
         return;
+
+    if (!_demoHint.empty())
+    {
+        _statusBanner.setPersistent(_demoHint, GOLD);
+        return;
+    }
 
     if (_controller->phase() == GamePhase::Standard && !_controller->aiVsAi())
     {
@@ -401,7 +430,8 @@ void Gomoku::render()
     }
     else if (_states.top() == AppState::Game)
     {
-        _renderer.renderGame(_window, *_board, *_controller, computeGhostColor(), _suggestion);
+        _renderer.renderGame(_window, *_board, *_controller, computeGhostColor(),
+                             _suggestion.has_value() ? _suggestion : _demoKeyCell);
         _renderer.renderStats(_window, _font, *_board, *_controller);
         if (_controller->phase() == GamePhase::ColorChoice && !_controller->aiVsAi())
             _renderer.renderColorChoice(_window, _colorChoice);
@@ -424,6 +454,7 @@ void Gomoku::resetToMainMenu()
     _board.reset();
     _controller.reset();
     clearSuggestion();
+    clearRuleDemo();
     _awaitingWinScreen = false;
     _statusBanner.clear();
 }
@@ -583,7 +614,7 @@ void Gomoku::buildMainMenuPage()
         [this]() {
             _config.aiOpponent = false;
             _config.aiVsAi    = false;
-            navigateTo(AppState::BoardSize);
+            navigateTo(AppState::RuleDemos);
         }
     ));
     _mainMenu.addItem("playAIvsAI", FonctionItem(
@@ -611,6 +642,52 @@ void Gomoku::buildMainMenuPage()
     });
 }
 
+void Gomoku::buildRuleDemosPage()
+{
+    sf::Text title = makeText("GOMOKU", _font, FONT_LG, GOLD);
+    title.setStyle(sf::Text::Bold);
+    title.setPosition(CX, WIN_H * 0.10f);
+    _ruleDemos.addText("title", title);
+
+    sf::Text sub = makeText("Two Players — load a prepared position", _font, FONT_MD, DIM);
+    sub.setPosition(CX, WIN_H * 0.175f);
+    _ruleDemos.addText("sub", sub);
+
+    _ruleDemos.addItem("newGame", FonctionItem(
+        Item("New game", _font, CX, WIN_H * 0.30f),
+        [this]() {
+            clearRuleDemo();
+            navigateTo(AppState::BoardSize);
+        }
+    ));
+    _ruleDemos.addItem("doubleThree", FonctionItem(
+        Item("Double-three", _font, CX, WIN_H * 0.38f),
+        [this]() { startRuleDemo(demoDoubleThree()); }
+    ));
+    _ruleDemos.addItem("doubleThreeCap", FonctionItem(
+        Item("Double-three + capture", _font, CX, WIN_H * 0.46f),
+        [this]() { startRuleDemo(demoDoubleThreeCapture()); }
+    ));
+    _ruleDemos.addItem("breakableFive", FonctionItem(
+        Item("Breakable five", _font, CX, WIN_H * 0.54f),
+        [this]() { startRuleDemo(demoBreakableFive()); }
+    ));
+    _ruleDemos.addItem("return", FonctionItem(
+        Item("Return", _font, CX, WIN_H * 0.64f),
+        [this]() { goBack(); }
+    ));
+
+    _ruleDemos.setDrawFunction([](MenuPage &page, sf::RenderWindow &win) {
+        if (auto *t  = page.getText("title"))            win.draw(*t);
+        if (auto *t  = page.getText("sub"))              win.draw(*t);
+        if (auto *fi = page.getItem("newGame"))          fi->item.draw(win);
+        if (auto *fi = page.getItem("doubleThree"))      fi->item.draw(win);
+        if (auto *fi = page.getItem("doubleThreeCap"))   fi->item.draw(win);
+        if (auto *fi = page.getItem("breakableFive"))    fi->item.draw(win);
+        if (auto *fi = page.getItem("return"))           fi->item.draw(win);
+    });
+}
+
 void Gomoku::buildBoardSizePage()
 {
     sf::Text title = makeText("GOMOKU", _font, FONT_LG, GOLD);
@@ -630,16 +707,22 @@ void Gomoku::buildBoardSizePage()
         Item("19 x 19", _font, CX, WIN_H * 0.444f),
         [this]() { onBoardSizeSelected(19); }
     ));
+    _boardSize.addItem("return", FonctionItem(
+        Item("Return", _font, CX, WIN_H * 0.5625f),
+        [this]() { goBack(); }
+    ));
     _boardSize.addItem("quit", FonctionItem(
-        Item("Quit", _font, CX, WIN_H * 0.5625f),
+        Item("Quit", _font, CX, WIN_H * 0.6625f),
         [this]() { _window.close(); }
     ));
+
 
     _boardSize.setDrawFunction([](MenuPage &page, sf::RenderWindow &win) {
         if (auto *t  = page.getText("title"))  win.draw(*t);
         if (auto *t  = page.getText("sub"))    win.draw(*t);
         if (auto *fi = page.getItem("15x15"))  fi->item.draw(win);
         if (auto *fi = page.getItem("19x19"))  fi->item.draw(win);
+        if (auto *fi = page.getItem("return")) fi->item.draw(win);
         if (auto *fi = page.getItem("quit"))   fi->item.draw(win);
     });
 }
