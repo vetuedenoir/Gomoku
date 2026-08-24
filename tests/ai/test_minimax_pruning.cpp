@@ -16,7 +16,7 @@
 // lit lastSearchStats() pour prouver que les coups suivants ne sont pas évalués.
 // ────────────────────────────────────────────────────────────────────────────
 
-using Access = MasterAITestAccess<BoardTraits<19>>;
+using Access = MasterAITestAccess<BoardTraits<19> >;
 
 static constexpr int NEG_INF = std::numeric_limits<int>::min();
 static constexpr int POS_INF = std::numeric_limits<int>::max();
@@ -44,7 +44,7 @@ TEST_CASE("[Minimax] pruning: MAX beta-cutoff evaluates one move and stores Lowe
 
 	// 1. Référence en fenêtre complète : sans coupure, tous les coups sont évalués.
 	MasterAI19 aiFull = MasterAI19(1, 1, Color::Black);
-	
+
 	Access::search(aiFull, pos, previousHarmlessMove, 1, NEG_INF, POS_INF);
 	CHECK(aiFull.lastSearchStats().nodesEvaluated > 1);
 
@@ -55,13 +55,13 @@ TEST_CASE("[Minimax] pruning: MAX beta-cutoff evaluates one move and stores Lowe
 
 	// 3. Vérification de l'élagage
 	const SearchStats& stats = ai.lastSearchStats();
-	CHECK(stats.nodesPruned == 1);     // une seule coupure
-	CHECK(stats.nodesEvaluated == 1);  // les coups suivants ne sont pas évalués
+	CHECK(stats.nodesPruned == 1);    // une seule coupure
+	CHECK(stats.nodesEvaluated == 1); // les coups suivants ne sont pas évalués
 
 	// 4. Vérification de la Table de Transposition
 	const TTEntry* root = Access::tt(ai).probe(pos.zobristHash());
 	REQUIRE(root != nullptr);
-	CHECK(root->flag == TTFlag::LowerBound);  // Fail-High
+	CHECK(root->flag == TTFlag::LowerBound); // Fail-High
 	CHECK(root->score == value);
 }
 
@@ -79,7 +79,7 @@ TEST_CASE("[Minimax] pruning: MIN alpha-cutoff evaluates one move and stores Upp
 
 	// 1. Référence en fenêtre complète : sans coupure, tous les coups sont évalués.
 	MasterAI19 aiFull = MasterAI19(1, 1, Color::Black);
-	
+
 	Access::search(aiFull, pos, previousHarmlessMove, 1, NEG_INF, POS_INF);
 	CHECK(aiFull.lastSearchStats().nodesEvaluated > 1);
 
@@ -90,12 +90,12 @@ TEST_CASE("[Minimax] pruning: MIN alpha-cutoff evaluates one move and stores Upp
 
 	// 3. Vérification de l'élagage
 	const SearchStats& stats = ai.lastSearchStats();
-	CHECK(stats.nodesPruned == 1);     // une seule coupure
-	CHECK(stats.nodesEvaluated == 1);  // arrêt immédiat de la boucle
+	CHECK(stats.nodesPruned == 1);    // une seule coupure
+	CHECK(stats.nodesEvaluated == 1); // arrêt immédiat de la boucle
 
 	// 4. Vérification de la Table de Transposition
 	const TTEntry* root = Access::tt(ai).probe(pos.zobristHash());
 	REQUIRE(root != nullptr);
-	CHECK(root->flag == TTFlag::UpperBound);  // Fail-Low
+	CHECK(root->flag == TTFlag::UpperBound); // Fail-Low
 	CHECK(root->score == value);
 }

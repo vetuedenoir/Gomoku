@@ -1,0 +1,84 @@
+
+Language:        Cpp
+Standard:        c++03
+
+# ============================================================
+# INDENTATION
+# ============================================================
+IndentWidth:     4
+TabWidth:        4
+UseTab:          AlignWithSpaces      # tabs pour indenter, espaces pour aligner
+ContinuationIndentWidth: 4
+AccessModifierOffset: -4             # public: / private: revient d'un cran
+IndentCaseLabels: true
+NamespaceIndentation: All
+ColumnLimit:     120
+
+# ============================================================
+# ACCOLADES - ALLMAN
+# ============================================================
+BreakBeforeBraces: Allman
+
+# Garde  int getX() const { return _x; }  sur une ligne
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: false
+
+# ============================================================
+# ALIGNEMENT  <-- le coeur du probleme
+# ============================================================
+# int             blackCaptures;
+# int             whiteCaptures;
+# MoveList<t_cell, 16>  capturedStones;
+AlignConsecutiveDeclarations:
+  Enabled:         true
+  AcrossEmptyLines: false
+  AcrossComments:  false
+
+# score     = 0;
+# bestScore = 0;
+AlignConsecutiveAssignments:
+  Enabled:         true
+  AcrossEmptyLines: false
+  AcrossComments:  false
+
+AlignTrailingComments: true
+AlignAfterOpenBracket: Align
+AlignOperands:   Align
+AlignEscapedNewlines: Left
+
+# ============================================================
+# POINTEURS / REFERENCES
+# ============================================================
+# int* value;  /  const Foo& ref;
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Left
+
+# ============================================================
+# ESPACES
+# ============================================================
+SpaceBeforeParens: ControlStatements  # if (...) mais foo()
+SpaceBeforeAssignmentOperators: true
+SpaceAfterTemplateKeyword: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpacesInAngles:  Never
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 1
+Cpp11BracedListStyle: false
+
+# ============================================================
+# DIVERS
+# ============================================================
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+SortIncludes:    false
+SortUsingDeclarations: false
+FixNamespaceComments: true
+BreakConstructorInitializers: BeforeColon
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+IndentPPDirectives: None
+ReflowComments:  false

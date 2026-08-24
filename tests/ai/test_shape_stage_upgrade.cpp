@@ -22,102 +22,115 @@
 // double-trois, une croix non. Light et V2 doivent donc s'accorder.
 // ────────────────────────────────────────────────────────────────────────────
 
-using Access = MasterAITestAccess<BoardTraits<19>>;
+using Access = MasterAITestAccess<BoardTraits<19> >;
 
-namespace {
-
-struct NamedBoard { const char* name; GameBoard board; };
-
-std::vector<NamedBoard> orderingPositions()
+namespace
 {
-    std::vector<NamedBoard> positions;
 
-    positions.push_back({ "menaces-croisees", boardFromAscii({
-        "...................",
-        ".......B...........",
-        "......B.W..........",
-        ".....B..W..........",
-        "........W..........",
-    }, Color::Black) });
+	struct NamedBoard
+	{
+		const char* name;
+		GameBoard   board;
+	};
 
-    positions.push_back({ "threes-opposes", boardFromAscii({
-        "...................",
-        "......BBB..........",
-        "...................",
-        "........WWW........",
-    }, Color::White) });
+	std::vector<NamedBoard> orderingPositions()
+	{
+		std::vector<NamedBoard> positions;
 
-    positions.push_back({ "captures", boardFromAscii({
-        "...................",
-        ".....B.............",
-        ".....W.............",
-        ".....W.............",
-        "......WWB..........",
-    }, Color::Black) });
+		positions.push_back({ "menaces-croisees", boardFromAscii(
+													  {
+														  "...................",
+														  ".......B...........",
+														  "......B.W..........",
+														  ".....B..W..........",
+														  "........W..........",
+													  },
+													  Color::Black) });
 
-    // Croix et double-trois enchevêtrés : V2 sort au check_cross, light au
-    // open_three ; la légalité du double-trois doit rester la même.
-    positions.push_back({ "croix", boardFromAscii({
-        "...................",
-        "....B..............",
-        ".....B.............",
-        "..BB.............BB",
-        ".....B.............",
-        "....B..............",
-    }, Color::Black) });
+		positions.push_back({ "threes-opposes", boardFromAscii(
+													{
+														"...................",
+														"......BBB..........",
+														"...................",
+														"........WWW........",
+													},
+													Color::White) });
 
-    return positions;
-}
+		positions.push_back({ "captures", boardFromAscii(
+											  {
+												  "...................",
+												  ".....B.............",
+												  ".....W.............",
+												  ".....W.............",
+												  "......WWB..........",
+											  },
+											  Color::Black) });
+
+		// Croix et double-trois enchevêtrés : V2 sort au check_cross, light au
+		// open_three ; la légalité du double-trois doit rester la même.
+		positions.push_back({ "croix", boardFromAscii(
+										   {
+											   "...................",
+											   "....B..............",
+											   ".....B.............",
+											   "..BB.............BB",
+											   ".....B.............",
+											   "....B..............",
+										   },
+										   Color::Black) });
+
+		return positions;
+	}
 
 } // namespace
 
 TEST_CASE("[Ordering] light+upgrade reproduit exactement la clé full")
 {
-    MasterAI19 ai(4, 1, Color::Black);
+	MasterAI19 ai(4, 1, Color::Black);
 
-    int upgraded = 0;
+	int upgraded = 0;
 
-    for (NamedBoard& position : orderingPositions())
-    {
-        const t_BWBoard19 board = SearchPosition19::fromBoard(position.board).board();
+	for (NamedBoard& position : orderingPositions())
+	{
+		const t_BWBoard19 board = SearchPosition19::fromBoard(position.board).board();
 
-        for (int captures : { 0, 4, 8 })
-        {
-            for (Color color : { Color::Black, Color::White })
-            {
-                for (int y = 0; y < 19; ++y)
-                {
-                    for (int x = 0; x < 19; ++x)
-                    {
-                        if (get_bb_generic<BoardTraits<19>>(board.black, x, y) ||
-                            get_bb_generic<BoardTraits<19>>(board.white, x, y))
-                            continue;
+		for (int captures : { 0, 4, 8 })
+		{
+			for (Color color : { Color::Black, Color::White })
+			{
+				for (int y = 0; y < 19; ++y)
+				{
+					for (int x = 0; x < 19; ++x)
+					{
+						if (get_bb_generic<BoardTraits<19> >(board.black, x, y) ||
+						    get_bb_generic<BoardTraits<19> >(board.white, x, y))
+							continue;
 
-                        const t_cell cell { static_cast<int_fast16_t>(x), static_cast<int_fast16_t>(y) };
+						const t_cell cell{ static_cast<int_fast16_t>(x), static_cast<int_fast16_t>(y) };
 
-                        EvaluatedMove light = Access::lightKey(ai, board, cell, color, captures);
-                        const ShapeStage lightStage = light.stage;
-                        Access::upgrade(ai, light, board, color, captures);
+						EvaluatedMove    light      = Access::lightKey(ai, board, cell, color, captures);
+						const ShapeStage lightStage = light.stage;
+						Access::upgrade(ai, light, board, color, captures);
 
-                        const EvaluatedMove full = Access::fullKey(ai, board, cell, color, captures);
+						const EvaluatedMove full = Access::fullKey(ai, board, cell, color, captures);
 
-                        INFO("pos=" << position.name << " color=" << (color == Color::Black ? "B" : "W")
-                             << " captures=" << captures << " cell=(" << x << "," << y << ")");
+						INFO("pos=" << position.name << " color=" << (color == Color::Black ? "B" : "W")
+						            << " captures=" << captures << " cell=(" << x << "," << y << ")");
 
-                        CHECK(light.score == full.score);
-                        CHECK(light.stage == full.stage);
-                        CHECK(light.captureMask == full.captureMask);
-                        CHECK(light.isLegal == full.isLegal);
+						CHECK(light.score == full.score);
+						CHECK(light.stage == full.stage);
+						CHECK(light.captureMask == full.captureMask);
+						CHECK(light.isLegal == full.isLegal);
 
-                        if (lightStage == ShapeStage::ThreeOrQuiet && light.stage == ShapeStage::Cross)
-                            ++upgraded;
-                    }
-                }
-            }
-        }
-    }
+						if (lightStage == ShapeStage::ThreeOrQuiet && light.stage == ShapeStage::Cross)
+							++upgraded;
+					}
+				}
+			}
+		}
+	}
 
-    // Garde-fou : si plus aucune case ne remonte de croix, le test ne prouve
-    // plus rien du maillon qu'il est censé couvrir.
-    CHECK(upgraded > 0);
+	// Garde-fou : si plus aucune case ne remonte de croix, le test ne prouve
+	// plus rien du maillon qu'il est censé couvrir.
+	CHECK(upgraded > 0);
 }
