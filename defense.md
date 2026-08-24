@@ -1,0 +1,1 @@
+https://www.reddit.com/r/cpp_questions/comments/ituklw/sfml_memory_leaks/-> https://github.com/SFML/SFML/issues/1673
