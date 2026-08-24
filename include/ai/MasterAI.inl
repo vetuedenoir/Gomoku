@@ -6,6 +6,16 @@ static constexpr int WIN_SCORE      = 1000000;
 static constexpr int MATE_THRESHOLD = 900000;
 static constexpr int CAPTURE_SCORE  = 202;
 
+// Nulle : la prise qui casse un cinq porte le défenseur à CAPTURES_TO_WIN.
+// Les deux victoires tombent sur le même coup, personne ne l'emporte.
+static constexpr int DRAW_SCORE     = 0;
+
+// Cinq réfutable (règle de la capture finale) : l'adversaire n'a qu'une seule
+// réponse, la prise qui casse la ligne. C'est donc plus contraignant qu'un
+// open four (500 000, parable par blocage OU par capture) sans être gagné —
+// et sous MATE_THRESHOLD, pour que la feuille continue de scanner les menaces.
+static constexpr int BREAKABLE_FIVE_SCORE = 600000;
+
 // Ne scanner que si le dernier coup ≥ broken-four.
 static constexpr int THREAT_SCAN_THRESHOLD  = 5000;
 static constexpr int THREAT_SCAN_EARLY_EXIT = 90000; // double-three / cross / open-four
@@ -216,6 +226,20 @@ t_cell MasterAI<Traits>::tryToPlayEarlyOpeningMove(const t_BWBoard<Traits>& boar
 	return {-1, -1};
 }
 
+// Le coup `move` (déjà coté, donc son masque de capture est connu) aboutit-il à
+// un cinq que l'adversaire ne peut pas casser ? La racine n'a pas de make/undo
+// sous la main : on juge sur une copie du plateau après le coup.
+template <typename Traits>
+bool isUnbreakableFiveMove(const t_BWBoard<Traits>& board, const EvaluatedMove& move,
+	Color color, int defenderCaptures)
+{
+	const t_BWBoard<Traits> next =
+		board_after_move<Traits>(board, move.move.x, move.move.y, color, move.captureMask);
+
+	return judgeFiveAfterMove<Traits>(next, color, move.move.x, move.move.y, defenderCaptures)
+	       == FiveVerdict::Won;
+}
+
 template <typename Traits>
 t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Color color)
 {
@@ -260,21 +284,48 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 
 	t_cell bestMove = {-1, -1};
 
+	// Cinq adverse déjà posé : la partie n'étant pas finie, il est forcément en
+	// sursis et ce coup-ci est la seule occasion de le casser. La racine ne
+	// reçoit pas l'état de sursis de GameController, on le relit du plateau.
+	const std::optional<PendingWin> rootPending =
+		findExistingFive<Traits>(position.board(), opponentOf(color));
+
+	if (rootPending.has_value())
+		LOG_DEBUG("AI", "[findBestMove] opponent five pending at ("
+			+ std::to_string(rootPending->col) + "," + std::to_string(rootPending->row)
+			+ ") — must be broken by capture this move");
+
 	// Tri statique des coups racine : offense + défense/2 + captures.
 	MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>> orderedRoot;
 	{
 		const t_BWBoard<Traits>& board = position.board();
-		
+
 		const int capturesOfSideToMove = position.getCapturesForSideToMove();
-		
+
 		for (size_t i = 0; i < rootMoves.size(); ++i)
 		{
 			EvaluatedMove scoredMove = computeRawScoreMove(board, rootMoves[i], color, capturesOfSideToMove);
-			
+
 			if (scoredMove.isLegal)
 			{
-				if (scoredMove.score >= WIN_SCORE ||
-					capture_mask_count(scoredMove.captureMask) + capturesOfSideToMove >= 10)
+				// La dixième capture ne gagne que si l'adversaire n'a pas de cinq
+				// en sursis : face à une ligne posée, seule une prise qui la
+				// casse compte, et elle vaut nulle et non victoire. On laisse
+				// alors la recherche trancher.
+				if (!rootPending.has_value()
+					&& capture_mask_count(scoredMove.captureMask) + capturesOfSideToMove >= CAPTURES_TO_WIN)
+				{
+					_stats.bestScore = WIN_SCORE - 1;
+					_stats.bestMove  = scoredMove.move;
+					return scoredMove.move;
+				}
+
+				// Un cinq ne vaut plus le raccourci qu'imprenable, et seulement
+				// si l'adversaire n'a pas lui-même une ligne en sursis : elle se
+				// résoudrait avant la nôtre. Sinon on laisse chercher.
+				if (scoredMove.score >= WIN_SCORE && !rootPending.has_value()
+					&& isUnbreakableFiveMove<Traits>(board, scoredMove, color,
+						position.getCapturesForColor(opponentOf(color))))
 				{
 					_stats.bestScore = WIN_SCORE - 1;
 					_stats.bestMove  = scoredMove.move;
@@ -354,7 +405,7 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 		
 		newPosition.makeMove(move.x, move.y, newPosition.sideToMove(), moveHash);
 
-		int score = minimax(newPosition, move, _maxDepth - 1, alpha, beta);
+		int score = minimax(newPosition, move, _maxDepth - 1, alpha, beta, rootPending);
 
 		const std::string marker = (score > bestScore) ? " ← best" : "";
 		const std::string macro  = scoreMacroLabel(score);
@@ -420,7 +471,7 @@ t_cell	MasterAI<Traits>::findBestMove(const SearchPosition<Traits>& position, Co
 
 template <typename Traits>
 int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
-    int depth, int alpha, int beta)
+    int depth, int alpha, int beta, std::optional<PendingWin> pending)
 {
     const int currentDepth = _maxDepth - depth;
     if (currentDepth > _stats.maxDepthSeen)
@@ -453,12 +504,65 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
     const Color lastPlayed = (mover == Color::Black)
                            ? Color::White : Color::Black;
 
-    if (isWinAfterMove<Traits>(position.board(), lastPlayed, cell.x, cell.y) ||
-		position.getCapturesForColor(lastPlayed) >= 10)
+    // Terminaison, dans l'ordre imposé par la règle de la capture finale
+    // (l'ordre compte : une prise qui ne casse pas la ligne ne sauve pas le
+    // défenseur, donc le cinq en sursis passe AVANT la dixième capture) :
+    //   1. cinq laissé en sursis par `mover` au ply précédent :
+    //        — s'il a survécu au dernier coup, `mover` gagne ;
+    //        — s'il a été cassé par une prise qui porte `lastPlayed` à dix, nulle ;
+    //   2. dixième capture de `lastPlayed` ;
+    //   3. cinq créé par le dernier coup, s'il est imprenable (ou nul).
+    // Le sursis reste une propriété du plateau et du camp au trait — donc du
+    // hash — la TT n'a pas besoin d'une clé supplémentaire.
+    const int mate = WIN_SCORE - currentDepth;
+
+    std::optional<PendingWin> nextPending = std::nullopt;
+
+    if (pending.has_value())
+    {
+        if (pendingFiveSurvives<Traits>(position.board(), *pending))
+        {
+            // pending->owner == mover : l'adversaire n'a pas cassé la ligne.
+            ++_stats.nodesEvaluated;
+            return (mover == _aiColor) ? mate : -mate;
+        }
+        // Ligne cassée par `lastPlayed`. Si cette prise l'a porté à dix, sa
+        // victoire par capture et l'alignement s'annulent : nulle.
+        if (position.getCapturesForColor(lastPlayed) >= CAPTURES_TO_WIN)
+        {
+            ++_stats.nodesEvaluated;
+            return DRAW_SCORE;
+        }
+    }
+
+    if (position.getCapturesForColor(lastPlayed) >= CAPTURES_TO_WIN)
     {
         ++_stats.nodesEvaluated;
-        const int mate = WIN_SCORE - currentDepth;
         return (lastPlayed == _aiColor) ? mate : -mate;
+    }
+
+    // Le is_five_in_a_row garde le chemin coûteux (masques + réfutabilité) hors
+    // du cas courant, où aucun cinq n'est posé.
+    if (isWinAfterMove<Traits>(position.board(), lastPlayed, cell.x, cell.y))
+    {
+        const FiveVerdict verdict = judgeFiveAfterMove<Traits>(position.board(), lastPlayed,
+            cell.x, cell.y, position.getCapturesForColor(mover));
+
+        if (verdict == FiveVerdict::Won)
+        {
+            ++_stats.nodesEvaluated;
+            return (lastPlayed == _aiColor) ? mate : -mate;
+        }
+        if (verdict == FiveVerdict::Draw)
+        {
+            // `mover` a une prise qui casse la ligne et le porte à dix : quoi
+            // que fasse `lastPlayed` ensuite, la position vaut nulle.
+            ++_stats.nodesEvaluated;
+            return DRAW_SCORE;
+        }
+        // Cinq réfutable : la partie continue, `mover` a un coup pour le casser.
+        nextPending = PendingWin{ lastPlayed,
+            static_cast<int>(cell.x), static_cast<int>(cell.y) };
     }
 
     if (depth == 0)
@@ -583,19 +687,19 @@ int MasterAI<Traits>::minimax(SearchPosition<Traits>& position, t_cell cell,
         int eval;
         if (legalMovesSearched == 1)
         {
-            eval = minimax(position, move, depth - 1, alpha, beta);
+            eval = minimax(position, move, depth - 1, alpha, beta, nextPending);
         }
         else if (isMaximizing)
         {
-            eval = minimax(position, move, depth - 1, alpha, alpha + 1);
+            eval = minimax(position, move, depth - 1, alpha, alpha + 1, nextPending);
             if (eval > alpha && eval < beta)
-                eval = minimax(position, move, depth - 1, alpha, beta);
+                eval = minimax(position, move, depth - 1, alpha, beta, nextPending);
         }
         else
         {
-            eval = minimax(position, move, depth - 1, beta - 1, beta);
+            eval = minimax(position, move, depth - 1, beta - 1, beta, nextPending);
             if (eval < beta && eval > alpha)
-                eval = minimax(position, move, depth - 1, alpha, beta);
+                eval = minimax(position, move, depth - 1, alpha, beta, nextPending);
         }
 
         position.undoMove(move.x, move.y, colorBeforeMove);
@@ -973,12 +1077,15 @@ void MasterAI<Traits>::upgradeLightToFull(EvaluatedMove& move, const t_BWBoard<T
 	}
 }
 
-// Un cinq aligné gagne inconditionnellement (cf. isWinAfterMove) : si l'adversaire
-// en pose un au coup suivant, seules trois familles de réponses peuvent encore
-// changer l'issue — gagner immédiatement, occuper la case du cinq, ou capturer
-// (une prise casse l'alignement, et la dixième pierre gagne). Tout le reste perd,
-// et les explorer ne fait que gonfler le facteur de branchement là où l'arbre est
-// le plus profond.
+// Si l'adversaire aligne cinq au coup suivant, seules trois familles de réponses
+// peuvent encore changer l'issue — gagner immédiatement, occuper la case du cinq,
+// ou capturer (une prise casse l'alignement, et la dixième pierre gagne). Tout le
+// reste perd, et les explorer ne fait que gonfler le facteur de branchement là où
+// l'arbre est le plus profond.
+//
+// La règle de la capture finale n'élargit pas cet ensemble : casser un cinq déjà
+// posé est une prise, et toutes les prises sont conservées ici. Le filtre reste
+// donc un sur-ensemble des parades valides, comme avant.
 template <typename Traits>
 bool MasterAI<Traits>::filterForcedReplies(const t_BWBoard<Traits>& board,
 	MoveList<EvaluatedMove, MAX_BOARD_MOVES<Traits>>& ordered, Color mover)
@@ -1192,11 +1299,22 @@ int MasterAI<Traits>::evaluateBlackPosition(
 	const int capsThisMove = position.getWhiteCaptures();
 	const int captureScore = captureProgressScore(totalByBlack - capsThisMove, capsThisMove);
 
-	if (totalByBlack >= 10)
+	if (totalByBlack >= CAPTURES_TO_WIN)
 		return signedFromAi(Color::Black, 1100000 + captureScore);
 
 	if (isWinAfterMove<Traits>(board, Color::Black, cell.x, cell.y))
-		return signedFromAi(Color::Black, 1000000 + captureScore);
+	{
+		// Un cinq que Blanc peut casser à la prise ne vaut pas une victoire ; s'il
+		// le casse en atteignant dix pierres, la position est nulle.
+		const FiveVerdict verdict = judgeFiveAfterMove<Traits>(board, Color::Black,
+			cell.x, cell.y, position.getCapturesForColor(Color::White));
+
+		if (verdict == FiveVerdict::Draw)
+			return DRAW_SCORE;
+
+		return signedFromAi(Color::Black,
+			(verdict == FiveVerdict::Won ? 1000000 : BREAKABLE_FIVE_SCORE) + captureScore);
+	}
 
 	int result = tool.check_open_four(board.black, board.white, cell.x, cell.y);
 	if (result == 2)
@@ -1236,11 +1354,22 @@ int MasterAI<Traits>::evaluateWhitePosition(
 	const int capsThisMove = position.getBlackCaptures();
 	const int captureScore = captureProgressScore(totalByWhite - capsThisMove, capsThisMove);
 
-	if (totalByWhite >= 10)
+	if (totalByWhite >= CAPTURES_TO_WIN)
 		return signedFromAi(Color::White, 1100000 + captureScore);
 
 	if (isWinAfterMove<Traits>(board, Color::White, cell.x, cell.y))
-		return signedFromAi(Color::White, 1000000 + captureScore);
+	{
+		// Un cinq que Noir peut casser à la prise ne vaut pas une victoire ; s'il
+		// le casse en atteignant dix pierres, la position est nulle.
+		const FiveVerdict verdict = judgeFiveAfterMove<Traits>(board, Color::White,
+			cell.x, cell.y, position.getCapturesForColor(Color::Black));
+
+		if (verdict == FiveVerdict::Draw)
+			return DRAW_SCORE;
+
+		return signedFromAi(Color::White,
+			(verdict == FiveVerdict::Won ? 1000000 : BREAKABLE_FIVE_SCORE) + captureScore);
+	}
 
 	int result = tool.check_open_four(board.white, board.black, cell.x, cell.y);
 	if (result == 2)

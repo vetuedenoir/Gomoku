@@ -116,7 +116,11 @@ class MasterAI
 
 		int signedFromAi(Color side, int raw) const;
 
-		int minimax(SearchPosition<Traits>& position, t_cell cell, int depth, int alpha, int beta);
+		// `pending` : cinq réfutable aligné au ply précédent par le camp au trait
+		// de ce nœud. Il est propagé de parent à enfant plutôt que redécouvert :
+		// la case qui l'a créé n'est connue que là où le coup a été joué.
+		int minimax(SearchPosition<Traits>& position, t_cell cell, int depth, int alpha, int beta,
+			std::optional<PendingWin> pending = std::nullopt);
 		
 		int evaluatePosition(const SearchPosition<Traits>& position, t_cell cell);
 

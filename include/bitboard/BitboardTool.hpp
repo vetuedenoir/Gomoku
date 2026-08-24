@@ -42,6 +42,8 @@ class BitboardTool
 
 	bool is_five_in_a_row_impl(const typename Traits::Bitboard& stones,
 	                           int col, int row, bool prefilter) const;
+	int find_five_masks_impl(const typename Traits::Bitboard& stones, int col, int row,
+	                         typename Traits::Bitboard* out, int maxOut, bool prefilter) const;
 	int check_open_four_impl(const typename Traits::Bitboard& stones,
 	                         const typename Traits::Bitboard& opponent,
 	                         int col, int row, bool prefilter) const;
@@ -76,8 +78,21 @@ public:
 		return tool;
 	}
 
+	// Upper bound on the five-masks a single cell can belong to: at most 5
+	// windows per direction (t_PatternList5), 4 directions.
+	static constexpr int MAX_FIVE_MASKS = 5 * 4;
+
 	// Hot path: Lot-2 window prefilter on (see kPatternPrefilter).
 	bool is_five_in_a_row(const typename Traits::Bitboard& stones, int col, int row) const;
+
+	// Same matching as is_five_in_a_row, but keeps the cells of every matched
+	// five in `out` (up to `maxOut`) instead of throwing them away. Returns the
+	// number written. Needed by the endgame-capture rule: a five only wins if
+	// the opponent cannot capture a pair *inside it*, so the caller needs the
+	// actual cells. Two distinct fives through the same stone yield two masks,
+	// and the alignment wins as soon as one of them is unbreakable.
+	int find_five_masks(const typename Traits::Bitboard& stones, int col, int row,
+	                    typename Traits::Bitboard* out, int maxOut) const;
 	int check_open_four(const typename Traits::Bitboard& stones,
 	                    const typename Traits::Bitboard& opponent, int col, int row) const;
 	int check_broken_four(const typename Traits::Bitboard& stones,
@@ -92,6 +107,8 @@ public:
 	// Oracles without prefilter (equality tests / Lot-3 migration).
 	bool is_five_in_a_row_reference(const typename Traits::Bitboard& stones,
 	                                int col, int row) const;
+	int find_five_masks_reference(const typename Traits::Bitboard& stones, int col, int row,
+	                              typename Traits::Bitboard* out, int maxOut) const;
 	int check_open_four_reference(const typename Traits::Bitboard& stones,
 	                              const typename Traits::Bitboard& opponent,
 	                              int col, int row) const;
