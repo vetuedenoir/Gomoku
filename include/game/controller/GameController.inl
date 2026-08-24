@@ -205,10 +205,10 @@ MoveResult GameController<Traits>::submitMove(int col, int row)
 
     t_BWBoard<Traits> bb = GameBoard_to_bitboard<Traits>(*_board);
     const TurnOutcome<Traits> outcome =
-        _turnController.play(bb, move, _capturesBlack, _capturesWhite);
+        _turnController.play(bb, move, _capturesBlack, _capturesWhite, _pendingWin);
 
     _board->placeStoneOfColor(move.col, move.row, move.forcedColor);
-    
+
     bb_for_each_bit<Traits>(outcome.capturedMask, [this](int x, int y) {
         _board->clearCell(x, y);
     });
@@ -217,6 +217,8 @@ MoveResult GameController<Traits>::submitMove(int col, int row)
         _capturesBlack += outcome.capturesAdded;
     else
         _capturesWhite += outcome.capturesAdded;
+
+    _pendingWin = outcome.pendingWin;
 
     if (outcome.result == MoveResult::Win && outcome.winnerByColor.has_value())
         _winner = outcome.winnerByColor;
@@ -240,19 +242,12 @@ std::optional<Move> GameController<Traits>::requestAIMove()
 
     if (_phase == GamePhase::ColorChoice)
     {
-        static std::mt19937 rng{std::random_device{}()};
-        bool swapped = std::uniform_int_distribution<int>(0, 1)(rng);
-        Logger::info("AI", std::string("requestAIMove — ColorChoice, swapped=")
-                           + (swapped ? "true" : "false"));
-        resolveColorChoice(swapped);
+        playAiColorChoice();
         return std::nullopt;
     }
 
     if (_phase == GamePhase::Opening)
     {
-        _tracker.start();
-
-
         const std::vector<Move> candidates = _opening.legalMoves(*_board);
 
         static std::mt19937 rng{std::random_device{}()};
@@ -268,14 +263,17 @@ std::optional<Move> GameController<Traits>::requestAIMove()
 
     if (_phase == GamePhase::Standard)
     {
+        const Color side = currentColor();
+        Tracker& tracker = _trackers[static_cast<std::size_t>(side)];
+
         SearchPosition<Traits> pos =
             SearchPosition<Traits>::fromBoard(*_board, _capturesBlack, _capturesWhite);
         
-        _tracker.start();
+        tracker.start();
         
-        auto [col, row] = _masterAI.findBestMove(pos, currentColor());
+        auto [col, row] = _masterAI.findBestMove(pos, side);
        
-        _tracker.stop();
+        tracker.stop();
 
         if (col == -1)
         {
@@ -296,6 +294,51 @@ std::optional<Move> GameController<Traits>::requestAIMove()
     }
 
     return std::nullopt;
+}
+
+template<typename Traits>
+void GameController<Traits>::playAiColorChoice()
+{
+    const Seat chooser = _currentSeat;
+    const bool canPlaceTwo =
+        _opening.protocol() == OpeningProtocol::Swap2
+        && chooser == Seat::Second
+        && _opening.stepIndex() == 1;
+
+    static std::mt19937 rng{std::random_device{}()};
+    const int n    = canPlaceTwo ? 3 : 2;
+    const int pick = std::uniform_int_distribution<int>(0, n - 1)(rng);
+
+    OpeningDecision decision;
+    decision.chooser = chooser;
+
+    if (pick == 2)
+    {
+        decision.choice = OpeningChoice::PlaceTwo;
+        _lastOpeningDecision = decision;
+        Logger::info("AI", "requestAIMove — ColorChoice, place 2 more");
+        continueOpeningPlacement();
+        return;
+    }
+
+    const bool swapped = (pick == 1);
+    decision.choice = swapped ? OpeningChoice::Swap : OpeningChoice::Keep;
+    decision.colorTaken = (chooser == Seat::Second)
+        ? (swapped ? Color::Black : Color::White)
+        : (swapped ? Color::White : Color::Black);
+    _lastOpeningDecision = decision;
+
+    Logger::info("AI", std::string("requestAIMove — ColorChoice, swapped=")
+                       + (swapped ? "true" : "false"));
+    resolveColorChoice(swapped);
+}
+
+template<typename Traits>
+std::optional<OpeningDecision> GameController<Traits>::takeOpeningDecision()
+{
+    std::optional<OpeningDecision> decision = _lastOpeningDecision;
+    _lastOpeningDecision.reset();
+    return decision;
 }
 
 template<typename Traits>
@@ -384,6 +427,12 @@ std::optional<Color> GameController<Traits>::getColorFromWinningActor() const
 }
 
 template<typename Traits>
+std::optional<PendingWin> GameController<Traits>::pendingWin() const
+{
+    return _pendingWin;
+}
+
+template<typename Traits>
 int GameController<Traits>::blackCaptureCount() const
 {
     return _capturesBlack;
@@ -396,13 +445,13 @@ int GameController<Traits>::whiteCaptureCount() const
 }
 
 template<typename Traits>
-double GameController<Traits>::aiMoveLastMs() const
+double GameController<Traits>::aiMoveLastMs(Color color) const
 {
-    return _tracker.last();
+    return _trackers[static_cast<std::size_t>(color)].last();
 }
 
 template<typename Traits>
-double GameController<Traits>::aiMoveAverageMs() const
+double GameController<Traits>::aiMoveAverageMs(Color color) const
 {
-    return _tracker.average();
+    return _trackers[static_cast<std::size_t>(color)].average();
 }

@@ -16,6 +16,14 @@ struct MasterAITestAccess
 		return ai.minimax(position, cell, depth, alpha, beta);
 	}
 
+	// Même entrée, avec l'état de sursis hérité du parent (règle de la capture
+	// finale) : `pending` appartient toujours au camp au trait de ce nœud.
+	static int searchWithPending(MasterAI<Traits>& ai, SearchPosition<Traits>& position, t_cell cell,
+		int depth, int alpha, int beta, std::optional<PendingWin> pending)
+	{
+		return ai.minimax(position, cell, depth, alpha, beta, pending);
+	}
+
 	static const TranspositionTable& tt(const MasterAI<Traits>& ai)
 	{
 		return ai._tt;
@@ -28,7 +36,7 @@ struct MasterAITestAccess
 
 	static EvaluatedMove lightKey(MasterAI<Traits>& ai, const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore)
 	{
-		return ai.rawShapeScoreLight(board, cell, color, capturesBefore);
+		return ai.computeLightScore(board, cell, color, capturesBefore);
 	}
 
 	static EvaluatedMove fullKey(MasterAI<Traits>& ai, const t_BWBoard<Traits>& board, t_cell cell, Color color, int capturesBefore)

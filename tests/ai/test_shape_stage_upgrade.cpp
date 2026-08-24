@@ -8,7 +8,7 @@
 #include <vector>
 
 // ────────────────────────────────────────────────────────────────────────────
-// Ordonnancement : rawShapeScoreLight + upgradeLightToFull ≡ rawShapeScoreV2.
+// Ordonnancement : computeLightScore + upgradeLightToFull ≡ rawShapeScoreV2.
 //
 // Le tri de minimax ne recalcule plus la clé full depuis zéro : il repart de la
 // clé light et n'exécute que le maillon que celle-ci saute (check_cross), en se

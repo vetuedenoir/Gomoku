@@ -74,8 +74,7 @@ class SearchPosition
             return (color == Color::Black) ? getTotalwhiteCaptures() : getTotalblackCaptures();
         }
 
-        // Stones taken by the side about to move.
-        int getCapturesForside() const
+        int getCapturesForSideToMove() const
         {
             return getCapturesForColor(sideToMove());
         }

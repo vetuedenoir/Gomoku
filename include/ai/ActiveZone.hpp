@@ -3,9 +3,6 @@
 
 #include "bitboard/bitboard.hpp"
 #include "game/contracts/contracts.hpp"
-#include <vector>
-
-
 
 template<typename Traits>
 class ActiveZone
@@ -36,21 +33,18 @@ class ActiveZone
 		void addNeighborBits(int cx, int cy);
 };
 
-// ── Implementation ────────────────────────────────────────────────────────────
-
 template<typename Traits>
 ActiveZone<Traits>::ActiveZone(int radius) : _candidateMask({}), _radius(radius)
 {}
 
 template<typename Traits>
-ActiveZone<Traits>::ActiveZone() : _candidateMask({}), _radius(2)
+ActiveZone<Traits>::ActiveZone() : _candidateMask({}), _radius(1)
 {}
 
 template<typename Traits>
 void ActiveZone<Traits>::initialize(const t_BWBoard<Traits>& board)
 {
 	_candidateMask = {};
-	int	neighborAdded = 0;
 
 	for (int y = 0; y < Traits::BOARD_SIZE; y++)
 	{
@@ -59,15 +53,8 @@ void ActiveZone<Traits>::initialize(const t_BWBoard<Traits>& board)
 			if (get_bb_generic<Traits>(board.black, x, y) ||
 				get_bb_generic<Traits>(board.white, x, y)) {
 					addNeighborBits(x, y);
-					neighborAdded++;
 				}
 		}
-	}
-
-	if (neighborAdded == 0)
-	{
-		set_bb_generic<Traits>(_candidateMask,
-			Traits::BOARD_SIZE / 2, Traits::BOARD_SIZE / 2);
 	}
 
 	for (int i = 0; i < Traits::WORD_COUNT; i++)
@@ -124,8 +111,6 @@ int ActiveZone<Traits>::getRadius() const noexcept
 {
 	return _radius;
 }
-
-// ── Convenience aliases ───────────────────────────────────────────────────────
 
 using ActiveZone19 = ActiveZone<BoardTraits<19>>;
 using ActiveZone15 = ActiveZone<BoardTraits<15>>;

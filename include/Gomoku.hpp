@@ -10,6 +10,7 @@
 #include "ui/MenuPage.hpp"
 #include "ui/Board.hpp"
 #include "ui/UIRenderer.hpp"
+#include "ui/StatusBanner.hpp"
 #include "game/controller/IGameController.hpp"
 
 
@@ -36,6 +37,9 @@ class Gomoku
         std::unique_ptr<IGameController> _controller;
         
         std::optional<Move> _suggestion;
+        sf::Clock           _winRevealClock;
+        bool                _awaitingWinScreen = false;
+        StatusBanner        _statusBanner;
 
         MenuPage &currentPage();
         void      navigateTo(AppState s);
@@ -60,6 +64,8 @@ class Gomoku
         CellStatus computeGhostColor() const;
         bool       isAITurn() const;
         bool       isGameOver();
+        void       announceAiOpeningDecision();
+        void       refreshStatusBanner();
 
         void requestSuggestion();
         void clearSuggestion();

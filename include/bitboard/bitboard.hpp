@@ -384,4 +384,24 @@ void apply_captures(t_BWBoard<Traits>& board, const typename Traits::Bitboard ca
 		victimBitboard[i] &= ~captured[i];
 }
 
+// Copie du plateau tel qu'il serait après le coup : pierre posée et paires
+// retirées, `captureMask` étant le masque compact de detect_capture_mask.
+// Sert aux vérifications qui ont besoin de la position résultante sans passer
+// par un make/undo (ordonnancement racine).
+template<typename Traits>
+inline t_BWBoard<Traits> board_after_move(const t_BWBoard<Traits>& board, int col, int row,
+                                          const Color color, uint8_t captureMask)
+{
+	t_BWBoard<Traits> next = board;
+
+	set_bb_generic<Traits>(bitboardForColor(next, color), col, row);
+
+	typename Traits::Bitboard& victim = bitboardForColor(next, opponentOf(color));
+	for_each_captured_stone(captureMask, col, row, [&](int x, int y) {
+		clear_bit_generic<Traits>(victim, x, y);
+	});
+
+	return next;
+}
+
 #endif // BITBOARD_HPP

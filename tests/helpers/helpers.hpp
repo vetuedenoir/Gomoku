@@ -13,9 +13,6 @@ static bool contains_move(const std::vector<t_cell>& moves, int x, int y)
 	return false;
 }
 
-// Test-only convenience: the LEGAL moves for `color` as a vector, built from the
-// public getMaskOfLegalMoves. Replaces the old MoveGenerator::generateMoves that
-// the move-generator tests were originally written against.
 template <typename Traits>
 static std::vector<t_cell> legalMovesList(const MoveGenerator<Traits>& gen,
                                           const t_BWBoard<Traits>& board, Color color)

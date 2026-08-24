@@ -6,8 +6,6 @@
 #include <memory>
 #include <optional>
 
-const int CAPTURES_TO_WIN = 10;
-
 class IGameController
 {
     public:
@@ -22,6 +20,8 @@ class IGameController
 
         virtual std::optional<Move> requestAIMove() = 0;
 
+        virtual std::optional<OpeningDecision> takeOpeningDecision() = 0;
+
         virtual std::optional<Move> suggestMove() = 0;
 
         virtual const GameBoard&     visualBoard()      const = 0;
@@ -33,14 +33,18 @@ class IGameController
         virtual int                  stepIdx()          const = 0;
         virtual std::optional<Color> getColorFromWinningActor()           const = 0;
 
+        // Cinq aligné qui attend la réponse de l'adversaire : celui-ci a un coup
+        // pour casser la ligne par capture, sinon l'auteur gagne (cf. PendingWin).
+        virtual std::optional<PendingWin> pendingWin()                    const = 0;
+
         virtual Actor                playerActor()      const = 0;
         virtual Actor                aiActor()          const = 0;
 
         virtual bool                 aiOpponent()       const = 0;
         virtual bool                 aiVsAi()           const = 0;
 
-        virtual double               aiMoveLastMs()     const = 0;
-        virtual double               aiMoveAverageMs()  const = 0;
+        virtual double               aiMoveLastMs(Color color)    const = 0;
+        virtual double               aiMoveAverageMs(Color color) const = 0;
 
         virtual int                  blackCaptureCount() const = 0;
         virtual int                  whiteCaptureCount() const = 0;
