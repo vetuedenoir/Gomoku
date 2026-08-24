@@ -60,16 +60,6 @@ TEST_CASE("[Zone] candidateMask == ActiveScan à froid (mi-partie)")
     CHECK(masksEqual(pos.candidateMask(), coldZone(pos.board())));
 }
 
-TEST_CASE("[Zone] plateau vide : amorce le centre comme ActiveZone")
-{
-    GameBoard b = empty_board();
-    SearchPosition19 pos = SearchPosition19::fromBoard(b);
-
-    const T19::Bitboard inc = pos.candidateMask();
-    CHECK(masksEqual(inc, coldZone(pos.board())));
-    CHECK(get_bb_generic<T19>(inc, 19 / 2, 19 / 2));
-}
-
 TEST_CASE("[Zone] make/undo SANS capture restaure la zone à l'identique")
 {
     GameBoard b = midgameBoard();

@@ -5,6 +5,7 @@
 #include <stack>
 #include <memory>
 #include <optional>
+#include <string>
 
 #include "game/contracts/contracts.hpp"
 #include "ui/MenuPage.hpp"
@@ -12,9 +13,10 @@
 #include "ui/UIRenderer.hpp"
 #include "ui/StatusBanner.hpp"
 #include "game/controller/IGameController.hpp"
+#include "game/demo/RuleDemos.hpp"
 
 
-enum class AppState { MainMenu, BoardSize, StoneColor, Opening, Game, GameOver };
+enum class AppState { MainMenu, RuleDemos, BoardSize, StoneColor, Opening, Game, GameOver };
 
 class Gomoku
 {
@@ -27,6 +29,7 @@ class Gomoku
         GameConfig           _config;
 
         MenuPage _mainMenu;
+        MenuPage _ruleDemos;
         MenuPage _boardSize;
         MenuPage _stoneColor;
         MenuPage _opening;
@@ -37,6 +40,8 @@ class Gomoku
         std::unique_ptr<IGameController> _controller;
         
         std::optional<Move> _suggestion;
+        std::optional<Move> _demoKeyCell;
+        std::string         _demoHint;
         sf::Clock           _winRevealClock;
         bool                _awaitingWinScreen = false;
         StatusBanner        _statusBanner;
@@ -48,11 +53,15 @@ class Gomoku
         void      startGame();
 
         void buildMainMenuPage();
+        void buildRuleDemosPage();
         void buildBoardSizePage();
         void buildStoneColorPage();
         void buildOpeningPage();
         void buildColorChoicePage();
         void buildWinScreenPage(const Color winner, int capturesBlack, int capturesWhite);
+
+        void clearRuleDemo();
+        void startRuleDemo(const RuleDemo& demo);
 
         void onBoardSizeSelected(int size);
         void onStoneColorSelected(const Color color);

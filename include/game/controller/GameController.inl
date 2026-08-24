@@ -106,6 +106,28 @@ void GameController<Traits>::enterStandardPhase()
 }
 
 template<typename Traits>
+void GameController<Traits>::seedStandardPosition(const GameBoard& stones, Color toMove)
+{
+    const int n = _board->getSize();
+    for (int y = 0; y < n; ++y)
+    {
+        for (int x = 0; x < n; ++x)
+        {
+            const CellStatus cell = stones.getCell(x, y);
+            if (cell != CellStatus::Empty)
+                _board->placeStoneOfColor(x, y, cell);
+        }
+    }
+
+    _winner.reset();
+    _pendingWin.reset();
+    _capturesBlack = 0;
+    _capturesWhite = 0;
+    _currentSeat = seatOf(toMove);
+    enterStandardPhase();
+}
+
+template<typename Traits>
 void GameController<Traits>::applyOpeningResult(const OpeningCommitResult& result)
 {
     if (result.nextSeat.has_value())

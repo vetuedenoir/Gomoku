@@ -8,10 +8,10 @@
 // =============================================================================
 // TurnController + PendingWin — the endgame-capture rule end to end.
 //
-// A five no longer ends the game on the spot: if the opponent can capture a
-// pair holding one of its stones (or, already holding four pairs, any pair at
-// all), the win is deferred by exactly one ply. The opponent then either breaks
-// the line, wins by capture, or loses.
+// A five wins on the spot unless the opponent can capture a pair that contains
+// one of its stones. That is the only deferral: a capture elsewhere does not
+// count, even if it would complete the defender's five pairs — the alignment
+// resolves first. If the five is refutable, it is deferred by exactly one ply.
 // =============================================================================
 
 using T19 = BoardTraits<19>;
@@ -70,7 +70,7 @@ void breakable_pair_on_row5(Table& t)
 
 // ─── Immediate win ───────────────────────────────────────────────────────────
 
-TEST_CASE("pending: an unbreakable five wins on the spot")
+TEST_CASE("[PENDING_WIN] an unbreakable five wins on the spot")
 {
     Table t;
     four_black_on_row5(t);
@@ -83,7 +83,7 @@ TEST_CASE("pending: an unbreakable five wins on the spot")
     CHECK(out.pendingWin.has_value() == false);
 }
 
-TEST_CASE("pending: the tenth capture still wins immediately")
+TEST_CASE("[PENDING_WIN] the tenth capture still wins immediately")
 {
     Table t;
     t.place(Color::Black, { {9,9}, {9,10} });
@@ -99,7 +99,7 @@ TEST_CASE("pending: the tenth capture still wins immediately")
     CHECK(out.pendingWin.has_value() == false);
 }
 
-TEST_CASE("pending: a quiet move ends with no winner and no pending five")
+TEST_CASE("[PENDING_WIN] a quiet move ends with no winner and no pending five")
 {
     Table t;
     four_black_on_row5(t);
@@ -113,7 +113,7 @@ TEST_CASE("pending: a quiet move ends with no winner and no pending five")
 
 // ─── Deferred win ────────────────────────────────────────────────────────────
 
-TEST_CASE("pending: a breakable five does not end the game")
+TEST_CASE("[PENDING_WIN] a breakable five does not end the game")
 {
     Table t;
     four_black_on_row5(t);
@@ -129,7 +129,7 @@ TEST_CASE("pending: a breakable five does not end the game")
     CHECK(out.pendingWin->row == 5);
 }
 
-TEST_CASE("pending: an unbroken five wins one ply later")
+TEST_CASE("[PENDING_WIN] an unbroken five wins one ply later")
 {
     Table t;
     four_black_on_row5(t);
@@ -146,7 +146,7 @@ TEST_CASE("pending: an unbroken five wins one ply later")
     CHECK(out.pendingWin.has_value() == false);
 }
 
-TEST_CASE("pending: breaking the line clears the pending win and play resumes")
+TEST_CASE("[PENDING_WIN] breaking the line clears the pending win and play resumes")
 {
     Table t;
     four_black_on_row5(t);
@@ -164,7 +164,7 @@ TEST_CASE("pending: breaking the line clears the pending win and play resumes")
     CHECK(get_bb_generic<T19>(t.bb.black, 5, 5) == false);
 }
 
-TEST_CASE("pending: capturing the stone that completed the five also breaks it")
+TEST_CASE("[PENDING_WIN] capturing the stone that completed the five also breaks it")
 {
     // The pair hangs off (7,5) itself, so the anchor cell disappears — the
     // survival check must cope with its own reference stone being gone.
@@ -183,12 +183,12 @@ TEST_CASE("pending: capturing the stone that completed the five also breaks it")
     CHECK(out.pendingWin.has_value() == false);
 }
 
-// ─── "Four pairs already lost" ───────────────────────────────────────────────
+// ─── A capture off the line never saves ──────────────────────────────────────
 
-TEST_CASE("pending: at eight stones taken, any capture defers an unbreakable five")
+TEST_CASE("[PENDING_WIN] a far capture does not defer an unbreakable five, even at eight stones taken")
 {
-    // Nothing can touch the row-5 line, but White is one pair from winning by
-    // capture, so the five must wait.
+    // White is one pair from ten and can take (12,12)+(13,13), but that pair
+    // is not on row 5, so the five is not refutable.
     Table t;
     four_black_on_row5(t);
     t.place(Color::Black, { {12,12}, {13,13} });
@@ -197,12 +197,13 @@ TEST_CASE("pending: at eight stones taken, any capture defers an unbreakable fiv
 
     const TurnOutcome<T19> out = t.play(Color::Black, 7, 5);
 
-    CHECK(out.result == MoveResult::Ok);
-    REQUIRE(out.pendingWin.has_value());
-    CHECK(out.pendingWin->owner == Color::Black);
+    CHECK(out.result == MoveResult::Win);
+    REQUIRE(out.winnerByColor.has_value());
+    CHECK(out.winnerByColor.value() == Color::Black);
+    CHECK(out.pendingWin.has_value() == false);
 }
 
-TEST_CASE("pending: below eight stones taken, the same five wins at once")
+TEST_CASE("[PENDING_WIN] below eight stones taken, the same five wins at once")
 {
     Table t;
     four_black_on_row5(t);
@@ -217,31 +218,9 @@ TEST_CASE("pending: below eight stones taken, the same five wins at once")
     CHECK(out.winnerByColor.value() == Color::Black);
 }
 
-TEST_CASE("pending: the tenth capture beats the five it does not even touch")
-{
-    Table t;
-    four_black_on_row5(t);
-    t.place(Color::Black, { {12,12}, {13,13} });
-    t.place(Color::White, { {14,14} });
-    t.capturesWhite = 8;
-
-    REQUIRE(t.play(Color::Black, 7, 5).result == MoveResult::Ok);
-
-    // White takes a pair far from row 5 and reaches ten stones.
-    const TurnOutcome<T19> out = t.play(Color::White, 11, 11);
-
-    CHECK(out.capturesAdded == 2);
-    CHECK(t.capturesWhite == 10);
-    CHECK(out.result == MoveResult::Win);
-    REQUIRE(out.winnerByColor.has_value());
-    CHECK(out.winnerByColor.value() == Color::White);
-    // The black five is still standing — White wins by capture regardless.
-    CHECK(isWinAfterMove<T19>(t.bb, Color::Black, 7, 5) == true);
-}
-
 // ─── Both sides in one move ──────────────────────────────────────────────────
 
-TEST_CASE("pending: breaking the line and aligning five in the same move wins")
+TEST_CASE("[PENDING_WIN] breaking the line and aligning five in the same move wins")
 {
     Table t;
     four_black_on_row5(t);
@@ -263,7 +242,7 @@ TEST_CASE("pending: breaking the line and aligning five in the same move wins")
 
 // ─── Several alignments through the played cell ──────────────────────────────
 
-TEST_CASE("pending: one unbreakable alignment out of two is enough to win")
+TEST_CASE("[PENDING_WIN] one unbreakable alignment out of two is enough to win")
 {
     // Six on row 5 → the played cell (5,5) belongs to 3..7 and to 4..8.
     // Only 3..7 can be broken (through (3,5)), so the win stands.
@@ -279,7 +258,7 @@ TEST_CASE("pending: one unbreakable alignment out of two is enough to win")
     CHECK(out.winnerByColor.value() == Color::Black);
 }
 
-TEST_CASE("pending: two breakable alignments still defer the win")
+TEST_CASE("[PENDING_WIN] two breakable alignments still defer the win")
 {
     // Same six, but now 4..8 is breakable too (through (8,5)).
     Table t;
@@ -295,7 +274,7 @@ TEST_CASE("pending: two breakable alignments still defer the win")
     CHECK(out.pendingWin->row == 5);
 }
 
-TEST_CASE("pending: breaking only one of two alignments loses")
+TEST_CASE("[PENDING_WIN] breaking only one of two alignments loses")
 {
     // White takes the pair guarding 3..7; the 4..8 alignment survives, and the
     // survival check keys on (5,5), which is a member of both.
@@ -317,7 +296,7 @@ TEST_CASE("pending: breaking only one of two alignments loses")
 
 // ─── White-side symmetry ─────────────────────────────────────────────────────
 
-TEST_CASE("pending: the deferral works the same way for White")
+TEST_CASE("[PENDING_WIN] the deferral works the same way for White")
 {
     Table t;
     t.place(Color::White, { {3,5}, {4,5}, {5,5}, {6,5} });

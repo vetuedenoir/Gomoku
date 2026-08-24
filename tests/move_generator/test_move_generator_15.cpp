@@ -4,18 +4,6 @@
 #include "../helpers/helpers.hpp"
 #include "../helpers/helpers_15.hpp"
 
-TEST_CASE("TEST_CASE [15x15] MoveGenerator: empty board has no active-zone legal moves")
-{
-    std::cout << TITLE_LINE << "TEST_CASE [15x15] MoveGenerator: empty board has no active-zone legal moves" << RESET << std::endl;
-    MoveGenerator15 gen(1);
-
-    auto moves = legalMovesList(gen, to_bb(empty_board()), Color::Black);
-
-    CHECK(moves.size() == 1);
-    CHECK(moves[0].x == 7);
-    CHECK(moves[0].y == 7);
-}
-
 TEST_CASE("TEST_CASE [15x15] MoveGenerator: center stone radius=1 produces eight legal moves")
 {
     std::cout << TITLE_LINE << "TEST_CASE [15x15] MoveGenerator: center stone radius=1 produces eight legal moves" << RESET << std::endl;

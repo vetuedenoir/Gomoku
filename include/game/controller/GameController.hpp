@@ -47,6 +47,8 @@ class GameController : public IGameController
         int                  blackCaptureCount() const override;
         int                  whiteCaptureCount() const override;
 
+        void seedStandardPosition(const GameBoard& stones, Color toMove) override;
+
     private:
         void assignColorsAfterChoice(bool swapped);
         void applyOpeningResult(const OpeningCommitResult& result);

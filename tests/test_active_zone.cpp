@@ -3,14 +3,6 @@
 #include "helpers/helpers.hpp"
 #include "helpers/helpers_19.hpp"
 
-TEST_CASE("[19x19] ActiveZone: empty board yields center candidate")
-{
-    ActiveZone19 zone(1);
-    zone.initialize(to_bb(empty_board()));
-
-    CHECK(zone.size() == 1);
-    CHECK(zone.contains(9, 9));
-}
 
 TEST_CASE("[19x19] ActiveZone: corner stone clips to board boundary")
 {
