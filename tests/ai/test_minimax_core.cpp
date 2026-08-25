@@ -12,11 +12,11 @@
 // ────────────────────────────────────────────────────────────────────────────
 // Tests internes de la fonction minimax() via MasterAITestAccess.
 // Note : L'évaluateur renvoyant de grands nombres (ex: 500000 pour un alignement),
-// nous utilisons des fenêtres artificiellement basses (ex: [5, 10]) pour forcer 
+// nous utilisons des fenêtres artificiellement basses (ex: [5, 10]) pour forcer
 // les scores à sortir de la fenêtre et tester la logique des bornes (Bounds).
 // ────────────────────────────────────────────────────────────────────────────
 
-using Access = MasterAITestAccess<BoardTraits<19>>;
+using Access = MasterAITestAccess<BoardTraits<19> >;
 
 static constexpr int NEG_INF = std::numeric_limits<int>::min();
 static constexpr int POS_INF = std::numeric_limits<int>::max();
@@ -43,12 +43,11 @@ TEST_CASE("[Minimax] core: full-window root returns exact value and stores Exact
 
 	MasterAI19 ai = MasterAI19(2, 1, Color::Black);
 
-
 	const int value = Access::search(ai, pos, previousHarmlessMove, 2, NEG_INF, POS_INF);
 
 	// Vérification de la stabilité (déterminisme)
-	MasterAI19 ai2 = MasterAI19(2, 1, Color::Black);
-	const int value2 = Access::search(ai2, pos, previousHarmlessMove, 2, NEG_INF, POS_INF);
+	MasterAI19 ai2    = MasterAI19(2, 1, Color::Black);
+	const int  value2 = Access::search(ai2, pos, previousHarmlessMove, 2, NEG_INF, POS_INF);
 	CHECK(value == value2);
 
 	// Vérification de la Table de Transposition
@@ -60,7 +59,7 @@ TEST_CASE("[Minimax] core: full-window root returns exact value and stores Exact
 
 // ── Test 2 : Comportement Fail-Soft hors fenêtre ────────────────────────────
 // On force une fenêtre très basse [5, 10] sur une position très avantageuse.
-// L'algorithme "Fail-Soft" doit renvoyer le vrai score (qui dépasse beta) 
+// L'algorithme "Fail-Soft" doit renvoyer le vrai score (qui dépasse beta)
 // et non pas être plafonné à 10. La TT doit enregistrer un LowerBound (Fail-High).
 TEST_CASE("[Minimax] core: fail-soft returns true value above beta and stores LowerBound")
 {
@@ -72,17 +71,17 @@ TEST_CASE("[Minimax] core: fail-soft returns true value above beta and stores Lo
 
 	// 1. Obtenir la vraie valeur sans restriction
 	MasterAI19 aiFull = MasterAI19(1, 1, Color::Black);
-	
+
 	const int fullValue = Access::search(aiFull, pos, previousHarmlessMove, 1, NEG_INF, POS_INF);
-	CHECK(fullValue > 10); 
+	CHECK(fullValue > 10);
 
 	// 2. Chercher avec la fenêtre restreinte [5, 10]
-	MasterAI19 aiNarrow = MasterAI19(1, 1, Color::Black);
-	const int narrowValue = Access::search(aiNarrow, pos, previousHarmlessMove, 1, 5, 10);
+	MasterAI19 aiNarrow    = MasterAI19(1, 1, Color::Black);
+	const int  narrowValue = Access::search(aiNarrow, pos, previousHarmlessMove, 1, 5, 10);
 
 	// 3. Vérifications du Fail-Soft
-	CHECK(narrowValue > 10);          // Ne plafonne pas à beta (Fail-Soft)
-	CHECK(narrowValue <= fullValue);  // Le fail-high est un minorant du vrai score
+	CHECK(narrowValue > 10);         // Ne plafonne pas à beta (Fail-Soft)
+	CHECK(narrowValue <= fullValue); // Le fail-high est un minorant du vrai score
 
 	// 4. Vérifications de la Table de Transposition
 	const TTEntry* root = Access::tt(aiNarrow).probe(pos.zobristHash());

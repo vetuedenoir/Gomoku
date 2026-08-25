@@ -1,5 +1,6 @@
 .build/
 gomoku
+gomoku-bench
 tests_runner
 external
 *.o
@@ -8,3 +9,6 @@ external
 .env
 docs/
 .cursor/
+bench/perf.data
+bench/perf.data.old
+bench/new.json

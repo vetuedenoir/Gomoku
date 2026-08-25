@@ -1,5 +1,5 @@
 #ifndef BITBOARD_HPP
-# define BITBOARD_HPP
+#define BITBOARD_HPP
 
 #include "game/board/GameBoard.hpp"
 #include "game/contracts/contracts.hpp"
@@ -9,106 +9,88 @@
 #include <iostream>
 #include <array>
 
-#define BLACK_STONE "\033[1;30m"   // bright black (gray)
-#define WHITE_STONE "\033[1;37m"   // bright white
-#define LEGAL_MOVE  "\033[1;32m"   // bright green
-#define EMPTY_CELL  "\033[2;37m"   // dim white
-#define TITLE_LINE "\033[1;34m"   // bright blue
-#define RESET   "\033[0m"
+#define BLACK_STONE "\033[1;30m" // bright black (gray)
+#define WHITE_STONE "\033[1;37m" // bright white
+#define LEGAL_MOVE "\033[1;32m"  // bright green
+#define EMPTY_CELL "\033[2;37m"  // dim white
+#define TITLE_LINE "\033[1;34m"  // bright blue
+#define RESET "\033[0m"
 
-// template<int SIZE>
 // template de toute les structures de données et fonctions pour les bitboards, pour faciliter l'adaptation à différentes tailles de plateau (15x15, 19x19, etc.)
-template<int SIZE>
-struct BoardTraits;
+template<int SIZE> struct BoardTraits;
 
-template<>
-struct BoardTraits<15>
+template<> struct BoardTraits<15>
 {
-    static constexpr int BOARD_SIZE = 15;
-    static constexpr int STRIDE = 16;
-	static constexpr int STRIDE_G = 15;
-    static constexpr int STRIDE_D = 17;
-    static constexpr int CELL_COUNT = 225;
-    static constexpr int WORD_COUNT = 4;
+	static constexpr int BOARD_SIZE = 15;
+	static constexpr int STRIDE     = 16;
+	static constexpr int STRIDE_G   = 15;
+	static constexpr int STRIDE_D   = 17;
+	static constexpr int CELL_COUNT = 225;
+	static constexpr int WORD_COUNT = 4;
 
-    using Bitboard = std::array<uint64_t, 4>;
+	using Bitboard = std::array<uint64_t, 4>;
 };
 
-template<>
-struct BoardTraits<19>
+template<> struct BoardTraits<19>
 {
-    static constexpr int BOARD_SIZE = 19;
-    static constexpr int STRIDE = 20;
-    static constexpr int STRIDE_G = 19;
-    static constexpr int STRIDE_D = 21;
-    static constexpr int CELL_COUNT = 361;
-    static constexpr int WORD_COUNT = 6;
+	static constexpr int BOARD_SIZE = 19;
+	static constexpr int STRIDE     = 20;
+	static constexpr int STRIDE_G   = 19;
+	static constexpr int STRIDE_D   = 21;
+	static constexpr int CELL_COUNT = 361;
+	static constexpr int WORD_COUNT = 6;
 
-    using Bitboard = std::array<uint64_t, 6>;
+	using Bitboard = std::array<uint64_t, 6>;
 };
 
-
 template<typename Traits>
-inline constexpr std::size_t MAX_BOARD_MOVES = Traits::BOARD_SIZE * Traits::BOARD_SIZE - (Traits::BOARD_SIZE * Traits::BOARD_SIZE) / 7;
+inline constexpr std::size_t MAX_BOARD_MOVES =
+	Traits::BOARD_SIZE * Traits::BOARD_SIZE - (Traits::BOARD_SIZE * Traits::BOARD_SIZE) / 7;
 
-template<typename Traits>
-struct t_BWBoard
+template<typename Traits> struct t_BWBoard
 {
-    typename Traits::Bitboard black;
-    typename Traits::Bitboard white;
+	typename Traits::Bitboard black;
+	typename Traits::Bitboard white;
 };
 
-typedef t_BWBoard<BoardTraits<19>>     t_BWBoard19;
-typedef t_BWBoard<BoardTraits<15>>     t_BWBoard15;
+typedef t_BWBoard<BoardTraits<19> > t_BWBoard19;
+typedef t_BWBoard<BoardTraits<15> > t_BWBoard15;
 
-template<typename Traits>
-inline int index_bb_generic(int x, int y)
+template<typename Traits> inline int index_bb_generic(int x, int y)
 {
-    return y * Traits::STRIDE + x;
+	return y * Traits::STRIDE + x;
 }
 
-
-template<typename Traits>
-inline int idx_generic(int x, int y)
+template<typename Traits> inline int idx_generic(int x, int y)
 {
-    return y * Traits::BOARD_SIZE + x;
+	return y * Traits::BOARD_SIZE + x;
 }
 
-template<typename Traits>
-inline void set_bb_generic(typename Traits::Bitboard &bb, int x, int y)
+template<typename Traits> inline void set_bb_generic(typename Traits::Bitboard& bb, int x, int y)
 {
 	int idx = index_bb_generic<Traits>(x, y);
 	bb[idx / 64] |= (1ULL << (idx % 64));
 }
 
-template<typename Traits>
-inline bool get_bb_generic(const typename Traits::Bitboard &bb, int x, int y)
+template<typename Traits> inline bool get_bb_generic(const typename Traits::Bitboard& bb, int x, int y)
 {
 	int idx = index_bb_generic<Traits>(x, y);
 	return (bb[idx / 64] & (1ULL << (idx % 64))) != 0;
 }
 
-// Read a bit by its flat physical index (y*STRIDE+x).
-// Used by pattern matching code that stores pre-computed flat indices.
-// Returns false for the -1 sentinel used by pattern structs.
-template<typename Traits>
-inline bool get_bb_flate(const typename Traits::Bitboard& bb, int idx)
+template<typename Traits> inline bool get_bb_flate(const typename Traits::Bitboard& bb, int idx)
 {
-	// Callers guard the -1 sentinel with `idx == -1 || get_bb_flate(...)`.
 	return (bb[idx >> 6] & (1ULL << (idx & 63))) != 0;
 }
 
-template<typename Traits>
-inline void set_bb_flate(typename Traits::Bitboard& bb, int idx)
+template<typename Traits> inline void set_bb_flate(typename Traits::Bitboard& bb, int idx)
 {
 	if (idx < 0)
 		return;
 	bb[idx >> 6] |= (1ULL << (idx & 63));
 }
 
-
-template<typename Traits>
-inline void clear_bit_generic(typename Traits::Bitboard &bb, int x, int y)
+template<typename Traits> inline void clear_bit_generic(typename Traits::Bitboard& bb, int x, int y)
 {
 	int idx = index_bb_generic<Traits>(x, y);
 	bb[idx >> 6] &= ~(1ULL << (idx & 63));
@@ -126,14 +108,12 @@ inline const typename Traits::Bitboard& bitboardForColor(const t_BWBoard<Traits>
 	return (color == Color::Black) ? board.black : board.white;
 }
 
-template<typename Traits>
-inline bool in_board_generic(int x, int y)
+template<typename Traits> inline bool in_board_generic(int x, int y)
 {
 	return x >= 0 && x < Traits::BOARD_SIZE && y >= 0 && y < Traits::BOARD_SIZE;
 }
 
-template<typename Traits>
-inline int popcount_bb_generic(const typename Traits::Bitboard& bb)
+template<typename Traits> inline int popcount_bb_generic(const typename Traits::Bitboard& bb)
 {
 	int n = 0;
 
@@ -142,28 +122,26 @@ inline int popcount_bb_generic(const typename Traits::Bitboard& bb)
 	return n;
 }
 
-// Calls fn(x, y) for each set bit in bb, skipping stride-padding positions.
-template<typename Traits, typename Fn>
-inline void bb_for_each_bit(const typename Traits::Bitboard& bb, Fn fn)
+// Calls fn(x, y) for each set bit in bb
+template<typename Traits, typename Fn> inline void bb_for_each_bit(const typename Traits::Bitboard& bb, Fn fn)
 {
-    for (int w = 0; w < Traits::WORD_COUNT; w++)
-    {
-        uint64_t word = bb[w];
-        while (word)
-        {
-            int bit = __builtin_ctzll(word);
-            word &= word - 1;
-            int pos = w * 64 + bit;
-            int x   = pos % Traits::STRIDE;
-            int y   = pos / Traits::STRIDE;
-            if (x < Traits::BOARD_SIZE && y < Traits::BOARD_SIZE)
-                fn(x, y);
-        }
-    }
+	for (int w = 0; w < Traits::WORD_COUNT; w++)
+	{
+		uint64_t word = bb[w];
+		while (word)
+		{
+			int bit = __builtin_ctzll(word);
+			word &= word - 1;
+			int pos = w * 64 + bit;
+			int x   = pos % Traits::STRIDE;
+			int y   = pos / Traits::STRIDE;
+			if (x < Traits::BOARD_SIZE && y < Traits::BOARD_SIZE)
+				fn(x, y);
+		}
+	}
 }
 
-template<typename Traits>
-void print_bb_19(t_BWBoard<Traits> &bw)
+template<typename Traits> void print_bb_19(t_BWBoard<Traits>& bw)
 {
 	std::string str;
 
@@ -179,7 +157,7 @@ void print_bb_19(t_BWBoard<Traits> &bw)
 					str += BLACK_STONE "B" RESET " ";
 				else if (get_bb_generic<Traits>(bw.white, x, y))
 					str += WHITE_STONE "W" RESET " ";
-			}	
+			}
 			else
 				str += EMPTY_CELL "." RESET " ";
 		}
@@ -189,13 +167,13 @@ void print_bb_19(t_BWBoard<Traits> &bw)
 	std::cout << str << std::endl;
 }
 
-template<typename Traits>
-void print_bb_colored(typename Traits::Bitboard& bb)
+template<typename Traits> void print_bb_colored(typename Traits::Bitboard& bb)
 {
 	std::string str;
 
 	str += "\n";
-	for (int i = 0; i < Traits::BOARD_SIZE + 1; i++) {
+	for (int i = 0; i < Traits::BOARD_SIZE + 1; i++)
+	{
 		str += "--";
 	}
 	str += "\n";
@@ -213,7 +191,8 @@ void print_bb_colored(typename Traits::Bitboard& bb)
 		str += "|\n";
 	}
 
-	for (int i = 0; i < Traits::BOARD_SIZE + 1; i++) {
+	for (int i = 0; i < Traits::BOARD_SIZE + 1; i++)
+	{
 		str += "--";
 	}
 	str += "\n";
@@ -221,8 +200,7 @@ void print_bb_colored(typename Traits::Bitboard& bb)
 	std::cout << str << std::endl;
 }
 
-template<typename Traits>
-void print_bb_overlay(t_BWBoard<Traits>& bw, typename Traits::Bitboard& legalMoves)
+template<typename Traits> void print_bb_overlay(t_BWBoard<Traits>& bw, typename Traits::Bitboard& legalMoves)
 {
 	std::string str;
 
@@ -255,8 +233,7 @@ void print_bb_overlay(t_BWBoard<Traits>& bw, typename Traits::Bitboard& legalMov
 	std::cout << str << std::endl;
 }
 
-template<typename Traits>
-t_BWBoard<Traits> GameBoard_to_bitboard(const GameBoard &board)
+template<typename Traits> t_BWBoard<Traits> GameBoard_to_bitboard(const GameBoard& board)
 {
 	t_BWBoard<Traits> bw_board = {};
 
@@ -276,17 +253,18 @@ t_BWBoard<Traits> GameBoard_to_bitboard(const GameBoard &board)
 }
 
 template<typename Traits>
-bool detect_captures(const t_BWBoard<Traits>& board, int col, int row, const Color attackerColor, typename Traits::Bitboard& capturedMask)
+bool detect_captures(const t_BWBoard<Traits>& board, int col, int row, const Color attackerColor,
+                     typename Traits::Bitboard& capturedMask)
 {
-	const typename Traits::Bitboard& attacker = bitboardForColor(board, attackerColor);
-	const Color victimColor = (attackerColor == Color::Black) ? Color::White : Color::Black;
-	const typename Traits::Bitboard& victime = bitboardForColor(board, victimColor);
+	const typename Traits::Bitboard& attacker    = bitboardForColor(board, attackerColor);
+	const Color                      victimColor = (attackerColor == Color::Black) ? Color::White : Color::Black;
+	const typename Traits::Bitboard& victime     = bitboardForColor(board, victimColor);
 
 	bool captured = false;
 
 	for (Direction dir : LINE_DIRS)
 	{
-		for (int sign : {-1, 1})
+		for (int sign : { -1, 1 })
 		{
 			int stepX = sign * dx(dir);
 			int stepY = sign * dy(dir);
@@ -295,12 +273,12 @@ bool detect_captures(const t_BWBoard<Traits>& board, int col, int row, const Col
 			int x2 = col + 2 * stepX, y2 = row + 2 * stepY;
 			int x3 = col + 3 * stepX, y3 = row + 3 * stepY;
 
-			if (!in_board_generic<Traits>(x1, y1) || !in_board_generic<Traits>(x2, y2) || !in_board_generic<Traits>(x3, y3))
+			if (!in_board_generic<Traits>(x1, y1) || !in_board_generic<Traits>(x2, y2) ||
+			    !in_board_generic<Traits>(x3, y3))
 				continue;
 
-			if (get_bb_generic<Traits>(victime, x1, y1) &&
-				get_bb_generic<Traits>(victime, x2, y2) &&
-				get_bb_generic<Traits>(attacker, x3, y3))
+			if (get_bb_generic<Traits>(victime, x1, y1) && get_bb_generic<Traits>(victime, x2, y2) &&
+			    get_bb_generic<Traits>(attacker, x3, y3))
 			{
 				set_bb_generic<Traits>(capturedMask, x1, y1);
 				set_bb_generic<Traits>(capturedMask, x2, y2);
@@ -312,18 +290,12 @@ bool detect_captures(const t_BWBoard<Traits>& board, int col, int row, const Col
 	return captured;
 }
 
-
-// Une capture est une paire adverse encadrée : il y en a au plus une par
-// demi-direction, donc au plus 8 pour un coup. Le bit (2 * d + s) code la paire
-// prise le long de LINE_DIRS[d], dans le sens négatif si s vaut 0. Les deux
-// pierres se déduisent de ce masque et de la case jouée (un et deux pas), ce
-// qui évite de les matérialiser pour chaque candidat d'un nœud de recherche.
 template<typename Traits>
 inline uint8_t detect_capture_mask(const t_BWBoard<Traits>& board, int col, int row, const Color attackerColor)
 {
-	const typename Traits::Bitboard& attacker = bitboardForColor(board, attackerColor);
-	const Color victimColor = (attackerColor == Color::Black) ? Color::White : Color::Black;
-	const typename Traits::Bitboard& victime = bitboardForColor(board, victimColor);
+	const typename Traits::Bitboard& attacker    = bitboardForColor(board, attackerColor);
+	const Color                      victimColor = (attackerColor == Color::Black) ? Color::White : Color::Black;
+	const typename Traits::Bitboard& victime     = bitboardForColor(board, victimColor);
 
 	uint8_t mask = 0;
 
@@ -334,16 +306,16 @@ inline uint8_t detect_capture_mask(const t_BWBoard<Traits>& board, int col, int 
 			const int stepX = (s ? 1 : -1) * dx(LINE_DIRS[d]);
 			const int stepY = (s ? 1 : -1) * dy(LINE_DIRS[d]);
 
-			const int x1 = col + stepX,     y1 = row + stepY;
+			const int x1 = col + stepX, y1 = row + stepY;
 			const int x2 = col + 2 * stepX, y2 = row + 2 * stepY;
 			const int x3 = col + 3 * stepX, y3 = row + 3 * stepY;
 
-			if (!in_board_generic<Traits>(x1, y1) || !in_board_generic<Traits>(x2, y2) || !in_board_generic<Traits>(x3, y3))
+			if (!in_board_generic<Traits>(x1, y1) || !in_board_generic<Traits>(x2, y2) ||
+			    !in_board_generic<Traits>(x3, y3))
 				continue;
 
-			if (get_bb_generic<Traits>(victime, x1, y1) &&
-				get_bb_generic<Traits>(victime, x2, y2) &&
-				get_bb_generic<Traits>(attacker, x3, y3))
+			if (get_bb_generic<Traits>(victime, x1, y1) && get_bb_generic<Traits>(victime, x2, y2) &&
+			    get_bb_generic<Traits>(attacker, x3, y3))
 				mask |= static_cast<uint8_t>(1u << (2 * d + s));
 		}
 	}
@@ -355,9 +327,7 @@ inline int capture_mask_count(uint8_t mask)
 	return 2 * __builtin_popcount(mask);
 }
 
-// Appelle fn(x, y) sur chaque pierre prise, dans l'ordre de balayage du masque.
-template<typename Fn>
-inline void for_each_captured_stone(uint8_t mask, int col, int row, Fn fn)
+template<typename Fn> inline void for_each_captured_stone(uint8_t mask, int col, int row, Fn fn)
 {
 	for (int d = 0; d < 4; ++d)
 	{
@@ -378,10 +348,24 @@ inline void for_each_captured_stone(uint8_t mask, int col, int row, Fn fn)
 template<typename Traits>
 void apply_captures(t_BWBoard<Traits>& board, const typename Traits::Bitboard captured, const Color attacker)
 {
-	const Color victimColor = (attacker == Color::Black) ? Color::White : Color::Black;
+	const Color                victimColor    = (attacker == Color::Black) ? Color::White : Color::Black;
 	typename Traits::Bitboard& victimBitboard = bitboardForColor(board, victimColor);
 	for (int i = 0; i < Traits::WORD_COUNT; i++)
 		victimBitboard[i] &= ~captured[i];
+}
+
+template<typename Traits>
+inline t_BWBoard<Traits> board_after_move(const t_BWBoard<Traits>& board, int col, int row, const Color color,
+                                          uint8_t captureMask)
+{
+	t_BWBoard<Traits> next = board;
+
+	set_bb_generic<Traits>(bitboardForColor(next, color), col, row);
+
+	typename Traits::Bitboard& victim = bitboardForColor(next, opponentOf(color));
+	for_each_captured_stone(captureMask, col, row, [&](int x, int y) { clear_bit_generic<Traits>(victim, x, y); });
+
+	return next;
 }
 
 #endif // BITBOARD_HPP

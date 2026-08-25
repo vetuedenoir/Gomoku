@@ -7,11 +7,10 @@
 
 inline t_cell cellAt(int x0, int y0, Direction dir, int step)
 {
-	return { x0 + step * dx(dir), y0 + step * dy(dir) };
+	return { static_cast<int_fast16_t>(x0 + step * dx(dir)), static_cast<int_fast16_t>(y0 + step * dy(dir)) };
 }
 
-inline void placeRun(GameBoard& b, int x0, int y0, Direction dir,
-                     int count, CellStatus color)
+inline void placeRun(GameBoard& b, int x0, int y0, Direction dir, int count, CellStatus color)
 {
 	for (int i = 0; i < count; ++i)
 	{
@@ -44,13 +43,13 @@ inline bool moveIsOneOf(const t_cell& move, const std::vector<t_cell>& cells)
 
 struct ThreatLine
 {
-	Direction    dir;
-	int          x0;
-	int          y0;
-	int          runLength;
-	CellStatus   attacker;
-	CellStatus   blocker;
-	int          blockedEnd; // -1 = back, +1 = front, 0 = open both ends
+	Direction  dir;
+	int        x0;
+	int        y0;
+	int        runLength;
+	CellStatus attacker;
+	CellStatus blocker;
+	int        blockedEnd; // -1 = back, +1 = front, 0 = open both ends
 };
 
 inline void buildThreatLine(GameBoard& b, const ThreatLine& line)
@@ -58,8 +57,8 @@ inline void buildThreatLine(GameBoard& b, const ThreatLine& line)
 	placeRun(b, line.x0, line.y0, line.dir, line.runLength, line.attacker);
 	if (line.blockedEnd != 0)
 	{
-		const int endStep = (line.blockedEnd < 0) ? -1 : line.runLength;
-		const t_cell c = cellAt(line.x0, line.y0, line.dir, endStep);
+		const int    endStep = (line.blockedEnd < 0) ? -1 : line.runLength;
+		const t_cell c       = cellAt(line.x0, line.y0, line.dir, endStep);
 		b.placeStoneOfColor(c.x, c.y, line.blocker);
 	}
 }

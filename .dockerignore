@@ -1,0 +1,14 @@
+.build
+.git
+gomoku
+gomoku-bench
+tests_runner
+.env
+docs
+.cursor
+*.o
+*.d
+bench/perf.data
+bench/perf.data.old
+bench/ref.json
+bench/new.json

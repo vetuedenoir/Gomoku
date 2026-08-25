@@ -3,11 +3,11 @@
 
 int main()
 {
-    LOG_INFO("MAIN", "Gomoku starting");
+	LOG_INFO("MAIN", "Gomoku starting");
 
-    Gomoku game;
-    game.run();
+	Gomoku game;
+	game.run();
 
-    LOG_INFO("MAIN", "Gomoku exiting");
-    return 0;
+	LOG_INFO("MAIN", "Gomoku exiting");
+	return 0;
 }
