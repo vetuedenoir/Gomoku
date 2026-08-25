@@ -4,6 +4,9 @@ Gomoku (5 en ligne, variante Ninuki avec captures) écrit en **C++17**.
 Interface graphique **SFML**, IA basée sur un **minimax alpha-bêta** au-dessus d'une
 représentation **bitboard**.
 
+<img width="996" height="827" alt="gomoku-partie" src="https://github.com/user-attachments/assets/5266bb2e-da8a-49cc-bdf8-9fd1e2daf727" />
+
+
 - Plateaux **15×15** ou **19×19** : choisis à l'exécution, mais résolus à la compilation
   via des templates (`BoardTraits<15>` / `BoardTraits<19>`).
 - Modes : humain vs IA, hotseat (2 humains), IA vs IA.
@@ -84,6 +87,16 @@ Le jeu s'ouvre sur un menu et enchaîne les écrans :
 **Menu principal → taille du plateau → couleur → protocole d'ouverture → partie → fin de partie**.
 On joue à la souris en cliquant sur une intersection ; les coups illégaux sont refusés et
 les compteurs de captures (en paires, sur 5) sont affichés à côté du plateau, avec le temps de réflexion de l'IA.
+
+<img width="990" height="681" alt="gomoku-home-page" src="https://github.com/user-attachments/assets/d25fd518-d4f2-4ca0-b48b-60ebcead5bc7" />
+
+<img width="989" height="716" alt="gomoku-size-goban" src="https://github.com/user-attachments/assets/e5b60ab3-ed8e-4bdc-a933-a49f944dfb08" />
+
+<img width="983" height="715" alt="gomoku-opening" src="https://github.com/user-attachments/assets/514871fb-1f71-4215-87b6-3de58aeb8d74" />
+
+<img width="993" height="817" alt="gomoku-winning" src="https://github.com/user-attachments/assets/00bdcc05-5fa0-419d-bca2-a05b4b55259f" />
+
+
 
 ### Tests
 
@@ -265,3 +278,5 @@ Les compteurs `SearchStats` (nœuds, hits/cutoffs/stores de TT, nœuds forcés) 
 le JSON du bench et les tests.
 
 ---
+
+Autors: https://github.com/vetuedenoir , https://github.com/DanielAlejandro2605
