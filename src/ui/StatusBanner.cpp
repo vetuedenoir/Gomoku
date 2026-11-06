@@ -43,6 +43,6 @@ void StatusBanner::draw(sf::RenderWindow& w, const sf::Font& font) const
 	sf::Text tip = makeText(text, font, flashing ? FONT_SM : FONT_XS, flashing ? _flashColor : _persistentColor);
 	if (flashing)
 		tip.setStyle(sf::Text::Bold);
-	tip.setPosition(CX, WIN_H * 0.975f);
+	tip.setPosition(sf::Vector2f(CX, WIN_H * 0.975f));
 	w.draw(tip);
 }

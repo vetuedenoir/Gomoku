@@ -2,6 +2,7 @@
 #define BOARD_HPP
 
 #include <SFML/Graphics.hpp>
+#include "sfml_compat.hpp"
 #include <vector>
 #include "game/board/GameBoard.hpp"
 #include <iostream>

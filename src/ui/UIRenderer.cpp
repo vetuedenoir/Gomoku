@@ -21,8 +21,8 @@ static void drawPlayerCard(sf::RenderWindow& w, const sf::Font& font, float cx, 
                            int capturePairs, int maxPairs, bool isActive, bool isAI, double aiLastMs, double aiAvgMs)
 {
 	sf::RectangleShape panel(sf::Vector2f(cardW, cardH));
-	panel.setOrigin(cardW / 2.f, cardH / 2.f);
-	panel.setPosition(cx, cy);
+	panel.setOrigin(sf::Vector2f(cardW / 2.f, cardH / 2.f));
+	panel.setPosition(sf::Vector2f(cx, cy));
 	panel.setFillColor(sf::Color(10, 10, 20, 200));
 	panel.setOutlineThickness(isActive ? 2.f : 1.f);
 	panel.setOutlineColor(isActive ? GOLD : DIM);
@@ -32,38 +32,38 @@ static void drawPlayerCard(sf::RenderWindow& w, const sf::Font& font, float cx, 
 
 	const float     stoneR = cardW * 0.16f;
 	sf::CircleShape stone(stoneR);
-	stone.setOrigin(stoneR, stoneR);
-	stone.setPosition(cx, top + cardH * 0.14f);
+	stone.setOrigin(sf::Vector2f(stoneR, stoneR));
+	stone.setPosition(sf::Vector2f(cx, top + cardH * 0.14f));
 	stone.setFillColor(stoneColor);
 	stone.setOutlineThickness(1.f);
 	stone.setOutlineColor(DIM);
 	w.draw(stone);
 
 	sf::Text name = makeText(colorName, font, FONT_SM, WHITE);
-	name.setPosition(cx, top + cardH * 0.30f);
+	name.setPosition(sf::Vector2f(cx, top + cardH * 0.30f));
 	w.draw(name);
 
 	sf::Text roleText = makeText(role, font, FONT_XS, isActive ? GOLD : DIM);
 	roleText.setStyle(sf::Text::Bold);
-	roleText.setPosition(cx, top + cardH * 0.40f);
+	roleText.setPosition(sf::Vector2f(cx, top + cardH * 0.40f));
 	w.draw(roleText);
 
 	sf::Text capLabel = makeText("Captures", font, FONT_XS, DIM);
-	capLabel.setPosition(cx, top + cardH * 0.56f);
+	capLabel.setPosition(sf::Vector2f(cx, top + cardH * 0.56f));
 	w.draw(capLabel);
 
 	sf::Text caps = makeText(std::to_string(capturePairs) + " / " + std::to_string(maxPairs), font, FONT_MD, WHITE);
-	caps.setPosition(cx, top + cardH * 0.66f);
+	caps.setPosition(sf::Vector2f(cx, top + cardH * 0.66f));
 	w.draw(caps);
 
 	if (isAI)
 	{
 		sf::Text last = makeText("last " + fmtMs(aiLastMs), font, FONT_XS, DIM);
-		last.setPosition(cx, top + cardH * 0.82f);
+		last.setPosition(sf::Vector2f(cx, top + cardH * 0.82f));
 		w.draw(last);
 
 		sf::Text avg = makeText("avg " + fmtMs(aiAvgMs), font, FONT_XS, DIM);
-		avg.setPosition(cx, top + cardH * 0.90f);
+		avg.setPosition(sf::Vector2f(cx, top + cardH * 0.90f));
 		w.draw(avg);
 	}
 }
@@ -85,15 +85,15 @@ void UIRenderer::renderGame(sf::RenderWindow& w, Board& board, const IGameContro
 void UIRenderer::renderStats(sf::RenderWindow& w, const sf::Font& font, const Board& board, const IGameController& ctrl)
 {
 	const sf::FloatRect b           = board.bounds();
-	const float         leftGutter  = b.left;
-	const float         rightGutter = WIN_W - (b.left + b.width);
+	const float         leftGutter  = sfc::left(b);
+	const float         rightGutter = WIN_W - (sfc::left(b) + sfc::width(b));
 
 	const float cardW = std::min(leftGutter, rightGutter) * 0.86f;
-	const float cardH = std::min(b.height * 0.5f, WIN_H * 0.36f);
-	const float cy    = b.top + b.height / 2.f;
+	const float cardH = std::min(sfc::height(b) * 0.5f, WIN_H * 0.36f);
+	const float cy    = sfc::top(b) + sfc::height(b) / 2.f;
 
 	const float leftCX  = leftGutter / 2.f;
-	const float rightCX = b.left + b.width + rightGutter / 2.f;
+	const float rightCX = sfc::left(b) + sfc::width(b) + rightGutter / 2.f;
 
 	const int maxPairs   = CAPTURES_TO_WIN / 2;
 	const int blackPairs = ctrl.blackCaptureCount() / 2;
@@ -127,8 +127,8 @@ void UIRenderer::renderColorChoice(sf::RenderWindow& w, MenuPage& colorChoice)
 	const float panelCY      = threeOptions ? WIN_H * 0.581f : WIN_H * 0.546f;
 
 	sf::RectangleShape panel(sf::Vector2f(panelW, panelH));
-	panel.setOrigin(panelW / 2.f, panelH / 2.f);
-	panel.setPosition(CX, panelCY);
+	panel.setOrigin(sf::Vector2f(panelW / 2.f, panelH / 2.f));
+	panel.setPosition(sf::Vector2f(CX, panelCY));
 	panel.setFillColor(sf::Color(10, 10, 20, 218));
 	panel.setOutlineThickness(2.f);
 	panel.setOutlineColor(GOLD);

@@ -2,6 +2,7 @@
 #define STATUS_BANNER_HPP
 
 #include <SFML/Graphics.hpp>
+#include "sfml_compat.hpp"
 #include <string>
 
 class StatusBanner

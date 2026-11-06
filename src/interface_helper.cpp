@@ -3,12 +3,12 @@
 void centerOrigin(sf::Text& t)
 {
 	sf::FloatRect b = t.getLocalBounds();
-	t.setOrigin(b.left + b.width / 2.f, b.top + b.height / 2.f);
+	t.setOrigin(sf::Vector2f(sfc::left(b) + sfc::width(b) / 2.f, sfc::top(b) + sfc::height(b) / 2.f));
 }
 
 sf::Text makeText(const std::string& str, const sf::Font& font, unsigned int size, sf::Color color)
 {
-	sf::Text t(str, font, size);
+	sf::Text t = sfc::newText(str, font, size);
 	t.setFillColor(color);
 	centerOrigin(t);
 	return t;
@@ -29,14 +29,14 @@ void drawGrid(sf::RenderWindow& window)
 	line.setSize(sf::Vector2f(1.f, step * (lines - 1)));
 	for (int i = 0; i < lines; ++i)
 	{
-		line.setPosition(ox + i * step, oy);
+		line.setPosition(sf::Vector2f(ox + i * step, oy));
 		window.draw(line);
 	}
 	// horizontal
 	line.setSize(sf::Vector2f(step * (lines - 1), 1.f));
 	for (int i = 0; i < lines; ++i)
 	{
-		line.setPosition(ox, oy + i * step);
+		line.setPosition(sf::Vector2f(ox, oy + i * step));
 		window.draw(line);
 	}
 }

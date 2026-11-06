@@ -36,11 +36,21 @@ static std::string formatOpeningDecision(const OpeningDecision& d, bool aiVsAi)
 	return std::string(who) + " chose " + action;
 }
 
-Gomoku::Gomoku() : _window(sf::VideoMode(WIN_W, WIN_H), "Gomoku", sf::Style::Titlebar | sf::Style::Close)
+Gomoku::Gomoku() : _window(
+#if GOMOKU_SFML3
+          sf::VideoMode(sf::Vector2u(WIN_W, WIN_H)),
+#else
+          sf::VideoMode(WIN_W, WIN_H),
+#endif
+          "Gomoku", sf::Style::Titlebar | sf::Style::Close)
 {
 	_window.setFramerateLimit(60);
 
+	#if GOMOKU_SFML3
+	static_cast<void>(_font.openFromFile(FONT));
+#else
 	_font.loadFromFile(FONT);
+#endif
 
 	buildMainMenuPage();
 	buildRuleDemosPage();
@@ -57,10 +67,15 @@ void Gomoku::run()
 	{
 		sf::Vector2f mouse = _window.mapPixelToCoords(sf::Mouse::getPosition(_window));
 
+#if GOMOKU_SFML3
+		while (const std::optional<sf::Event> event = _window.pollEvent())
+			handleEvent(*event, mouse);
+#else
 		sf::Event event;
 
 		while (_window.pollEvent(event))
 			handleEvent(event, mouse);
+#endif
 
 		update(mouse);
 
@@ -293,6 +308,20 @@ void Gomoku::refreshStatusBanner()
 
 void Gomoku::handleEvent(const sf::Event& event, sf::Vector2f mouse)
 {
+#if GOMOKU_SFML3
+	if (event.is<sf::Event::Closed>())
+		_window.close();
+
+	if (const auto* key = event.getIf<sf::Event::KeyPressed>(); key && key->code == sf::Keyboard::Key::H)
+	{
+		requestSuggestion();
+		return;
+	}
+
+	const auto* released = event.getIf<sf::Event::MouseButtonReleased>();
+	if (!released || released->button != sf::Mouse::Button::Left)
+		return;
+#else
 	if (event.type == sf::Event::Closed)
 		_window.close();
 
@@ -304,6 +333,7 @@ void Gomoku::handleEvent(const sf::Event& event, sf::Vector2f mouse)
 
 	if (event.type != sf::Event::MouseButtonReleased || event.mouseButton.button != sf::Mouse::Left)
 		return;
+#endif
 
 	if (_states.top() == AppState::GameOver)
 	{
@@ -467,13 +497,13 @@ void Gomoku::buildColorChoicePage()
 
 	sf::Text title = makeText(titleStr, _font, FONT_CC, GOLD);
 	title.setStyle(sf::Text::Bold);
-	title.setPosition(CX, WIN_H * 0.4725f);
+	title.setPosition(sf::Vector2f(CX, WIN_H * 0.4725f));
 
 	const float        divW = WIN_W * 0.30f;
 	sf::RectangleShape divider(sf::Vector2f(divW, 1.f));
 	divider.setFillColor(GOLD);
-	divider.setOrigin(divW / 2.f, 0.5f);
-	divider.setPosition(CX, WIN_H * 0.50f);
+	divider.setOrigin(sf::Vector2f(divW / 2.f, 0.5f));
+	divider.setPosition(sf::Vector2f(CX, WIN_H * 0.50f));
 
 	const char* label1 = (seat == Seat::Second) ? "Play White" : "Play Black";
 	const char* label2 = (seat == Seat::Second) ? "Play Black" : "Play White";
@@ -515,7 +545,7 @@ void Gomoku::buildWinScreenPage(const Color winner, int capturesBlack, int captu
 
 	sf::Text title = makeText(winnerStr, _font, FONT_ML, GOLD);
 	title.setStyle(sf::Text::Bold);
-	title.setPosition(CX, WIN_H * 0.3375f);
+	title.setPosition(sf::Vector2f(CX, WIN_H * 0.3375f));
 	_winScreen.addText("title", title);
 
 	std::string scoreStr = "Black: " + std::to_string(capturesBlack / 2) +
@@ -523,7 +553,7 @@ void Gomoku::buildWinScreenPage(const Color winner, int capturesBlack, int captu
 	                       "White: " +
 	                       std::to_string(capturesWhite / 2) + " cap";
 	sf::Text    score    = makeText(scoreStr, _font, FONT_SM, DIM);
-	score.setPosition(CX, WIN_H * 0.431f);
+	score.setPosition(sf::Vector2f(CX, WIN_H * 0.431f));
 	_winScreen.addText("score", score);
 
 	if (_config.aiOpponent)
@@ -541,7 +571,7 @@ void Gomoku::buildWinScreenPage(const Color winner, int capturesBlack, int captu
 		}
 		sf::Text aiAvg = makeText(avgStream.str(), _font, FONT_MD, GOLD);
 		aiAvg.setStyle(sf::Text::Bold);
-		aiAvg.setPosition(CX, WIN_H * 0.478f);
+		aiAvg.setPosition(sf::Vector2f(CX, WIN_H * 0.478f));
 		_winScreen.addText("aiAvg", aiAvg);
 	}
 
@@ -571,18 +601,18 @@ void Gomoku::buildMainMenuPage()
 {
 	sf::Text title = makeText("GOMOKU", _font, FONT_XL, GOLD);
 	title.setStyle(sf::Text::Bold);
-	title.setPosition(CX, WIN_H * 0.1875f);
+	title.setPosition(sf::Vector2f(CX, WIN_H * 0.1875f));
 	_mainMenu.addText("title", title);
 
 	sf::Text sub = makeText("Five in a row", _font, FONT_MD, DIM);
-	sub.setPosition(CX, WIN_H * 0.2725f);
+	sub.setPosition(sf::Vector2f(CX, WIN_H * 0.2725f));
 	_mainMenu.addText("sub", sub);
 
 	const float        divW = WIN_W * 0.32f;
 	sf::RectangleShape divider(sf::Vector2f(divW, 2.f));
 	divider.setFillColor(GOLD);
-	divider.setOrigin(divW / 2.f, 1.f);
-	divider.setPosition(CX, WIN_H * 0.30f);
+	divider.setOrigin(sf::Vector2f(divW / 2.f, 1.f));
+	divider.setPosition(sf::Vector2f(CX, WIN_H * 0.30f));
 	_mainMenu.addRectangle("divider", divider);
 
 	_mainMenu.addItem("playAI", FonctionItem(Item("Play vs AI", _font, CX, WIN_H * 0.375f),
@@ -633,11 +663,11 @@ void Gomoku::buildRuleDemosPage()
 {
 	sf::Text title = makeText("GOMOKU", _font, FONT_LG, GOLD);
 	title.setStyle(sf::Text::Bold);
-	title.setPosition(CX, WIN_H * 0.10f);
+	title.setPosition(sf::Vector2f(CX, WIN_H * 0.10f));
 	_ruleDemos.addText("title", title);
 
 	sf::Text sub = makeText("Two Players — load a prepared position", _font, FONT_MD, DIM);
-	sub.setPosition(CX, WIN_H * 0.175f);
+	sub.setPosition(sf::Vector2f(CX, WIN_H * 0.175f));
 	_ruleDemos.addText("sub", sub);
 
 	_ruleDemos.addItem("newGame", FonctionItem(Item("New game", _font, CX, WIN_H * 0.30f),
@@ -678,11 +708,11 @@ void Gomoku::buildBoardSizePage()
 {
 	sf::Text title = makeText("GOMOKU", _font, FONT_LG, GOLD);
 	title.setStyle(sf::Text::Bold);
-	title.setPosition(CX, WIN_H * 0.1375f);
+	title.setPosition(sf::Vector2f(CX, WIN_H * 0.1375f));
 	_boardSize.addText("title", title);
 
 	sf::Text sub = makeText("Choose the size of the Goban", _font, FONT_MD, DIM);
-	sub.setPosition(CX, WIN_H * 0.21f);
+	sub.setPosition(sf::Vector2f(CX, WIN_H * 0.21f));
 	_boardSize.addText("sub", sub);
 
 	_boardSize.addItem(
@@ -714,15 +744,15 @@ void Gomoku::buildStoneColorPage()
 {
 	sf::Text title = makeText("GOMOKU", _font, FONT_LG, GOLD);
 	title.setStyle(sf::Text::Bold);
-	title.setPosition(CX, WIN_H * 0.1125f);
+	title.setPosition(sf::Vector2f(CX, WIN_H * 0.1125f));
 	_stoneColor.addText("title", title);
 
 	sf::Text sub = makeText("Choose your Stone", _font, FONT_MD, DIM);
-	sub.setPosition(CX, WIN_H * 0.185f);
+	sub.setPosition(sf::Vector2f(CX, WIN_H * 0.185f));
 	_stoneColor.addText("sub", sub);
 
 	sf::Text note = makeText("Black plays first", _font, FONT_XS, DIM);
-	note.setPosition(CX, WIN_H * 0.22f);
+	note.setPosition(sf::Vector2f(CX, WIN_H * 0.22f));
 	_stoneColor.addText("note", note);
 
 	_stoneColor.addItem("white", FonctionItem(Item("White", _font, CX, WIN_H * 0.3375f),
@@ -767,11 +797,11 @@ void Gomoku::buildOpeningPage()
 {
 	sf::Text title = makeText("GOMOKU", _font, FONT_LG, GOLD);
 	title.setStyle(sf::Text::Bold);
-	title.setPosition(CX, WIN_H * 0.10f);
+	title.setPosition(sf::Vector2f(CX, WIN_H * 0.10f));
 	_opening.addText("title", title);
 
 	sf::Text sub = makeText("Choose your Opening", _font, FONT_MD, DIM);
-	sub.setPosition(CX, WIN_H * 0.165f);
+	sub.setPosition(sf::Vector2f(CX, WIN_H * 0.165f));
 	_opening.addText("sub", sub);
 
 	const float col1 = WIN_W * 0.25f;

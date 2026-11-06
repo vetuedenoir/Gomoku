@@ -2,12 +2,12 @@
 
 void MenuPage::addText(const std::string& key, const sf::Text& text)
 {
-	_textMap[key] = text;
+	_textMap.insert_or_assign(key, text);
 }
 
 void MenuPage::addRectangle(const std::string& key, const sf::RectangleShape& rect)
 {
-	_rectMap[key] = rect;
+	_rectMap.insert_or_assign(key, rect);
 }
 
 void MenuPage::addItem(const std::string& key, const FonctionItem item)

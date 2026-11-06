@@ -2,6 +2,7 @@
 #define INTERFACE_HPP
 
 #include <SFML/Graphics.hpp>
+#include "sfml_compat.hpp"
 #include <vector>
 #include <string>
 #include <functional>
@@ -43,13 +44,13 @@ struct Item
 
 	Item(const std::string& str, const sf::Font& font, float x, float y) : label(makeText(str, font, FONT_ITEM, WHITE))
 	{
-		label.setPosition(x, y);
+		label.setPosition(sf::Vector2f(x, y));
 
 		constexpr float W = WIN_W * 0.26f;
 		constexpr float H = WIN_H * 0.0725f;
 		bg.setSize(sf::Vector2f(W, H));
-		bg.setOrigin(W / 2.f, H / 2.f);
-		bg.setPosition(x, y);
+		bg.setOrigin(sf::Vector2f(W / 2.f, H / 2.f));
+		bg.setPosition(sf::Vector2f(x, y));
 		bg.setFillColor(sf::Color::Transparent);
 		bg.setOutlineThickness(2.f);
 		bg.setOutlineColor(DIM);
